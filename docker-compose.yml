@@ -1,0 +1,109 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+
+    container_name: billsons_tasks_app
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    depends_on:
+      db:
+        condition: service_healthy
+
+    volumes:
+      # Development/source mounts.
+      - ./app:/app/app
+      - ./alembic:/app/alembic
+      - ./scripts:/app/scripts
+      - ./docs:/app/docs
+      - ./tests:/app/tests
+
+      # Test configuration.
+      - ./.env.test:/app/.env.test:ro
+
+      # Persistent application data.
+      - ./data/uploads:/data/uploads
+      - ./data/exports:/data/exports
+      - ./data/generated:/data/generated
+      - ./data/temp:/data/temp
+      - ./backups:/app/backups
+
+    networks:
+      - default
+      - edge
+
+    labels:
+      - "traefik.enable=true"
+
+      - "traefik.http.routers.billsons-tasks.rule=Host(`${TRAEFIK_HOST}`)"
+      - "traefik.http.routers.billsons-tasks.entrypoints=web-secure"
+      - "traefik.http.routers.billsons-tasks.tls=true"
+      - "traefik.http.routers.billsons-tasks.tls.certresolver=default"
+
+      - "traefik.http.services.billsons-tasks.loadbalancer.server.port=8000"
+
+      - "traefik.docker.network=edge"
+
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "curl",
+          "--fail",
+          "--silent",
+          "http://localhost:8000/health"
+        ]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+      start_period: 20s
+
+  db:
+    image: postgres:17
+
+    container_name: billsons_tasks_db
+
+    restart: unless-stopped
+
+    env_file:
+      - .env
+
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+      POSTGRES_TEST_DB: ${POSTGRES_TEST_DB:-billsons_tasks_test}
+      TZ: UTC
+      PGTZ: UTC
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/postgres/init-test-database.sh:/docker-entrypoint-initdb.d/10-create-test-database.sh:ro
+
+    networks:
+      - default
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+volumes:
+  postgres_data:
+    name: billsons_tasks_postgres_data
+
+networks:
+  edge:
+    external: true
+    name: edge

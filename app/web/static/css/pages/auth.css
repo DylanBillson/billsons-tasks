@@ -1,0 +1,75 @@
+.auth-page {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    min-height: 100vh;
+    padding: 2rem;
+}
+
+.auth-card {
+    width: 100%;
+    max-width: 26rem;
+}
+
+.auth-header {
+    margin-bottom: 2rem;
+    text-align: center;
+}
+
+.auth-header h1 {
+    margin: 0;
+}
+
+.auth-subtitle {
+    margin-top: 0.75rem;
+    color: var(--text-muted);
+}
+
+.form-group + .form-group {
+    margin-top: 1.25rem;
+}
+
+.form-checkbox {
+    margin-top: 1.5rem;
+}
+
+.checkbox {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    cursor: pointer;
+}
+
+.checkbox input {
+    margin: 0;
+}
+
+.form-actions {
+    display: flex;
+    justify-content: stretch;
+    margin-top: 2rem;
+}
+
+.form-actions .btn {
+    width: 100%;
+}
+
+.field-error {
+    margin-top: 0.35rem;
+    font-size: 0.875rem;
+    color: var(--colour-danger);
+}
+
+.is-invalid {
+    border-color: var(--colour-danger);
+}
+
+@media (max-width: 480px) {
+    .auth-page {
+        padding: 1rem;
+    }
+
+    .auth-card {
+        max-width: none;
+    }
+}

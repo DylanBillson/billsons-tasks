@@ -1,0 +1,45 @@
+# Environment and secrets
+.env
+.env.*
+!.env.example
+.env.test
+
+# Python
+__pycache__/
+*.py[cod]
+*.pyo
+.venv/
+venv/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# IDE and operating system
+.vscode/
+.idea/
+.DS_Store
+Thumbs.db
+
+# Runtime data
+data/uploads/*
+data/exports/*
+data/generated/*
+data/temp/*
+!data/uploads/.gitkeep
+!data/exports/.gitkeep
+!data/generated/.gitkeep
+!data/temp/.gitkeep
+
+# Backups
+backups/*
+!backups/.gitkeep
+
+# Logs
+*.log
+
+# Local database or temporary files
+*.sqlite
+*.sqlite3
+*.db

@@ -1,0 +1,73 @@
+<!DOCTYPE html>
+<html lang="en-GB">
+
+<head>
+
+    <meta charset="utf-8">
+
+    <meta
+        name="viewport"
+        content="width=device-width, initial-scale=1"
+    >
+
+    <title>
+        {% block title %}{% endblock %}
+        {% if self.title() %}
+            •
+        {% endif %}
+        {{ settings.application_name }}
+    </title>
+
+    <meta
+        name="color-scheme"
+        content="light"
+    >
+
+    <link
+        rel="stylesheet"
+        href="{{ url_for('static', path='css/app.css') }}"
+    >
+
+    {% block head %}
+    {% endblock %}
+
+</head>
+
+<body>
+
+    <div class="app">
+
+        {% block header %}
+        {% endblock %}
+
+        {% block navigation %}
+        {% endblock %}
+
+        <main
+            class="app-content"
+            id="main-content"
+        >
+
+            {% include "partials/flash_messages.html" %}
+
+            {% block content %}
+            {% endblock %}
+
+        </main>
+
+        {% block footer %}
+        {% endblock %}
+
+    </div>
+
+    <script
+        src="{{ url_for('static', path='js/app.js') }}"
+        defer
+    ></script>
+
+    {% block scripts %}
+    {% endblock %}
+
+</body>
+
+</html>
