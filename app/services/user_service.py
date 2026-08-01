@@ -165,9 +165,9 @@ class UserService:
     def reset_password_by_user_id(
         db: Session,
         *,
-        acting_user: User,
-        target_user_id: int,
-        password_reset: PasswordResetRequest,
+        actor: User,
+        user_id: int,
+        new_password: str,
         ip_address: str | None = None,
         user_agent: str | None = None,
         commit: bool = True,
@@ -175,17 +175,24 @@ class UserService:
         """
         Retrieve a target user by ID and reset their password.
 
-        This is convenient for administrator routes that receive the target
-        user ID from the URL.
+        This method provides the simpler interface used by administrator web
+        routes. The password has already been confirmed by the route's form
+        validation, so it is used for both password fields in the service
+        request.
         """
         target_user = UserService.require_user(
             db,
-            user_id=target_user_id,
+            user_id=user_id,
+        )
+
+        password_reset = PasswordResetRequest(
+            new_password=new_password,
+            confirm_password=new_password,
         )
 
         return UserService.reset_password(
             db,
-            acting_user=acting_user,
+            acting_user=actor,
             target_user=target_user,
             password_reset=password_reset,
             ip_address=ip_address,

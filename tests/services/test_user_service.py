@@ -511,12 +511,9 @@ def test_reset_password_by_user_id_resets_password(
 
     result = UserService.reset_password_by_user_id(
         db,
-        acting_user=administrator,
-        target_user_id=target_user.id,
-        password_reset=PasswordResetRequest(
-            new_password=new_password,
-            confirm_password=new_password,
-        ),
+        actor=administrator,
+        user_id=target_user.id,
+        new_password=new_password,
     )
 
     db.refresh(target_user)
@@ -543,12 +540,9 @@ def test_reset_password_by_user_id_raises_for_missing_user(
     ):
         UserService.reset_password_by_user_id(
             db,
-            acting_user=administrator,
-            target_user_id=999_999,
-            password_reset=PasswordResetRequest(
-                new_password=new_password,
-                confirm_password=new_password,
-            ),
+            actor=administrator,
+            user_id=999_999,
+            new_password=new_password,
         )
 
 

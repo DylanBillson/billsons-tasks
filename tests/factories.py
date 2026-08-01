@@ -1,10 +1,8 @@
 """
 Reusable database factories for tests.
 
-These helpers create real SQLAlchemy model instances in the test database.
-They flush changes so generated primary keys are immediately available, but
-they do not commit. Transaction ownership remains with the calling test and
-the shared ``db`` fixture.
+Factories flush and refresh records but never commit. Transaction ownership
+remains with the calling test and the shared ``db`` fixture.
 """
 
 from collections.abc import Mapping
@@ -14,7 +12,7 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import AuditAction, GlobalRole
+from app.core.constants import AuditAction, CompanyRole, GlobalRole
 from app.core.security import (
     generate_csrf_token,
     generate_session_token,
@@ -23,6 +21,10 @@ from app.core.security import (
 )
 from app.core.timezone import utc_now
 from app.models.audit_log import AuditLog
+from app.models.company import Company
+from app.models.company_membership import CompanyMembership
+from app.models.section import Section
+from app.models.section_membership import SectionMembership
 from app.models.session import AuthSession
 from app.models.user import User
 from app.services.audit_service import AuditService
@@ -30,19 +32,33 @@ from app.services.audit_service import AuditService
 
 DEFAULT_TEST_PASSWORD = "Correct-Horse-Battery-Staple-123!"
 
-_user_counter = count(
+_user_counter = count(start=1)
+
+_company_counter = count(
+    start=1,
+)
+
+_section_counter = count(
     start=1,
 )
 
 
-def _next_user_number() -> int:
+def _next_company_number() -> int:
     """
-    Return a process-local unique number for generated usernames.
+    Return a process-local unique number for generated company names.
     """
     return next(
-        _user_counter,
+        _company_counter,
     )
 
+
+def _next_section_number() -> int:
+    """
+    Return a process-local unique number for generated section names.
+    """
+    return next(
+        _section_counter,
+    )
 
 def create_user(
     db: Session,
@@ -56,31 +72,10 @@ def create_user(
     is_anonymised: bool = False,
     anonymised_at: datetime | None = None,
 ) -> User:
-    """
-    Create and flush a User.
-
-    ``password_hash`` may be supplied when a test needs a deliberately old,
-    malformed or otherwise specialised hash. When omitted, ``password`` is
-    securely hashed using the application's normal password helper.
-    """
-    user_number = _next_user_number()
-
-    resolved_username = (
-        username
-        if username is not None
-        else f"test-user-{user_number}"
-    )
-    resolved_display_name = (
-        display_name
-        if display_name is not None
-        else f"Test User {user_number}"
-    )
-    resolved_global_role = (
+    number = next(_user_counter)
+    resolved_role = (
         global_role.value
-        if isinstance(
-            global_role,
-            GlobalRole,
-        )
+        if isinstance(global_role, GlobalRole)
         else global_role
     )
 
@@ -88,29 +83,18 @@ def create_user(
         anonymised_at = utc_now()
 
     user = User(
-        username=resolved_username,
-        display_name=resolved_display_name,
-        password_hash=(
-            password_hash
-            if password_hash is not None
-            else hash_password(
-                password,
-            )
-        ),
-        global_role=resolved_global_role,
+        username=username or f"test-user-{number}",
+        display_name=display_name or f"Test User {number}",
+        password_hash=password_hash or hash_password(password),
+        global_role=resolved_role,
         is_active=is_active,
         is_anonymised=is_anonymised,
         anonymised_at=anonymised_at,
     )
 
-    db.add(
-        user,
-    )
+    db.add(user)
     db.flush()
-    db.refresh(
-        user,
-    )
-
+    db.refresh(user)
     return user
 
 
@@ -125,9 +109,6 @@ def create_administrator(
     is_anonymised: bool = False,
     anonymised_at: datetime | None = None,
 ) -> User:
-    """
-    Create and flush an administrator user.
-    """
     return create_user(
         db,
         username=username,
@@ -139,6 +120,139 @@ def create_administrator(
         is_anonymised=is_anonymised,
         anonymised_at=anonymised_at,
     )
+
+
+def create_company(
+    db: Session,
+    *,
+    name: str | None = None,
+    description: str | None = None,
+    is_archived: bool = False,
+) -> Company:
+    """
+    Create and flush a company.
+    """
+    company_number = _next_company_number()
+
+    resolved_name = (
+        name
+        if name is not None
+        else f"Test Company {company_number}"
+    )
+
+    company = Company(
+        name=resolved_name,
+        description=description,
+        is_archived=is_archived,
+    )
+
+    db.add(
+        company,
+    )
+    db.flush()
+
+    return company
+
+
+def create_company_membership(
+    db: Session,
+    *,
+    company: Company,
+    user: User,
+    role: str | CompanyRole = CompanyRole.EMPLOYEE,
+) -> CompanyMembership:
+    """
+    Create and flush a company membership.
+
+    Assigning relationship objects rather than only foreign-key IDs keeps both
+    sides of the SQLAlchemy relationships synchronised in memory.
+    """
+    resolved_role = (
+        role.value
+        if isinstance(
+            role,
+            CompanyRole,
+        )
+        else role
+    )
+
+    membership = CompanyMembership(
+        company=company,
+        user=user,
+        role=resolved_role,
+    )
+
+    db.add(
+        membership,
+    )
+    db.flush()
+
+    return membership
+
+
+def create_section(
+    db: Session,
+    *,
+    company: Company,
+    created_by: User,
+    name: str | None = None,
+    description: str | None = None,
+    is_archived: bool = False,
+) -> Section:
+    """
+    Create and flush a section.
+
+    The creator relationship is separate from section membership. Creating a
+    section does not create a SectionMembership row.
+    """
+    section_number = _next_section_number()
+
+    resolved_name = (
+        name
+        if name is not None
+        else f"Test Section {section_number}"
+    )
+
+    section = Section(
+        company=company,
+        created_by=created_by,
+        name=resolved_name,
+        description=description,
+        is_archived=is_archived,
+    )
+
+    db.add(
+        section,
+    )
+    db.flush()
+
+    return section
+
+
+def create_section_membership(
+    db: Session,
+    *,
+    section: Section,
+    user: User,
+) -> SectionMembership:
+    """
+    Create and flush an explicit section membership.
+
+    This factory does not create or require a company membership. That
+    integrity rule will be enforced by the service layer; model-level tests
+    may deliberately construct lower-level database states.
+    """
+    membership = SectionMembership(
+        section=section,
+        user=user,
+    )
+
+    db.add(
+        membership,
+    )
+    db.flush()
+
+    return membership
 
 
 def create_auth_session(
@@ -155,70 +269,33 @@ def create_auth_session(
     ip_address: str | None = "127.0.0.1",
     user_agent: str | None = "Billsons Tasks pytest",
 ) -> tuple[AuthSession, str, str]:
-    """
-    Create and flush an authentication session.
-
-    Returns:
-
-    ``(auth_session, raw_session_token, raw_csrf_token)``
-
-    The model stores only token hashes, while tests commonly need the raw
-    values when calling AuthService methods.
-    """
     now = utc_now()
+    raw_session_token = session_token or generate_session_token()
+    raw_csrf_token = csrf_token or generate_csrf_token()
+    resolved_last_seen = last_seen_at or now
+    resolved_expiry = expires_at or now + timedelta(hours=12)
+    resolved_revoked_at = revoked_at
 
-    resolved_session_token = (
-        session_token
-        if session_token is not None
-        else generate_session_token()
-    )
-    resolved_csrf_token = (
-        csrf_token
-        if csrf_token is not None
-        else generate_csrf_token()
-    )
-
-    if last_seen_at is None:
-        last_seen_at = now
-
-    if expires_at is None:
-        expires_at = now + timedelta(
-            hours=12,
-        )
-
-    if is_revoked and revoked_at is None:
-        revoked_at = now
+    if is_revoked and resolved_revoked_at is None:
+        resolved_revoked_at = now
 
     auth_session = AuthSession(
         user_id=user.id,
-        token_hash=hash_token(
-            resolved_session_token,
-        ),
-        csrf_token_hash=hash_token(
-            resolved_csrf_token,
-        ),
-        expires_at=expires_at,
-        last_seen_at=last_seen_at,
+        token_hash=hash_token(raw_session_token),
+        csrf_token_hash=hash_token(raw_csrf_token),
+        expires_at=resolved_expiry,
+        last_seen_at=resolved_last_seen,
         remember_me=remember_me,
         is_revoked=is_revoked,
-        revoked_at=revoked_at,
+        revoked_at=resolved_revoked_at,
         ip_address=ip_address,
         user_agent=user_agent,
     )
 
-    db.add(
-        auth_session,
-    )
+    db.add(auth_session)
     db.flush()
-    db.refresh(
-        auth_session,
-    )
-
-    return (
-        auth_session,
-        resolved_session_token,
-        resolved_csrf_token,
-    )
+    db.refresh(auth_session)
+    return auth_session, raw_session_token, raw_csrf_token
 
 
 def create_expired_auth_session(
@@ -232,23 +309,15 @@ def create_expired_auth_session(
     ip_address: str | None = "127.0.0.1",
     user_agent: str | None = "Billsons Tasks pytest",
 ) -> tuple[AuthSession, str, str]:
-    """
-    Create an authentication session whose expiry is in the past.
-    """
-    if expired_at is None:
-        expired_at = utc_now() - timedelta(
-            minutes=1,
-        )
+    resolved_expiry = expired_at or utc_now() - timedelta(minutes=1)
 
     return create_auth_session(
         db,
         user=user,
         session_token=session_token,
         csrf_token=csrf_token,
-        expires_at=expired_at,
-        last_seen_at=expired_at - timedelta(
-            minutes=5,
-        ),
+        expires_at=resolved_expiry,
+        last_seen_at=resolved_expiry - timedelta(minutes=5),
         remember_me=remember_me,
         ip_address=ip_address,
         user_agent=user_agent,
@@ -267,9 +336,6 @@ def create_revoked_auth_session(
     ip_address: str | None = "127.0.0.1",
     user_agent: str | None = "Billsons Tasks pytest",
 ) -> tuple[AuthSession, str, str]:
-    """
-    Create a revoked authentication session.
-    """
     return create_auth_session(
         db,
         user=user,
@@ -297,13 +363,6 @@ def create_audit_log(
     ip_address: str | None = "127.0.0.1",
     user_agent: str | None = "Billsons Tasks pytest",
 ) -> AuditLog:
-    """
-    Create and flush an audit log through AuditService.
-
-    Using the service rather than directly constructing AuditLog keeps test
-    records aligned with the application's normal normalisation, metadata
-    sanitisation and repository behaviour.
-    """
     audit_log = AuditService.record(
         db,
         action=action,
@@ -312,21 +371,12 @@ def create_audit_log(
         user_id=user_id,
         entity_type=entity_type,
         entity_id=entity_id,
-        metadata_json=(
-            dict(
-                metadata_json,
-            )
-            if metadata_json is not None
-            else None
-        ),
+        metadata_json=dict(metadata_json) if metadata_json is not None else None,
         ip_address=ip_address,
         user_agent=user_agent,
         commit=False,
     )
 
     db.flush()
-    db.refresh(
-        audit_log,
-    )
-
+    db.refresh(audit_log)
     return audit_log

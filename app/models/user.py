@@ -1,10 +1,16 @@
 from datetime import datetime
+from typing import TYPE_CHECKING
 
 from sqlalchemy import Boolean, DateTime, String, text
-from sqlalchemy.orm import Mapped, mapped_column
+from sqlalchemy.orm import Mapped, mapped_column, relationship
 
 from app.core.constants import GlobalRole
 from app.db.base import Base, IntegerPrimaryKeyMixin, TimestampMixin
+
+if TYPE_CHECKING:
+    from app.models.company_membership import CompanyMembership
+    from app.models.section import Section
+    from app.models.section_membership import SectionMembership
 
 
 class User(
@@ -33,7 +39,7 @@ class User(
     global_role: Mapped[str] = mapped_column(
         String(32),
         nullable=False,
-        default=GlobalRole.USER,
+        default=GlobalRole.USER.value,
         server_default=text("'user'"),
     )
 
@@ -56,6 +62,26 @@ class User(
         nullable=True,
     )
 
+    company_memberships: Mapped[list["CompanyMembership"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
+
+    section_memberships: Mapped[list["SectionMembership"]] = relationship(
+        back_populates="user",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        lazy="selectin",
+    )
+
+    created_sections: Mapped[list["Section"]] = relationship(
+        back_populates="created_by",
+        foreign_keys="Section.created_by_user_id",
+        lazy="selectin",
+    )
+
     def __repr__(self) -> str:
         return (
             f"<User "
@@ -66,8 +92,14 @@ class User(
 
     @property
     def is_administrator(self) -> bool:
-        return self.global_role == GlobalRole.ADMINISTRATOR
+        return (
+            self.global_role
+            == GlobalRole.ADMINISTRATOR.value
+        )
 
     @property
     def can_authenticate(self) -> bool:
-        return self.is_active and not self.is_anonymised
+        return (
+            self.is_active
+            and not self.is_anonymised
+        )

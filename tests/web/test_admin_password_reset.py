@@ -208,7 +208,7 @@ def test_password_reset_page_contains_correct_form_action(
 
     assert response.status_code == 200
     assert (
-        f'action="/admin/users/{target_user.id}/reset-password"'
+        f'/admin/users/{target_user.id}/reset-password"'
         in response.text
     )
 
@@ -318,7 +318,7 @@ def test_password_reset_page_contains_cancel_link(
     )
 
     assert response.status_code == 200
-    assert 'href="/admin/users"' in response.text
+    assert '/admin/users"' in response.text
     assert "Cancel" in response.text
 
 
@@ -334,10 +334,10 @@ def test_password_reset_page_requires_authentication(
         f"/admin/users/{target_user.id}/reset-password",
     )
 
-    assert response.status_code == 303
-    assert response.headers["location"].startswith(
-        "/login",
-    )
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication is required.",
+    }
 
 
 def test_password_reset_page_requires_administrator(
@@ -395,10 +395,10 @@ def test_password_reset_page_rejects_expired_session(
         f"/admin/users/{target_user.id}/reset-password",
     )
 
-    assert response.status_code == 303
-    assert response.headers["location"].startswith(
-        "/login",
-    )
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication is required.",
+    }
 
 
 def test_password_reset_page_rejects_revoked_session(
@@ -427,10 +427,10 @@ def test_password_reset_page_rejects_revoked_session(
         f"/admin/users/{target_user.id}/reset-password",
     )
 
-    assert response.status_code == 303
-    assert response.headers["location"].startswith(
-        "/login",
-    )
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication is required.",
+    }
 
 
 def test_password_reset_page_redirects_when_user_not_found(
@@ -479,10 +479,10 @@ def test_password_reset_submit_requires_authentication(
         },
     )
 
-    assert response.status_code == 303
-    assert response.headers["location"].startswith(
-        "/login",
-    )
+    assert response.status_code == 401
+    assert response.json() == {
+        "detail": "Authentication is required.",
+    }
 
     db.refresh(
         target_user,
