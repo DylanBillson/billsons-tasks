@@ -29,11 +29,18 @@ class AuditAction(StrEnum):
     COMPANY_RESTORED = "company_restored"
     COMPANY_DELETED = "company_deleted"
 
+    COMPANY_MEMBER_ADDED = "company_member_added"
+    COMPANY_MEMBER_UPDATED = "company_member_updated"
+    COMPANY_MEMBER_REMOVED = "company_member_removed"
+
     SECTION_CREATED = "section_created"
     SECTION_UPDATED = "section_updated"
     SECTION_ARCHIVED = "section_archived"
     SECTION_RESTORED = "section_restored"
     SECTION_DELETED = "section_deleted"
+
+    SECTION_MEMBER_ADDED = "section_member_added"
+    SECTION_MEMBER_REMOVED = "section_member_removed"
 
     LIST_CREATED = "list_created"
     LIST_UPDATED = "list_updated"
