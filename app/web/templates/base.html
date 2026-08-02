@@ -1,4 +1,5 @@
 <!DOCTYPE html>
+
 <html lang="en-GB">
 
 <head>
@@ -12,15 +13,18 @@
 
     <title>
         {% block title %}{% endblock %}
-        {% if self.title() %}
-            •
-        {% endif %}
+        •
         {{ settings.application_name }}
     </title>
 
     <meta
         name="color-scheme"
         content="light"
+    >
+
+    <meta
+        name="application-name"
+        content="{{ settings.application_name }}"
     >
 
     <link
@@ -35,12 +39,25 @@
 
 <body>
 
+    <a
+        href="#main-content"
+        class="skip-link"
+    >
+        Skip to main content
+    </a>
+
     <div class="app">
 
         {% block header %}
+
+        {% include "partials/app_header.html" %}
+
         {% endblock %}
 
         {% block navigation %}
+
+        {% include "partials/app_navigation.html" %}
+
         {% endblock %}
 
         <main
@@ -56,14 +73,22 @@
         </main>
 
         {% block footer %}
+
+        <footer class="app-footer">
+
+            <div class="app-footer-inner">
+
+                <p>
+                    {{ settings.application_name }}
+                </p>
+
+            </div>
+
+        </footer>
+
         {% endblock %}
 
     </div>
-
-    <script
-        src="{{ url_for('static', path='js/app.js') }}"
-        defer
-    ></script>
 
     {% block scripts %}
     {% endblock %}

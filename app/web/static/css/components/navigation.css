@@ -1,0 +1,193 @@
+/*
+ * Application navigation
+ *
+ * Covers:
+ * - Primary navigation
+ * - Administrator navigation
+ * - Active states
+ * - Mobile overflow and wrapping
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Navigation shell
+ * ------------------------------------------------------------------------- */
+
+.app-navigation {
+    position: sticky;
+    top: var(--header-height);
+    z-index: 90;
+    min-height: var(--navigation-height);
+    border-bottom: 1px solid var(--color-border);
+    background:
+        rgb(11 16 32 / 0.96);
+    backdrop-filter: blur(0.75rem);
+}
+
+.app-navigation-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(
+        calc(100% - (2 * var(--content-gutter))),
+        var(--content-width)
+    );
+    min-height: var(--navigation-height);
+    margin-inline: auto;
+    gap: var(--space-6);
+}
+
+.app-navigation-main,
+.app-navigation-admin {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--space-2);
+}
+
+.app-navigation-main {
+    flex: 1 1 auto;
+}
+
+.app-navigation-admin {
+    flex: 0 1 auto;
+    justify-content: flex-end;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Labels and links
+ * ------------------------------------------------------------------------- */
+
+.app-navigation-label {
+    margin-right: var(--space-1);
+    color: var(--color-text-subtle);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.08em;
+    text-transform: uppercase;
+    white-space: nowrap;
+}
+
+.app-navigation-link {
+    position: relative;
+    display: inline-flex;
+    align-items: center;
+    min-height: 2.25rem;
+    padding: var(--space-2) var(--space-3);
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        border-color var(--transition-fast),
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.app-navigation-link:hover {
+    border-color: var(--color-border);
+    background: var(--color-surface-muted);
+    color: var(--color-text);
+}
+
+.app-navigation-link.is-active,
+.app-navigation-link[aria-current="page"] {
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-muted);
+    color: var(--color-primary-hover);
+}
+
+.app-navigation-link.is-active::after,
+.app-navigation-link[aria-current="page"]::after {
+    position: absolute;
+    right: var(--space-3);
+    bottom: -1px;
+    left: var(--space-3);
+    height: 2px;
+    background: var(--color-primary);
+    content: "";
+}
+
+
+/* -------------------------------------------------------------------------
+ * Focus states
+ * ------------------------------------------------------------------------- */
+
+.app-navigation-link:focus-visible {
+    border-color: var(--color-primary);
+    outline-offset: 0.1rem;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 64rem) {
+    .app-navigation {
+        position: relative;
+        top: auto;
+    }
+
+    .app-navigation-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        padding-block: var(--space-3);
+        gap: var(--space-3);
+    }
+
+    .app-navigation-main,
+    .app-navigation-admin {
+        width: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        padding-bottom: var(--space-1);
+        scrollbar-width: thin;
+    }
+
+    .app-navigation-admin {
+        padding-top: var(--space-3);
+        border-top: 1px solid var(--color-border-subtle);
+    }
+
+    .app-navigation-label {
+        align-self: center;
+    }
+}
+
+@media (max-width: 48rem) {
+    .app-navigation-inner {
+        width: 100%;
+        padding-inline: var(--content-gutter);
+    }
+
+    .app-navigation-main,
+    .app-navigation-admin {
+        flex-wrap: wrap;
+        overflow-x: visible;
+    }
+
+    .app-navigation-label {
+        width: 100%;
+        margin: 0 0 var(--space-1);
+    }
+}
+
+@media (max-width: 36rem) {
+    .app-navigation-link {
+        flex: 1 1 calc(50% - var(--space-2));
+        justify-content: center;
+        text-align: center;
+    }
+
+    .app-navigation-link.is-active::after,
+    .app-navigation-link[aria-current="page"]::after {
+        right: var(--space-2);
+        left: var(--space-2);
+    }
+}

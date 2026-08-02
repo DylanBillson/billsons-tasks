@@ -1,0 +1,204 @@
+/*
+ * Minimal application reset
+ */
+
+*,
+*::before,
+*::after {
+    box-sizing: border-box;
+}
+
+html {
+    min-height: 100%;
+    background: var(--color-background);
+    color: var(--color-text);
+    font-family: var(--font-family-sans);
+    font-size: 100%;
+    line-height: var(--line-height-base);
+    text-size-adjust: 100%;
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+}
+
+body {
+    min-width: 20rem;
+    min-height: 100vh;
+    margin: 0;
+    background: var(--color-background);
+    color: var(--color-text);
+}
+
+body,
+button,
+input,
+select,
+textarea {
+    font-family: inherit;
+}
+
+main,
+header,
+footer,
+nav,
+section,
+article,
+aside {
+    display: block;
+}
+
+h1,
+h2,
+h3,
+h4,
+h5,
+h6,
+p,
+figure,
+blockquote,
+dl,
+dd {
+    margin-block-start: 0;
+}
+
+ul,
+ol {
+    margin-block-start: 0;
+}
+
+img,
+picture,
+svg,
+canvas,
+video {
+    display: block;
+    max-width: 100%;
+}
+
+img {
+    height: auto;
+}
+
+button,
+input,
+select,
+textarea {
+    margin: 0;
+    font: inherit;
+}
+
+button,
+select {
+    text-transform: none;
+}
+
+button,
+[type="button"],
+[type="reset"],
+[type="submit"] {
+    appearance: button;
+}
+
+button,
+label,
+select,
+summary,
+[type="button"],
+[type="checkbox"],
+[type="radio"],
+[type="reset"],
+[type="submit"] {
+    cursor: pointer;
+}
+
+button:disabled,
+input:disabled,
+select:disabled,
+textarea:disabled {
+    cursor: not-allowed;
+}
+
+textarea {
+    overflow: auto;
+}
+
+table {
+    border-collapse: collapse;
+    border-spacing: 0;
+}
+
+fieldset {
+    min-width: 0;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+
+legend {
+    padding: 0;
+}
+
+a {
+    color: inherit;
+}
+
+hr {
+    height: 0;
+    margin-block: var(--space-6);
+    border: 0;
+    border-top: 1px solid var(--color-border);
+}
+
+[hidden] {
+    display: none !important;
+}
+
+::selection {
+    background: var(--color-selection-background);
+    color: var(--color-selection-text);
+}
+
+:focus-visible {
+    outline: 0.18rem solid var(--color-primary);
+    outline-offset: 0.16rem;
+}
+
+:focus:not(:focus-visible) {
+    outline: none;
+}
+
+html {
+    scrollbar-color:
+        var(--color-border-strong)
+        var(--color-background-secondary);
+    scrollbar-width: thin;
+}
+
+::-webkit-scrollbar {
+    width: 0.75rem;
+    height: 0.75rem;
+}
+
+::-webkit-scrollbar-track {
+    background: var(--color-background-secondary);
+}
+
+::-webkit-scrollbar-thumb {
+    border: 0.18rem solid var(--color-background-secondary);
+    border-radius: var(--radius-pill);
+    background: var(--color-border-strong);
+}
+
+::-webkit-scrollbar-thumb:hover {
+    background: var(--color-text-subtle);
+}
+
+@media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+        scroll-behavior: auto !important;
+        animation-duration: 0.01ms !important;
+        animation-iteration-count: 1 !important;
+        transition-duration: 0.01ms !important;
+    }
+}

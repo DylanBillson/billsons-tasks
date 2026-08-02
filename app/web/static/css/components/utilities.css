@@ -1,0 +1,169 @@
+/*
+ * Shared utilities
+ */
+
+.visually-hidden {
+    position: absolute !important;
+    width: 1px !important;
+    height: 1px !important;
+    padding: 0 !important;
+    margin: -1px !important;
+    overflow: hidden !important;
+    clip: rect(0 0 0 0) !important;
+    white-space: nowrap !important;
+    border: 0 !important;
+}
+
+.sr-only-focusable:focus {
+    position: static !important;
+    width: auto !important;
+    height: auto !important;
+    margin: 0 !important;
+    overflow: visible !important;
+    clip: auto !important;
+    white-space: normal !important;
+}
+
+.hidden {
+    display: none !important;
+}
+
+.block {
+    display: block !important;
+}
+
+.inline-block {
+    display: inline-block !important;
+}
+
+.flex {
+    display: flex !important;
+}
+
+.grid {
+    display: grid !important;
+}
+
+.items-center {
+    align-items: center !important;
+}
+
+.items-start {
+    align-items: flex-start !important;
+}
+
+.justify-between {
+    justify-content: space-between !important;
+}
+
+.justify-center {
+    justify-content: center !important;
+}
+
+.flex-wrap {
+    flex-wrap: wrap !important;
+}
+
+.min-width-zero {
+    min-width: 0 !important;
+}
+
+.width-full {
+    width: 100% !important;
+}
+
+.text-left {
+    text-align: left !important;
+}
+
+.text-center {
+    text-align: center !important;
+}
+
+.text-right {
+    text-align: right !important;
+}
+
+.no-margin {
+    margin: 0 !important;
+}
+
+.margin-top-sm {
+    margin-top: var(--space-3) !important;
+}
+
+.margin-top-md {
+    margin-top: var(--space-5) !important;
+}
+
+.margin-top-lg {
+    margin-top: var(--space-8) !important;
+}
+
+.margin-bottom-sm {
+    margin-bottom: var(--space-3) !important;
+}
+
+.margin-bottom-md {
+    margin-bottom: var(--space-5) !important;
+}
+
+.margin-bottom-lg {
+    margin-bottom: var(--space-8) !important;
+}
+
+.gap-sm {
+    gap: var(--space-3) !important;
+}
+
+.gap-md {
+    gap: var(--space-5) !important;
+}
+
+.gap-lg {
+    gap: var(--space-8) !important;
+}
+
+.overflow-auto {
+    overflow: auto !important;
+}
+
+.overflow-x-auto {
+    overflow-x: auto !important;
+}
+
+.break-word {
+    overflow-wrap: anywhere !important;
+    word-break: break-word !important;
+}
+
+.nowrap {
+    white-space: nowrap !important;
+}
+
+.prose {
+    max-width: 70ch;
+    color: var(--color-text);
+    line-height: var(--line-height-relaxed);
+}
+
+.prose > :first-child {
+    margin-top: 0;
+}
+
+.prose > :last-child {
+    margin-bottom: 0;
+}
+
+.meta-label {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.05em;
+    text-transform: uppercase;
+}
+
+.meta-value {
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}

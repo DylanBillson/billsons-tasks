@@ -1,0 +1,386 @@
+{% extends "base.html" %}
+
+{% block title %}
+Manage Members — {{ company.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Company Members
+            </p>
+
+            <h1>
+                {{ company.name }}
+            </h1>
+
+            <p class="page-subtitle">
+                Add users to the company and manage their company roles.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_company_detail', company_id=company.id) }}"
+                class="btn btn-secondary"
+            >
+                Back to Company
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="membership-layout">
+
+        <section
+            class="admin-card"
+            aria-labelledby="current-members-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="current-members-heading">
+                        Current Members
+                    </h2>
+
+                    <p class="card-subtitle">
+                        {{ memberships | length }}
+                        {% if memberships | length == 1 %}
+                        member
+                        {% else %}
+                        members
+                        {% endif %}
+                        currently belong to this company.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if memberships %}
+
+            <div class="table-container">
+
+                <table class="data-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th scope="col">
+                                User
+                            </th>
+
+                            <th scope="col">
+                                Role
+                            </th>
+
+                            <th
+                                scope="col"
+                                class="table-actions-column"
+                            >
+                                Actions
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for membership in memberships %}
+
+                        <tr>
+
+                            <td>
+
+                                <div class="table-primary">
+
+                                    <span class="table-primary-text">
+                                        {{ membership.user.display_name }}
+                                    </span>
+
+                                    <span class="table-secondary">
+                                        {{ membership.user.username }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for(
+                                        'admin_company_member_role_update',
+                                        company_id=company.id,
+                                        user_id=membership.user_id
+                                    ) }}"
+                                    class="inline-edit-form"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <label
+                                        for="role-{{ membership.id }}"
+                                        class="visually-hidden"
+                                    >
+                                        Role for
+                                        {{ membership.user.display_name }}
+                                    </label>
+
+                                    <select
+                                        id="role-{{ membership.id }}"
+                                        name="role"
+                                    >
+
+                                        <option
+                                            value="employee"
+                                            {% if membership.role == "employee" %}selected{% endif %}
+                                        >
+                                            Employee
+                                        </option>
+
+                                        <option
+                                            value="manager"
+                                            {% if membership.role == "manager" %}selected{% endif %}
+                                        >
+                                            Manager
+                                        </option>
+
+                                    </select>
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-secondary btn-small"
+                                    >
+                                        Update
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                            <td class="table-actions">
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for(
+                                        'admin_company_member_remove',
+                                        company_id=company.id,
+                                        user_id=membership.user_id
+                                    ) }}"
+                                    class="inline-form"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-danger btn-small"
+                                    >
+                                        Remove
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <p>
+                    This company does not currently have any members.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+        <aside
+            class="admin-card membership-form-card"
+            aria-labelledby="add-member-heading"
+        >
+
+            <header class="admin-header">
+
+                <h2 id="add-member-heading">
+                    Add Member
+                </h2>
+
+                <p class="admin-subtitle">
+                    Select an available user and assign their company role.
+                </p>
+
+            </header>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-errors"
+                role="alert"
+            >
+
+                {% for error in form.errors.form_errors %}
+
+                <div class="field-error">
+                    {{ error }}
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('admin_company_member_add', company_id=company.id) }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="user_id">
+                        User
+                    </label>
+
+                    <select
+                        id="user_id"
+                        name="user_id"
+                        required
+                        class="{% if form.errors.for_field('user_id') %}is-invalid{% endif %}"
+                    >
+
+                        <option value="">
+                            Select a user
+                        </option>
+
+                        {% for available_user in available_users %}
+
+                        <option
+                            value="{{ available_user.id }}"
+                            {% if form.user_id == available_user.id %}selected{% endif %}
+                        >
+                            {{ available_user.display_name }}
+                            — {{ available_user.username }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                    {% for error in form.errors.for_field("user_id") %}
+
+                    <div class="field-error">
+                        {{ error }}
+                    </div>
+
+                    {% endfor %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="role">
+                        Company Role
+                    </label>
+
+                    <select
+                        id="role"
+                        name="role"
+                        required
+                        class="{% if form.errors.for_field('role') %}is-invalid{% endif %}"
+                    >
+
+                        <option
+                            value="employee"
+                            {% if form.role == "employee" %}selected{% endif %}
+                        >
+                            Employee
+                        </option>
+
+                        <option
+                            value="manager"
+                            {% if form.role == "manager" %}selected{% endif %}
+                        >
+                            Manager
+                        </option>
+
+                    </select>
+
+                    {% for error in form.errors.for_field("role") %}
+
+                    <div class="field-error">
+                        {{ error }}
+                    </div>
+
+                    {% endfor %}
+
+                    <p class="field-help">
+                        Managers may create sections and manage company
+                        membership. They do not automatically gain access to
+                        every section.
+                    </p>
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Add Member
+                    </button>
+
+                </div>
+
+            </form>
+
+        </aside>
+
+    </div>
+
+</div>
+
+{% endblock %}

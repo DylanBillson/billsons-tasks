@@ -1,0 +1,332 @@
+{% extends "base.html" %}
+
+{% block title %}
+Manage Members — {{ section.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                {{ section.company.name }}
+            </p>
+
+            <h1>
+                Manage {{ section.name }} Members
+            </h1>
+
+            <p class="page-subtitle">
+                Assign company members to this section or remove existing
+                assignments.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('section_detail', section_id=section.id) }}"
+                class="btn btn-secondary"
+            >
+                Back to Section
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="membership-layout">
+
+        <section
+            class="content-card"
+            aria-labelledby="assigned-members-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="assigned-members-heading">
+                        Assigned Members
+                    </h2>
+
+                    <p class="card-subtitle">
+                        {{ memberships | length }}
+                        {% if memberships | length == 1 %}
+                        user is
+                        {% else %}
+                        users are
+                        {% endif %}
+                        explicitly assigned to this section.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if memberships %}
+
+            <div class="table-container">
+
+                <table class="data-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th scope="col">
+                                User
+                            </th>
+
+                            <th scope="col">
+                                Company Role
+                            </th>
+
+                            <th
+                                scope="col"
+                                class="table-actions-column"
+                            >
+                                Actions
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for membership in memberships %}
+
+                        <tr>
+
+                            <td>
+
+                                <div class="table-primary">
+
+                                    <span class="table-primary-text">
+                                        {{ membership.user.display_name }}
+                                    </span>
+
+                                    <span class="table-secondary">
+                                        {{ membership.user.username }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                {% set company_membership = company_memberships.get(
+                                    membership.user_id
+                                ) %}
+
+                                {% if (
+                                    company_membership
+                                    and company_membership.role == "manager"
+                                ) %}
+
+                                <span class="status-badge status-badge-primary">
+                                    Manager
+                                </span>
+
+                                {% else %}
+
+                                <span class="status-badge status-badge-muted">
+                                    Employee
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                            <td class="table-actions">
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for(
+                                        'section_member_remove',
+                                        section_id=section.id,
+                                        user_id=membership.user_id
+                                    ) }}"
+                                    class="inline-form"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-danger btn-small"
+                                    >
+                                        Remove
+                                    </button>
+
+                                </form>
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <p>
+                    No company members have been assigned to this section.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+        <aside
+            class="content-card membership-form-card"
+            aria-labelledby="assign-member-heading"
+        >
+
+            <header class="admin-header">
+
+                <h2 id="assign-member-heading">
+                    Assign Member
+                </h2>
+
+                <p class="admin-subtitle">
+                    Select a member of
+                    <strong>{{ section.company.name }}</strong>
+                    to assign to this section.
+                </p>
+
+            </header>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-errors"
+                role="alert"
+                aria-live="polite"
+            >
+
+                {% for error in form.errors.form_errors %}
+
+                <div class="field-error">
+                    {{ error }}
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            {% endif %}
+
+            {% if available_users %}
+
+            <form
+                method="post"
+                action="{{ url_for('section_member_add', section_id=section.id) }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="user_id">
+                        Company Member
+                    </label>
+
+                    <select
+                        id="user_id"
+                        name="user_id"
+                        required
+                        class="{% if form.errors.for_field('user_id') %}is-invalid{% endif %}"
+                    >
+
+                        <option value="">
+                            Select a user
+                        </option>
+
+                        {% for available_user in available_users %}
+
+                        <option
+                            value="{{ available_user.id }}"
+                            {% if form.user_id == available_user.id %}selected{% endif %}
+                        >
+                            {{ available_user.display_name }}
+                            — {{ available_user.username }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                    {% for error in form.errors.for_field("user_id") %}
+
+                    <div class="field-error">
+                        {{ error }}
+                    </div>
+
+                    {% endfor %}
+
+                    <p class="field-help">
+                        Only active members of the parent company may be
+                        assigned to this section.
+                    </p>
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Assign Member
+                    </button>
+
+                </div>
+
+            </form>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <p>
+                    Every available company member is already assigned to this
+                    section.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </aside>
+
+    </div>
+
+</div>
+
+{% endblock %}

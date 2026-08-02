@@ -1,0 +1,90 @@
+{% if current_user is defined and current_user %}
+
+<nav
+    class="app-navigation"
+    aria-label="Primary navigation"
+>
+
+    <div class="app-navigation-inner">
+
+        <div class="app-navigation-main">
+
+            <a
+                href="/companies"
+                class="app-navigation-link{% if request.url.path == '/companies' or request.url.path.startswith('/companies/') or request.url.path.startswith('/sections/') %} is-active{% endif %}"
+                {% if request.url.path == '/companies' or request.url.path.startswith('/companies/') or request.url.path.startswith('/sections/') %}
+                aria-current="page"
+                {% endif %}
+            >
+                Companies
+            </a>
+
+            <a
+                href="/my-tasks"
+                class="app-navigation-link{% if request.url.path == '/my-tasks' or request.url.path.startswith('/my-tasks/') %} is-active{% endif %}"
+                {% if request.url.path == '/my-tasks' or request.url.path.startswith('/my-tasks/') %}
+                aria-current="page"
+                {% endif %}
+            >
+                My Tasks
+            </a>
+
+        </div>
+
+        {% if current_user.is_administrator %}
+
+        <div class="app-navigation-admin">
+
+            <span class="app-navigation-label">
+                Administration
+            </span>
+
+            <a
+                href="/admin/companies"
+                class="app-navigation-link{% if request.url.path == '/admin/companies' or request.url.path.startswith('/admin/companies/') %} is-active{% endif %}"
+                {% if request.url.path == '/admin/companies' or request.url.path.startswith('/admin/companies/') %}
+                aria-current="page"
+                {% endif %}
+            >
+                Companies
+            </a>
+
+            <a
+                href="/admin/users"
+                class="app-navigation-link{% if request.url.path == '/admin/users' or request.url.path.startswith('/admin/users/') %} is-active{% endif %}"
+                {% if request.url.path == '/admin/users' or request.url.path.startswith('/admin/users/') %}
+                aria-current="page"
+                {% endif %}
+            >
+                Users
+            </a>
+
+            <a
+                href="/admin/audit"
+                class="app-navigation-link{% if request.url.path == '/admin/audit' or request.url.path.startswith('/admin/audit/') %} is-active{% endif %}"
+                {% if request.url.path == '/admin/audit' or request.url.path.startswith('/admin/audit/') %}
+                aria-current="page"
+                {% endif %}
+            >
+                Audit
+            </a>
+
+            <a
+                href="/admin/settings"
+                class="app-navigation-link{% if request.url.path == '/admin/settings' or request.url.path.startswith('/admin/settings/') %} is-active{% endif %}"
+                {% if request.url.path == '/admin/settings' or request.url.path.startswith('/admin/settings/') %}
+                aria-current="page"
+                {% endif %}
+            >
+                Settings
+            </a>
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</nav>
+
+{% endif %}

@@ -2,7 +2,7 @@ import re
 from collections.abc import Generator
 from http.cookies import SimpleCookie
 from unittest.mock import patch
-from urllib.parse import quote
+from urllib.parse import parse_qs, quote, urlsplit
 
 import pytest
 from fastapi.testclient import TestClient
@@ -253,6 +253,35 @@ def authenticated_cookie_header(
     }
 
 
+def assert_login_redirect(
+    response: object,
+    *,
+    expected_next_url: str,
+) -> None:
+    headers = getattr(
+        response,
+        "headers",
+    )
+    location = headers["location"]
+    parsed = urlsplit(
+        location,
+    )
+    query = parse_qs(
+        parsed.query,
+    )
+
+    assert getattr(
+        response,
+        "status_code",
+    ) == 303
+    assert parsed.path == "/login"
+    assert query == {
+        "next_url": [
+            expected_next_url,
+        ],
+    }
+
+
 def test_login_page_renders_for_anonymous_user(
     client: TestClient,
 ) -> None:
@@ -370,7 +399,7 @@ def test_login_page_rejects_unsafe_next_url(
     )
 
     assert response.status_code == 200
-    assert next_url == ""
+    assert next_url == "/companies"
 
 
 def test_login_page_redirects_authenticated_user(
@@ -393,7 +422,7 @@ def test_login_page_redirects_authenticated_user(
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/"
+    assert response.headers["location"] == "/companies"
 
 
 def test_login_page_redirects_authenticated_user_to_safe_next_url(
@@ -447,7 +476,7 @@ def test_login_page_rejects_unsafe_redirect_for_authenticated_user(
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/"
+    assert response.headers["location"] == "/companies"
 
 
 def test_login_page_treats_expired_session_as_anonymous(
@@ -555,6 +584,35 @@ def test_login_submit_authenticates_valid_credentials(
     assert auth_session.is_revoked is False
 
 
+def test_login_submit_defaults_to_companies(
+    client: TestClient,
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+        username="default-next-user",
+        password=DEFAULT_TEST_PASSWORD,
+    )
+    form_token, cookie_token = begin_login(
+        client,
+    )
+
+    response = client.post(
+        "/login",
+        data={
+            "username": user.username,
+            "password": DEFAULT_TEST_PASSWORD,
+            "csrf_token": form_token,
+        },
+        headers=login_cookie_header(
+            cookie_token,
+        ),
+    )
+
+    assert response.status_code == 303
+    assert response.headers["location"] == "/companies"
+
+
 def test_login_submit_redirects_to_safe_next_url(
     client: TestClient,
     db: Session,
@@ -623,7 +681,7 @@ def test_login_submit_rejects_unsafe_next_url(
     )
 
     assert response.status_code == 303
-    assert response.headers["location"] == "/"
+    assert response.headers["location"] == "/companies"
 
 
 def test_login_submit_sets_standard_session_cookie_max_age(
@@ -1223,13 +1281,35 @@ def test_invalid_credentials_set_fresh_login_csrf_token(
     )
 
 
-def test_logout_requires_authentication(
+def test_logout_requires_authentication_for_browser_request(
     client: TestClient,
 ) -> None:
     response = client.post(
         "/logout",
         data={
             "csrf_token": "unused-token",
+        },
+        headers={
+            "accept": "text/html",
+        },
+    )
+
+    assert_login_redirect(
+        response,
+        expected_next_url="/logout",
+    )
+
+
+def test_logout_requires_authentication_for_json_request(
+    client: TestClient,
+) -> None:
+    response = client.post(
+        "/logout",
+        data={
+            "csrf_token": "unused-token",
+        },
+        headers={
+            "accept": "application/json",
         },
     )
 
@@ -1239,7 +1319,7 @@ def test_logout_requires_authentication(
     }
 
 
-def test_logout_rejects_expired_session(
+def test_logout_expired_session_redirects_browser_to_login(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -1258,18 +1338,21 @@ def test_logout_rejects_expired_session(
         data={
             "csrf_token": csrf_token,
         },
-        headers=authenticated_cookie_header(
-            session_token,
-        ),
+        headers={
+            **authenticated_cookie_header(
+                session_token,
+            ),
+            "accept": "text/html",
+        },
     )
 
-    assert response.status_code == 401
-    assert response.json() == {
-        "detail": "Authentication is required.",
-    }
+    assert_login_redirect(
+        response,
+        expected_next_url="/logout",
+    )
 
 
-def test_logout_rejects_revoked_session(
+def test_logout_revoked_session_redirects_browser_to_login(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -1288,12 +1371,18 @@ def test_logout_rejects_revoked_session(
         data={
             "csrf_token": csrf_token,
         },
-        headers=authenticated_cookie_header(
-            session_token,
-        ),
+        headers={
+            **authenticated_cookie_header(
+                session_token,
+            ),
+            "accept": "text/html",
+        },
     )
 
-    assert response.status_code == 401
+    assert_login_redirect(
+        response,
+        expected_next_url="/logout",
+    )
 
 
 def test_logout_requires_csrf_token(

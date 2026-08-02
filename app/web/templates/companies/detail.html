@@ -1,0 +1,424 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ company.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Company
+            </p>
+
+            <h1>
+                {{ company.name }}
+            </h1>
+
+            {% if company.description %}
+
+            <p class="page-subtitle">
+                {{ company.description }}
+            </p>
+
+            {% else %}
+
+            <p class="page-subtitle">
+                No company description has been provided.
+            </p>
+
+            {% endif %}
+
+        </div>
+
+        <div class="page-actions">
+
+            {% if can_create_section and not company.is_archived %}
+
+            <a
+                href="{{ url_for('section_create', company_id=company.id) }}"
+                class="btn btn-primary"
+            >
+                Create Section
+            </a>
+
+            {% endif %}
+
+            {% if can_manage_company_memberships %}
+
+            <a
+                href="{{ url_for('company_members', company_id=company.id) }}"
+                class="btn btn-secondary"
+            >
+                Manage Company Members
+            </a>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <div class="detail-grid">
+
+        <section
+            class="content-card"
+            aria-labelledby="company-information-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="company-information-heading">
+                        Company Information
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Status
+                    </dt>
+
+                    <dd>
+
+                        {% if company.is_archived %}
+
+                        <span class="status-badge status-badge-muted">
+                            Archived
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-success">
+                            Active
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                {% if membership %}
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Your Role
+                    </dt>
+
+                    <dd>
+
+                        {% if membership.role == "manager" %}
+
+                        <span class="status-badge status-badge-primary">
+                            Manager
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-muted">
+                            Employee
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                {% endif %}
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Sections Available to You
+                    </dt>
+
+                    <dd>
+                        {{ sections | length }}
+                    </dd>
+
+                </div>
+
+            </dl>
+
+        </section>
+
+        <section
+            class="content-card"
+            aria-labelledby="company-access-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="company-access-heading">
+                        Access
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <div class="prose">
+
+                {% if current_user.is_administrator %}
+
+                <p>
+                    As an administrator, you can access every section in this
+                    company.
+                </p>
+
+                {% elif membership and membership.role == "manager" %}
+
+                <p>
+                    As a company manager, you can create sections in this
+                    company.
+                </p>
+
+                <p>
+                    You can only access sections that you created or sections
+                    to which you have been explicitly assigned.
+                </p>
+
+                {% else %}
+
+                <p>
+                    You can access sections to which you have been explicitly
+                    assigned.
+                </p>
+
+                {% endif %}
+
+            </div>
+
+        </section>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="available-sections-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="available-sections-heading">
+                    Your Sections
+                </h2>
+
+                <p class="card-subtitle">
+                    Sections in this company that you are permitted to access.
+                </p>
+
+            </div>
+
+            {% if can_create_section and not company.is_archived %}
+
+            <div class="card-actions">
+
+                <a
+                    href="{{ url_for('section_create', company_id=company.id) }}"
+                    class="btn btn-primary btn-small"
+                >
+                    Create Section
+                </a>
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+        {% if sections %}
+
+        <div class="card-grid section-card-grid">
+
+            {% for section in sections %}
+
+            <article class="section-card">
+
+                <div class="section-card-header">
+
+                    <div>
+
+                        <h3>
+                            <a
+                                href="{{ url_for('section_detail', section_id=section.id) }}"
+                                class="section-card-link"
+                            >
+                                {{ section.name }}
+                            </a>
+                        </h3>
+
+                        {% if section.description %}
+
+                        <p class="section-card-description">
+                            {{ section.description }}
+                        </p>
+
+                        {% else %}
+
+                        <p class="section-card-description section-card-description-muted">
+                            No description has been provided.
+                        </p>
+
+                        {% endif %}
+
+                    </div>
+
+                    {% if section.is_archived %}
+
+                    <span class="status-badge status-badge-muted">
+                        Archived
+                    </span>
+
+                    {% else %}
+
+                    <span class="status-badge status-badge-success">
+                        Active
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="section-card-meta">
+
+                    <div class="section-card-meta-item">
+
+                        <span class="meta-label">
+                            Created By
+                        </span>
+
+                        <span class="meta-value">
+                            {{ section.created_by.display_name }}
+                        </span>
+
+                    </div>
+
+                    <div class="section-card-meta-item">
+
+                        <span class="meta-label">
+                            Your Access
+                        </span>
+
+                        <span class="meta-value">
+
+                            {% if section.created_by_user_id == current_user.id %}
+
+                            Creator
+
+                            {% elif current_user.is_administrator %}
+
+                            Administrator
+
+                            {% else %}
+
+                            Assigned Member
+
+                            {% endif %}
+
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="section-card-actions">
+
+                    <a
+                        href="{{ url_for('section_detail', section_id=section.id) }}"
+                        class="btn btn-secondary"
+                    >
+                        Open Section
+                    </a>
+
+                    {% if (
+                        current_user.is_administrator
+                        or section.created_by_user_id == current_user.id
+                    ) %}
+
+                    <a
+                        href="{{ url_for('section_edit', section_id=section.id) }}"
+                        class="btn btn-secondary"
+                    >
+                        Edit
+                    </a>
+
+                    {% endif %}
+
+                </div>
+
+            </article>
+
+            {% endfor %}
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No sections available
+            </h2>
+
+            {% if can_create_section and not company.is_archived %}
+
+            <p>
+                You have not created or been assigned to any sections in this
+                company yet.
+            </p>
+
+            <a
+                href="{{ url_for('section_create', company_id=company.id) }}"
+                class="btn btn-primary"
+            >
+                Create Section
+            </a>
+
+            {% else %}
+
+            <p>
+                You have not been assigned to any sections in this company.
+            </p>
+
+            {% endif %}
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('companies') }}"
+            class="btn btn-secondary"
+        >
+            Back to Companies
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

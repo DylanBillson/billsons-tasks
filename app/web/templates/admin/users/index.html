@@ -1,0 +1,260 @@
+{% extends "base.html" %}
+
+{% block title %}
+Manage Users
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <header class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Manage Users
+            </h1>
+
+            <p class="page-subtitle">
+                Review user accounts, reset passwords, and control whether
+                users can sign in.
+            </p>
+
+        </div>
+
+    </header>
+
+    <section class="content-card">
+
+        <div class="card-header">
+
+            <div>
+
+                <h2>
+                    Users
+                </h2>
+
+                <p class="card-subtitle">
+                    {{ users | length }}
+                    {% if users | length == 1 %}
+                        account
+                    {% else %}
+                        accounts
+                    {% endif %}
+                </p>
+
+            </div>
+
+        </div>
+
+        {% if users %}
+
+        <div class="table-container">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+                        <th scope="col">
+                            User
+                        </th>
+
+                        <th scope="col">
+                            Role
+                        </th>
+
+                        <th scope="col">
+                            Status
+                        </th>
+
+                        <th
+                            scope="col"
+                            class="table-actions-column"
+                        >
+                            Actions
+                        </th>
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for user in users %}
+
+                    <tr>
+
+                        <td>
+
+                            <div class="table-primary">
+
+                                <span class="table-primary-text">
+                                    {{ user.display_name }}
+                                </span>
+
+                                <span class="table-secondary">
+                                    {{ user.username }}
+                                </span>
+
+                            </div>
+
+                        </td>
+
+                        <td>
+
+                            {% if user.is_administrator %}
+
+                            <span class="status-badge status-badge-primary">
+                                Administrator
+                            </span>
+
+                            {% else %}
+
+                            <span class="status-badge status-badge-muted">
+                                User
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            {% if user.is_anonymised %}
+
+                            <span class="status-badge status-badge-muted">
+                                Anonymised
+                            </span>
+
+                            {% elif user.is_active %}
+
+                            <span class="status-badge status-badge-success">
+                                Active
+                            </span>
+
+                            {% else %}
+
+                            <span class="status-badge status-badge-danger">
+                                Inactive
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+
+                            <div class="table-actions">
+
+                                {% if not user.is_anonymised %}
+
+                                <a
+                                    href="{{ url_for(
+                                        'admin_user_reset_password',
+                                        user_id=user.id
+                                    ) }}"
+                                    class="btn btn-secondary btn-small"
+                                >
+                                    Reset Password
+                                </a>
+
+                                {% if user.is_active %}
+
+                                    {% if user.id != current_user.id %}
+
+                                    <form
+                                        method="post"
+                                        action="{{ url_for(
+                                            'admin_user_deactivate',
+                                            user_id=user.id
+                                        ) }}"
+                                        class="inline-form"
+                                    >
+
+                                        <input
+                                            type="hidden"
+                                            name="csrf_token"
+                                            value="{{ csrf_token }}"
+                                        >
+
+                                        <button
+                                            type="submit"
+                                            class="btn btn-danger btn-small"
+                                        >
+                                            Deactivate
+                                        </button>
+
+                                    </form>
+
+                                    {% endif %}
+
+                                {% else %}
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for(
+                                        'admin_user_activate',
+                                        user_id=user.id
+                                    ) }}"
+                                    class="inline-form"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-success btn-small"
+                                    >
+                                        Activate
+                                    </button>
+
+                                </form>
+
+                                {% endif %}
+
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No users found
+            </h2>
+
+            <p>
+                No user accounts currently exist.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}

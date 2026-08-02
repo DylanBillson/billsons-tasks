@@ -1,0 +1,321 @@
+/*
+ * Company pages
+ *
+ * Covers:
+ * - Administrator company management
+ * - Company list and detail pages
+ * - Company cards
+ * - Company membership layouts
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Page containers
+ * ------------------------------------------------------------------------- */
+
+.admin-page,
+.app-page {
+    display: flex;
+    flex-direction: column;
+    width: min(100%, var(--content-width));
+    margin-inline: auto;
+    gap: var(--space-6);
+}
+
+.admin-page > *,
+.app-page > * {
+    min-width: 0;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Page headers
+ * ------------------------------------------------------------------------- */
+
+.page-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-8);
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.page-header > div:first-child {
+    min-width: 0;
+}
+
+.page-header h1 {
+    margin: 0;
+    font-size: clamp(
+        var(--font-size-3xl),
+        4vw,
+        var(--font-size-4xl)
+    );
+    line-height: var(--line-height-tight);
+}
+
+.page-eyebrow {
+    margin: 0 0 var(--space-2);
+    color: var(--color-primary);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-bold);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+}
+
+.page-subtitle {
+    max-width: 48rem;
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-muted);
+    line-height: 1.6;
+}
+
+.page-actions,
+.page-footer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
+}
+
+.page-actions {
+    flex: 0 0 auto;
+    justify-content: flex-end;
+}
+
+.page-footer-actions {
+    justify-content: flex-start;
+    padding-top: var(--space-2);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Company grid and cards
+ * ------------------------------------------------------------------------- */
+
+.card-grid {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 20rem), 1fr)
+    );
+    gap: var(--space-5);
+}
+
+.company-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: var(--space-5);
+    transition:
+        border-color var(--transition-base),
+        background-color var(--transition-base),
+        box-shadow var(--transition-base),
+        transform var(--transition-base);
+}
+
+.company-card:hover {
+    border-color: var(--color-primary-border);
+    background: var(--color-surface-raised);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-0.1rem);
+}
+
+.company-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.company-card-header > div {
+    min-width: 0;
+}
+
+.company-card h2 {
+    margin: 0;
+    font-size: var(--font-size-xl);
+    line-height: var(--line-height-heading);
+}
+
+.company-card-link {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.company-card-link:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.company-card-description {
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+}
+
+.company-card-description-muted {
+    color: var(--color-text-subtle);
+    font-style: italic;
+}
+
+.company-card-meta {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(8rem, 1fr)
+    );
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.company-card-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.company-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: auto;
+    padding-top: var(--space-5);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Membership pages
+ * ------------------------------------------------------------------------- */
+
+.membership-layout {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 1.8fr)
+        minmax(18rem, 0.8fr);
+    align-items: start;
+    gap: var(--space-5);
+}
+
+.membership-layout > * {
+    min-width: 0;
+}
+
+.membership-form-card {
+    position: sticky;
+    top: calc(
+        var(--header-height)
+        + var(--navigation-height)
+        + var(--space-5)
+    );
+}
+
+
+/* -------------------------------------------------------------------------
+ * Company detail refinements
+ * ------------------------------------------------------------------------- */
+
+.company-summary {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.company-summary-description {
+    max-width: 60rem;
+    color: var(--color-text-muted);
+    line-height: var(--line-height-relaxed);
+}
+
+.company-access-summary {
+    padding: var(--space-4);
+    border-left: 0.2rem solid var(--color-primary);
+    background: var(--color-primary-muted);
+}
+
+.company-access-summary > :last-child {
+    margin-bottom: 0;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Archived company treatment
+ * ------------------------------------------------------------------------- */
+
+.company-card:has(.status-badge-muted) {
+    border-color: var(--color-border-subtle);
+    background: var(--color-surface-muted);
+}
+
+.company-card:has(.status-badge-muted):hover {
+    border-color: var(--color-border-strong);
+}
+
+.company-card:has(.status-badge-muted) .company-card-link {
+    color: var(--color-text-muted);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 64rem) {
+    .membership-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .membership-form-card {
+        position: static;
+    }
+}
+
+@media (max-width: 48rem) {
+    .page-header {
+        flex-direction: column;
+        gap: var(--space-5);
+    }
+
+    .page-actions {
+        width: 100%;
+        justify-content: flex-start;
+    }
+}
+
+@media (max-width: 36rem) {
+    .admin-page,
+    .app-page {
+        gap: var(--space-5);
+    }
+
+    .page-header {
+        padding-bottom: var(--space-4);
+    }
+
+    .company-card {
+        padding: var(--space-4);
+    }
+
+    .company-card-header {
+        flex-direction: column;
+    }
+
+    .company-card-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .page-actions,
+    .page-footer-actions,
+    .company-card-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .page-actions .btn,
+    .page-footer-actions .btn,
+    .company-card-actions .btn {
+        width: 100%;
+    }
+}

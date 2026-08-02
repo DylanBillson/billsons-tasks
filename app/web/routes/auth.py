@@ -34,6 +34,8 @@ router = APIRouter(
 )
 
 
+DEFAULT_AUTHENTICATED_REDIRECT = "/companies"
+
 LOGIN_CSRF_COOKIE_NAME = (
     f"{settings.session_cookie_name}_login_csrf"
 )
@@ -58,16 +60,20 @@ def login_page(
     """
     Render the login page.
 
-    Authenticated users are redirected away from the login form. Anonymous
-    visitors receive a temporary double-submit CSRF token used only for the
-    login request.
+    Authenticated users are redirected to the supplied safe local destination,
+    or to the company list when no destination was supplied.
+
+    Anonymous visitors receive a temporary double-submit CSRF token used only
+    for the login request.
     """
+    safe_next_url = _get_safe_redirect_target(
+        next_url,
+        default=DEFAULT_AUTHENTICATED_REDIRECT,
+    )
+
     if current_user is not None:
         return RedirectResponse(
-            url=_get_safe_redirect_target(
-                next_url,
-                default="/",
-            ),
+            url=safe_next_url,
             status_code=status.HTTP_303_SEE_OTHER,
         )
 
@@ -79,10 +85,7 @@ def login_page(
         context={
             "form": LoginForm(),
             "login_csrf_token": login_csrf_token,
-            "next_url": _get_safe_redirect_target(
-                next_url,
-                default="",
-            ),
+            "next_url": safe_next_url,
             "flash_messages": [],
         },
         status_code=status.HTTP_200_OK,
@@ -108,8 +111,9 @@ async def login_submit(
     """
     Authenticate a submitted username and password.
 
-    Successful authentication creates a database-backed session and sets both
-    the session cookie and the authenticated CSRF-token cookie.
+    Successful authentication creates a database-backed session, sets the
+    session and authenticated CSRF cookies, and redirects to the supplied safe
+    local destination or the company list.
     """
     form_data = await request.form()
 
@@ -131,7 +135,7 @@ async def login_submit(
             form_data,
             "next_url",
         ),
-        default="/",
+        default=DEFAULT_AUTHENTICATED_REDIRECT,
     )
 
     if not _validate_login_csrf_token(
@@ -395,6 +399,7 @@ def _validate_login_csrf_token(
             supplied_token,
             cookie_token,
         )
+
     except (
         TypeError,
         ValueError,

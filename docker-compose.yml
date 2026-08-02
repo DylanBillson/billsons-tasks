@@ -8,6 +8,16 @@ services:
 
     restart: unless-stopped
 
+    command:
+      - uvicorn
+      - app.main:app
+      - --host
+      - 0.0.0.0
+      - --port
+      - "8000"
+      - --proxy-headers
+      - --forwarded-allow-ips=*
+
     env_file:
       - .env
 
@@ -41,9 +51,9 @@ services:
       - "traefik.enable=true"
 
       - "traefik.http.routers.billsons-tasks.rule=Host(`${TRAEFIK_HOST}`)"
-      - "traefik.http.routers.billsons-tasks.entrypoints=web-secure"
+      - "traefik.http.routers.billsons-tasks.entrypoints=websecure"
+      - "traefik.http.routers.billsons-tasks.tls.certresolver=letsencrypt"
       - "traefik.http.routers.billsons-tasks.tls=true"
-      - "traefik.http.routers.billsons-tasks.tls.certresolver=default"
 
       - "traefik.http.services.billsons-tasks.loadbalancer.server.port=8000"
 

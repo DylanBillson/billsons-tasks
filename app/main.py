@@ -5,14 +5,20 @@ Application entry point for Billson's Tasks.
 import logging
 from collections.abc import AsyncIterator
 from contextlib import asynccontextmanager
+from urllib.parse import urlencode
 
-from fastapi import FastAPI
+from fastapi import FastAPI, Request
+from fastapi.responses import JSONResponse, RedirectResponse
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
+from app.web.dependencies.auth import AuthenticationRequiredError
 from app.web.routes import (
+    admin_companies_router,
     admin_users_router,
     auth_router,
+    companies_router,
+    sections_router,
 )
 from app.web.routes.health import router as health_router
 
@@ -46,8 +52,16 @@ async def lifespan(
 app = FastAPI(
     title=settings.app_name,
     debug=settings.app_debug,
-    docs_url="/docs" if settings.app_debug else None,
-    redoc_url="/redoc" if settings.app_debug else None,
+    docs_url=(
+        "/docs"
+        if settings.app_debug
+        else None
+    ),
+    redoc_url=(
+        "/redoc"
+        if settings.app_debug
+        else None
+    ),
     openapi_url=(
         "/openapi.json"
         if settings.app_debug
@@ -55,6 +69,61 @@ app = FastAPI(
     ),
     lifespan=lifespan,
 )
+
+
+@app.exception_handler(AuthenticationRequiredError)
+async def authentication_required_handler(
+    request: Request,
+    exc: AuthenticationRequiredError,
+) -> JSONResponse | RedirectResponse:
+    """
+    Redirect browser page requests to the login page.
+
+    Non-browser and API-style requests continue to receive a normal JSON
+    401 response.
+    """
+    accept_header = request.headers.get(
+        "accept",
+        "",
+    ).lower()
+
+    is_api_request = (
+        request.url.path == "/api"
+        or request.url.path.startswith("/api/")
+    )
+
+    accepts_html = "text/html" in accept_header
+
+    if accepts_html and not is_api_request:
+        next_url = request.url.path
+
+        if request.url.query:
+            next_url = (
+                f"{next_url}?"
+                f"{request.url.query}"
+            )
+
+        login_url = (
+            "/login?"
+            + urlencode(
+                {
+                    "next_url": next_url,
+                },
+            )
+        )
+
+        return RedirectResponse(
+            url=login_url,
+            status_code=303,
+        )
+
+    return JSONResponse(
+        status_code=exc.status_code,
+        content={
+            "detail": exc.detail,
+        },
+        headers=exc.headers,
+    )
 
 
 app.mount(
@@ -75,5 +144,17 @@ app.include_router(
 )
 
 app.include_router(
+    companies_router,
+)
+
+app.include_router(
+    sections_router,
+)
+
+app.include_router(
     admin_users_router,
+)
+
+app.include_router(
+    admin_companies_router,
 )

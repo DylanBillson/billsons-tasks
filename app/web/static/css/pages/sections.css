@@ -1,0 +1,276 @@
+/*
+ * Section pages
+ *
+ * Covers:
+ * - Section cards
+ * - Section create and edit pages
+ * - Section detail pages
+ * - Section membership management
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Section card grid
+ * ------------------------------------------------------------------------- */
+
+.section-card-grid {
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 18rem), 1fr)
+    );
+}
+
+.section-card {
+    display: flex;
+    flex-direction: column;
+    min-height: 100%;
+    padding: var(--space-5);
+    transition:
+        border-color var(--transition-base),
+        background-color var(--transition-base),
+        box-shadow var(--transition-base),
+        transform var(--transition-base);
+}
+
+.section-card:hover {
+    border-color: var(--color-primary-border);
+    background: var(--color-surface-raised);
+    box-shadow: var(--shadow-lg);
+    transform: translateY(-0.1rem);
+}
+
+.section-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--space-4);
+}
+
+.section-card-header > div {
+    min-width: 0;
+}
+
+.section-card h3 {
+    margin: 0;
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-heading);
+}
+
+.section-card-link {
+    color: var(--color-text);
+    text-decoration: none;
+}
+
+.section-card-link:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.section-card-description {
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-muted);
+    line-height: 1.55;
+}
+
+.section-card-description-muted {
+    color: var(--color-text-subtle);
+    font-style: italic;
+}
+
+.section-card-meta {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(8rem, 1fr)
+    );
+    gap: var(--space-4);
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.section-card-meta-item {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-1);
+}
+
+.section-card-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3);
+    margin-top: auto;
+    padding-top: var(--space-5);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Section create and edit forms
+ * ------------------------------------------------------------------------- */
+
+.app-page > .admin-card {
+    width: min(100%, var(--content-width-narrow));
+    margin-inline: auto;
+}
+
+.app-page > .admin-card .admin-header {
+    padding-bottom: var(--space-5);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.app-page > .admin-card .form-actions {
+    padding-top: var(--space-1);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Section detail
+ * ------------------------------------------------------------------------- */
+
+.section-detail-summary {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.section-detail-description {
+    max-width: 56rem;
+    color: var(--color-text-muted);
+    line-height: var(--line-height-relaxed);
+}
+
+.section-detail-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-3) var(--space-5);
+    color: var(--color-text-muted);
+}
+
+.section-detail-meta-item {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
+}
+
+.section-detail-meta-label {
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Section membership management
+ * ------------------------------------------------------------------------- */
+
+.membership-layout .content-card {
+    min-width: 0;
+}
+
+.membership-layout .membership-form-card {
+    max-height: calc(
+        100vh
+        - var(--header-height)
+        - var(--navigation-height)
+        - (2 * var(--space-5))
+    );
+    overflow-y: auto;
+}
+
+.membership-form-card select {
+    width: 100%;
+}
+
+.membership-form-card .empty-state {
+    min-height: auto;
+}
+
+.section-member-context {
+    display: grid;
+    gap: var(--space-2);
+    margin-bottom: var(--space-4);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-muted);
+}
+
+.section-member-context strong {
+    color: var(--color-text);
+}
+
+.section-member-context span {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Lists and tasks placeholder
+ * ------------------------------------------------------------------------- */
+
+.section-content-placeholder {
+    display: grid;
+    gap: var(--space-4);
+}
+
+.section-content-placeholder .empty-state {
+    margin: 0;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Archived section treatment
+ * ------------------------------------------------------------------------- */
+
+.section-card:has(.status-badge-muted) {
+    border-color: var(--color-border-subtle);
+    background: var(--color-surface-muted);
+}
+
+.section-card:has(.status-badge-muted):hover {
+    border-color: var(--color-border-strong);
+}
+
+.section-card:has(.status-badge-muted) .section-card-link {
+    color: var(--color-text-muted);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 48rem) {
+    .section-card-header {
+        flex-direction: column;
+    }
+
+    .section-card-meta {
+        grid-template-columns: 1fr;
+    }
+
+    .section-card-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .section-card-actions .btn {
+        width: 100%;
+    }
+
+    .membership-layout .membership-form-card {
+        max-height: none;
+        overflow: visible;
+    }
+}
+
+@media (max-width: 36rem) {
+    .section-card {
+        padding: var(--space-4);
+    }
+
+    .section-detail-meta {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+}

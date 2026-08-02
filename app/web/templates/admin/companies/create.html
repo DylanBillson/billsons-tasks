@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create Company
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <div class="admin-card">
+
+        <header class="admin-header">
+
+            <h1>
+                Create Company
+            </h1>
+
+            <p class="admin-subtitle">
+                Create a new company for organising users and sections.
+            </p>
+
+        </header>
+
+        <form
+            method="post"
+            action="{{ url_for('admin_company_create_submit') }}"
+            novalidate
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <div class="form-group">
+
+                <label for="name">
+                    Company Name
+                </label>
+
+                <input
+                    id="name"
+                    name="name"
+                    type="text"
+                    maxlength="150"
+                    value="{{ form.name }}"
+                    required
+                    autofocus
+                    class="{% if form.errors.for_field('name') %}is-invalid{% endif %}"
+                >
+
+                {% for error in form.errors.for_field("name") %}
+
+                <div class="field-error">
+                    {{ error }}
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="description">
+                    Description
+                </label>
+
+                <textarea
+                    id="description"
+                    name="description"
+                    rows="5"
+                    maxlength="1000"
+                    class="{% if form.errors.for_field('description') %}is-invalid{% endif %}"
+                >{{ form.description or "" }}</textarea>
+
+                {% for error in form.errors.for_field("description") %}
+
+                <div class="field-error">
+                    {{ error }}
+                </div>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Create Company
+                </button>
+
+                <a
+                    href="{{ url_for('admin_companies') }}"
+                    class="btn btn-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </div>
+
+</div>
+
+{% endblock %}

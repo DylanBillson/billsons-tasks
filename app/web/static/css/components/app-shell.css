@@ -1,0 +1,267 @@
+/*
+ * Application shell
+ *
+ * Covers:
+ * - Global header
+ * - Application branding
+ * - Signed-in user summary
+ * - Footer
+ * - Authenticated and unauthenticated shell behaviour
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Header
+ * ------------------------------------------------------------------------- */
+
+.app-header {
+    position: sticky;
+    top: 0;
+    z-index: 100;
+    min-height: var(--header-height);
+    border-bottom: 1px solid var(--color-border-subtle);
+    background:
+        rgb(17 24 39 / 0.94);
+    backdrop-filter: blur(0.9rem);
+}
+
+.app-header-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(
+        calc(100% - (2 * var(--content-gutter))),
+        var(--content-width)
+    );
+    min-height: var(--header-height);
+    margin-inline: auto;
+    gap: var(--space-6);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Brand
+ * ------------------------------------------------------------------------- */
+
+.app-brand {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    gap: var(--space-3);
+    color: var(--color-text);
+    font-weight: var(--font-weight-bold);
+    text-decoration: none;
+}
+
+.app-brand:hover {
+    color: var(--color-text);
+}
+
+.app-brand:focus-visible {
+    border-radius: var(--radius-md);
+}
+
+.app-brand-mark {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--color-primary-border);
+    border-radius: var(--radius-md);
+    background: var(--color-primary-muted);
+    color: var(--color-primary);
+    font-size: var(--font-size-lg);
+    font-weight: var(--font-weight-bold);
+    line-height: 1;
+    box-shadow: var(--shadow-sm);
+}
+
+.app-brand-text {
+    min-width: 0;
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: var(--font-size-lg);
+    line-height: 1.2;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+
+/* -------------------------------------------------------------------------
+ * User summary
+ * ------------------------------------------------------------------------- */
+
+.app-header-user {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: var(--space-4);
+}
+
+.app-user-summary {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    min-width: 0;
+    line-height: 1.25;
+}
+
+.app-user-name {
+    max-width: 18rem;
+    overflow: hidden;
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.app-user-role {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.app-logout-form {
+    display: inline-flex;
+    margin: 0;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Main content relationship
+ * ------------------------------------------------------------------------- */
+
+.app-header + .app-navigation + .app-content,
+.app-header + .app-content {
+    position: relative;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Footer
+ * ------------------------------------------------------------------------- */
+
+.app-footer {
+    flex: 0 0 auto;
+    border-top: 1px solid var(--color-border-subtle);
+    background: var(--color-background-secondary);
+}
+
+.app-footer-inner {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    width: min(
+        calc(100% - (2 * var(--content-gutter))),
+        var(--content-width)
+    );
+    min-height: 4rem;
+    margin-inline: auto;
+    gap: var(--space-4);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.app-footer-inner p {
+    margin: 0;
+    color: inherit;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Unauthenticated shell
+ * ------------------------------------------------------------------------- */
+
+body:has(.auth-page) .app-header {
+    position: relative;
+}
+
+body:has(.auth-page) .app-header-inner {
+    justify-content: center;
+}
+
+body:has(.auth-page) .app-brand {
+    margin-inline: auto;
+}
+
+body:has(.auth-page) .app-content {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: calc(
+        100vh
+        - var(--header-height)
+        - 4rem
+    );
+}
+
+body:has(.auth-page) .app-footer-inner {
+    justify-content: center;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 48rem) {
+    .app-header {
+        position: relative;
+    }
+
+    .app-header-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        min-height: auto;
+        padding-block: var(--space-4);
+        gap: var(--space-4);
+    }
+
+    .app-header-user {
+        width: 100%;
+        justify-content: space-between;
+    }
+
+    .app-user-summary {
+        align-items: flex-start;
+    }
+
+    .app-user-name {
+        max-width: min(65vw, 18rem);
+    }
+
+    .app-footer-inner {
+        align-items: flex-start;
+        flex-direction: column;
+        justify-content: center;
+        padding-block: var(--space-4);
+    }
+
+    body:has(.auth-page) .app-header-inner {
+        align-items: center;
+    }
+}
+
+@media (max-width: 36rem) {
+    .app-brand-mark {
+        width: 2rem;
+        height: 2rem;
+    }
+
+    .app-brand-text {
+        font-size: var(--font-size-base);
+    }
+
+    .app-header-user {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .app-logout-form,
+    .app-logout-form .btn {
+        width: 100%;
+    }
+}

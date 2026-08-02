@@ -1,0 +1,477 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ company.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                {{ company.name }}
+            </h1>
+
+            {% if company.description %}
+
+            <p class="page-subtitle">
+                {{ company.description }}
+            </p>
+
+            {% else %}
+
+            <p class="page-subtitle">
+                No company description has been provided.
+            </p>
+
+            {% endif %}
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_company_edit', company_id=company.id) }}"
+                class="btn btn-secondary"
+            >
+                Edit Company
+            </a>
+
+            <a
+                href="{{ url_for('admin_company_members', company_id=company.id) }}"
+                class="btn btn-secondary"
+            >
+                Manage Members
+            </a>
+
+            {% if company.is_archived %}
+
+            <form
+                method="post"
+                action="{{ url_for('admin_company_restore', company_id=company.id) }}"
+                class="inline-form"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Restore Company
+                </button>
+
+            </form>
+
+            {% else %}
+
+            <form
+                method="post"
+                action="{{ url_for('admin_company_archive', company_id=company.id) }}"
+                class="inline-form"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Archive Company
+                </button>
+
+            </form>
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <div class="detail-grid">
+
+        <section
+            class="admin-card"
+            aria-labelledby="company-summary-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="company-summary-heading">
+                        Company Summary
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Status
+                    </dt>
+
+                    <dd>
+
+                        {% if company.is_archived %}
+
+                        <span class="status-badge status-badge-muted">
+                            Archived
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-success">
+                            Active
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Members
+                    </dt>
+
+                    <dd>
+                        {{ company.memberships | length }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Sections
+                    </dt>
+
+                    <dd>
+                        {{ company.sections | length }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created
+                    </dt>
+
+                    <dd>
+                        {{ company.created_at }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Last Updated
+                    </dt>
+
+                    <dd>
+                        {{ company.updated_at }}
+                    </dd>
+
+                </div>
+
+            </dl>
+
+        </section>
+
+        <section
+            class="admin-card"
+            aria-labelledby="company-members-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="company-members-heading">
+                        Members
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Users assigned to this company.
+                    </p>
+
+                </div>
+
+                <div class="card-actions">
+
+                    <a
+                        href="{{ url_for('admin_company_members', company_id=company.id) }}"
+                        class="btn btn-secondary btn-small"
+                    >
+                        Manage Members
+                    </a>
+
+                </div>
+
+            </div>
+
+            {% if company.memberships %}
+
+            <div class="table-container">
+
+                <table class="data-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th scope="col">
+                                User
+                            </th>
+
+                            <th scope="col">
+                                Role
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for membership in company.memberships %}
+
+                        <tr>
+
+                            <td>
+
+                                <div class="table-primary">
+
+                                    <span class="table-primary-text">
+                                        {{ membership.user.display_name }}
+                                    </span>
+
+                                    <span class="table-secondary">
+                                        {{ membership.user.username }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                {% if membership.role == "manager" %}
+
+                                <span class="status-badge status-badge-primary">
+                                    Manager
+                                </span>
+
+                                {% else %}
+
+                                <span class="status-badge status-badge-muted">
+                                    Employee
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <p>
+                    This company does not have any members yet.
+                </p>
+
+                <a
+                    href="{{ url_for('admin_company_members', company_id=company.id) }}"
+                    class="btn btn-primary"
+                >
+                    Add Member
+                </a>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+    </div>
+
+    <section
+        class="admin-card"
+        aria-labelledby="company-sections-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="company-sections-heading">
+                    Sections
+                </h2>
+
+                <p class="card-subtitle">
+                    Sections created within this company.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% if company.sections %}
+
+        <div class="table-container">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Section
+                        </th>
+
+                        <th scope="col">
+                            Created By
+                        </th>
+
+                        <th scope="col">
+                            Members
+                        </th>
+
+                        <th scope="col">
+                            Status
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for section in company.sections %}
+
+                    <tr>
+
+                        <td>
+
+                            <div class="table-primary">
+
+                                <span class="table-primary-text">
+                                    {{ section.name }}
+                                </span>
+
+                                {% if section.description %}
+
+                                <span class="table-secondary">
+                                    {{ section.description }}
+                                </span>
+
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+                        <td>
+                            {{ section.created_by.display_name }}
+                        </td>
+
+                        <td>
+                            {{ section.memberships | length }}
+                        </td>
+
+                        <td>
+
+                            {% if section.is_archived %}
+
+                            <span class="status-badge status-badge-muted">
+                                Archived
+                            </span>
+
+                            {% else %}
+
+                            <span class="status-badge status-badge-success">
+                                Active
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No sections yet
+            </h2>
+
+            <p>
+                No sections have been created for this company.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('admin_companies') }}"
+            class="btn btn-secondary"
+        >
+            Back to Companies
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,163 @@
+{% extends "base.html" %}
+
+{% block title %}
+Companies
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Billson's Tasks
+            </p>
+
+            <h1>
+                Companies
+            </h1>
+
+            <p class="page-subtitle">
+                Select a company to view the sections available to you.
+            </p>
+
+        </div>
+
+    </div>
+
+    {% if companies %}
+
+    <div class="card-grid">
+
+        {% for company in companies %}
+
+        <article class="company-card">
+
+            <div class="company-card-header">
+
+                <div>
+
+                    <h2>
+                        <a
+                            href="{{ url_for('company_detail', company_id=company.id) }}"
+                            class="company-card-link"
+                        >
+                            {{ company.name }}
+                        </a>
+                    </h2>
+
+                    {% if company.description %}
+
+                    <p class="company-card-description">
+                        {{ company.description }}
+                    </p>
+
+                    {% else %}
+
+                    <p class="company-card-description company-card-description-muted">
+                        No description has been provided.
+                    </p>
+
+                    {% endif %}
+
+                </div>
+
+                {% if company.is_archived %}
+
+                <span class="status-badge status-badge-muted">
+                    Archived
+                </span>
+
+                {% else %}
+
+                <span class="status-badge status-badge-success">
+                    Active
+                </span>
+
+                {% endif %}
+
+            </div>
+
+            <div class="company-card-meta">
+
+                {% set membership = company_memberships.get(company.id) %}
+
+                {% if membership %}
+
+                <div class="company-card-meta-item">
+
+                    <span class="meta-label">
+                        Your Role
+                    </span>
+
+                    <span class="meta-value">
+
+                        {% if membership.role == "manager" %}
+
+                        Manager
+
+                        {% else %}
+
+                        Employee
+
+                        {% endif %}
+
+                    </span>
+
+                </div>
+
+                {% endif %}
+
+                <div class="company-card-meta-item">
+
+                    <span class="meta-label">
+                        Available Sections
+                    </span>
+
+                    <span class="meta-value">
+                        {{ accessible_section_counts.get(company.id, 0) }}
+                    </span>
+
+                </div>
+
+            </div>
+
+            <div class="company-card-actions">
+
+                <a
+                    href="{{ url_for('company_detail', company_id=company.id) }}"
+                    class="btn btn-primary"
+                >
+                    Open Company
+                </a>
+
+            </div>
+
+        </article>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-state">
+
+        <h2>
+            No companies available
+        </h2>
+
+        <p>
+            You have not yet been assigned to any companies.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</div>
+
+{% endblock %}

@@ -1,0 +1,282 @@
+{% extends "base.html" %}
+
+{% block title %}
+Companies
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Companies
+            </h1>
+
+            <p class="page-subtitle">
+                Create and manage the companies available in Billson's Tasks.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_company_create') }}"
+                class="btn btn-primary"
+            >
+                Create Company
+            </a>
+
+        </div>
+
+    </div>
+
+    <section
+        class="admin-card"
+        aria-labelledby="companies-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="companies-heading">
+                    All Companies
+                </h2>
+
+                <p class="card-subtitle">
+                    Active and archived companies are shown below.
+                </p>
+
+            </div>
+
+            <div class="card-meta">
+
+                <span class="count-badge">
+                    {{ companies | length }}
+                </span>
+
+            </div>
+
+        </div>
+
+        {% if companies %}
+
+        <div class="table-container">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Company
+                        </th>
+
+                        <th scope="col">
+                            Members
+                        </th>
+
+                        <th scope="col">
+                            Sections
+                        </th>
+
+                        <th scope="col">
+                            Status
+                        </th>
+
+                        <th
+                            scope="col"
+                            class="table-actions-column"
+                        >
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for company in companies %}
+
+                    <tr>
+
+                        <td>
+
+                            <div class="table-primary">
+
+                                <a
+                                    href="{{ url_for('admin_company_detail', company_id=company.id) }}"
+                                    class="table-primary-link"
+                                >
+                                    {{ company.name }}
+                                </a>
+
+                                {% if company.description %}
+
+                                <p class="table-secondary">
+                                    {{ company.description }}
+                                </p>
+
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+                        <td>
+
+                            <span class="table-number">
+                                {{ company.memberships | length }}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            <span class="table-number">
+                                {{ company.sections | length }}
+                            </span>
+
+                        </td>
+
+                        <td>
+
+                            {% if company.is_archived %}
+
+                            <span class="status-badge status-badge-muted">
+                                Archived
+                            </span>
+
+                            {% else %}
+
+                            <span class="status-badge status-badge-success">
+                                Active
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td class="table-actions">
+
+                            <a
+                                href="{{ url_for('admin_company_detail', company_id=company.id) }}"
+                                class="btn btn-secondary btn-small"
+                            >
+                                View
+                            </a>
+
+                            <a
+                                href="{{ url_for('admin_company_edit', company_id=company.id) }}"
+                                class="btn btn-secondary btn-small"
+                            >
+                                Edit
+                            </a>
+
+                            <a
+                                href="{{ url_for('admin_company_members', company_id=company.id) }}"
+                                class="btn btn-secondary btn-small"
+                            >
+                                Members
+                            </a>
+
+                            {% if company.is_archived %}
+
+                            <form
+                                method="post"
+                                action="{{ url_for('admin_company_restore', company_id=company.id) }}"
+                                class="inline-form"
+                            >
+
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token }}"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-secondary btn-small"
+                                >
+                                    Restore
+                                </button>
+
+                            </form>
+
+                            {% else %}
+
+                            <form
+                                method="post"
+                                action="{{ url_for('admin_company_archive', company_id=company.id) }}"
+                                class="inline-form"
+                            >
+
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token }}"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger btn-small"
+                                >
+                                    Archive
+                                </button>
+
+                            </form>
+
+                            {% endif %}
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No companies yet
+            </h2>
+
+            <p>
+                Create the first company to begin organising users and
+                sections.
+            </p>
+
+            <a
+                href="{{ url_for('admin_company_create') }}"
+                class="btn btn-primary"
+            >
+                Create Company
+            </a>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}

@@ -19,6 +19,10 @@ import app.models  # noqa: F401
 from app.core.config import settings
 from app.db.base import Base
 
+from fastapi.testclient import TestClient
+
+from app.db.session import get_db
+from app.main import app
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 TEST_ENV_FILE = PROJECT_ROOT / ".env.test"
@@ -187,3 +191,25 @@ def db(
             outer_transaction.rollback()
 
         connection.close()
+
+@pytest.fixture
+def client(
+    db,
+) -> TestClient:
+    """
+    Provide a TestClient using the isolated test database session.
+    """
+
+    def override_get_db():
+        yield db
+
+    app.dependency_overrides[get_db] = override_get_db
+
+    try:
+        with TestClient(app) as test_client:
+            yield test_client
+    finally:
+        app.dependency_overrides.pop(
+            get_db,
+            None,
+        )

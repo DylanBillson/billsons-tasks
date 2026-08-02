@@ -1,0 +1,444 @@
+{% extends "base.html" %}
+
+{% block title %}
+{{ section.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                {{ section.company.name }}
+            </p>
+
+            <h1>
+                {{ section.name }}
+            </h1>
+
+            {% if section.description %}
+
+            <p class="page-subtitle">
+                {{ section.description }}
+            </p>
+
+            {% else %}
+
+            <p class="page-subtitle">
+                No section description has been provided.
+            </p>
+
+            {% endif %}
+
+        </div>
+
+        <div class="page-actions">
+
+            {% if can_manage_section %}
+
+            <a
+                href="{{ url_for('section_edit', section_id=section.id) }}"
+                class="btn btn-secondary"
+            >
+                Edit Section
+            </a>
+
+            <a
+                href="{{ url_for('section_members', section_id=section.id) }}"
+                class="btn btn-secondary"
+            >
+                Manage Members
+            </a>
+
+            {% if section.is_archived %}
+
+            <form
+                method="post"
+                action="{{ url_for('section_restore', section_id=section.id) }}"
+                class="inline-form"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Restore Section
+                </button>
+
+            </form>
+
+            {% else %}
+
+            <form
+                method="post"
+                action="{{ url_for('section_archive', section_id=section.id) }}"
+                class="inline-form"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Archive Section
+                </button>
+
+            </form>
+
+            {% endif %}
+
+            {% endif %}
+
+        </div>
+
+    </div>
+
+    <div class="detail-grid">
+
+        <section
+            class="content-card"
+            aria-labelledby="section-summary-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="section-summary-heading">
+                        Section Summary
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Company
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('company_detail', company_id=section.company_id) }}"
+                        >
+                            {{ section.company.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Status
+                    </dt>
+
+                    <dd>
+
+                        {% if section.is_archived %}
+
+                        <span class="status-badge status-badge-muted">
+                            Archived
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-success">
+                            Active
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created By
+                    </dt>
+
+                    <dd>
+                        {{ section.created_by.display_name }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Assigned Members
+                    </dt>
+
+                    <dd>
+                        {{ memberships | length }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Your Access
+                    </dt>
+
+                    <dd>
+
+                        {% if current_user.is_administrator %}
+
+                        Administrator
+
+                        {% elif section.created_by_user_id == current_user.id %}
+
+                        Section Creator
+
+                        {% else %}
+
+                        Assigned Member
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created
+                    </dt>
+
+                    <dd>
+                        {{ section.created_at }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Last Updated
+                    </dt>
+
+                    <dd>
+                        {{ section.updated_at }}
+                    </dd>
+
+                </div>
+
+            </dl>
+
+        </section>
+
+        <section
+            class="content-card"
+            aria-labelledby="section-members-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="section-members-heading">
+                        Assigned Members
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Users explicitly assigned to this section.
+                    </p>
+
+                </div>
+
+                {% if can_manage_section_memberships %}
+
+                <div class="card-actions">
+
+                    <a
+                        href="{{ url_for('section_members', section_id=section.id) }}"
+                        class="btn btn-secondary btn-small"
+                    >
+                        Manage Members
+                    </a>
+
+                </div>
+
+                {% endif %}
+
+            </div>
+
+            {% if memberships %}
+
+            <div class="table-container">
+
+                <table class="data-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th scope="col">
+                                User
+                            </th>
+
+                            <th scope="col">
+                                Company Role
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for membership in memberships %}
+
+                        <tr>
+
+                            <td>
+
+                                <div class="table-primary">
+
+                                    <span class="table-primary-text">
+                                        {{ membership.user.display_name }}
+                                    </span>
+
+                                    <span class="table-secondary">
+                                        {{ membership.user.username }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                {% set company_membership = company_memberships.get(
+                                    membership.user_id
+                                ) %}
+
+                                {% if (
+                                    company_membership
+                                    and company_membership.role == "manager"
+                                ) %}
+
+                                <span class="status-badge status-badge-primary">
+                                    Manager
+                                </span>
+
+                                {% else %}
+
+                                <span class="status-badge status-badge-muted">
+                                    Employee
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <p>
+                    No users have been explicitly assigned to this section.
+                </p>
+
+                {% if can_manage_section_memberships %}
+
+                <a
+                    href="{{ url_for('section_members', section_id=section.id) }}"
+                    class="btn btn-primary"
+                >
+                    Assign Member
+                </a>
+
+                {% endif %}
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="section-content-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="section-content-heading">
+                    Lists and Tasks
+                </h2>
+
+                <p class="card-subtitle">
+                    Lists and tasks for this section will appear here.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="empty-state">
+
+            <h2>
+                No lists yet
+            </h2>
+
+            <p>
+                List and task management will be added in a later phase.
+            </p>
+
+        </div>
+
+    </section>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('company_detail', company_id=section.company_id) }}"
+            class="btn btn-secondary"
+        >
+            Back to Company
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

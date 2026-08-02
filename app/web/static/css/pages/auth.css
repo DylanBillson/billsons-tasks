@@ -1,75 +1,110 @@
+/*
+ * Authentication pages
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Page layout
+ * ------------------------------------------------------------------------- */
+
 .auth-page {
     display: flex;
-    justify-content: center;
     align-items: center;
-    min-height: 100vh;
-    padding: 2rem;
+    justify-content: center;
+    width: 100%;
+    padding: var(--space-6) 0;
 }
 
 .auth-card {
-    width: 100%;
-    max-width: 26rem;
+    width: min(100%, 27rem);
 }
 
+
+/* -------------------------------------------------------------------------
+ * Header
+ * ------------------------------------------------------------------------- */
+
 .auth-header {
-    margin-bottom: 2rem;
+    margin-bottom: var(--space-8);
     text-align: center;
 }
 
 .auth-header h1 {
-    margin: 0;
+    margin-bottom: 0;
+    font-size: clamp(
+        var(--font-size-2xl),
+        5vw,
+        var(--font-size-3xl)
+    );
 }
 
 .auth-subtitle {
-    margin-top: 0.75rem;
-    color: var(--text-muted);
+    margin: var(--space-3) 0 0;
+    color: var(--color-text-muted);
+    line-height: 1.55;
 }
 
-.form-group + .form-group {
-    margin-top: 1.25rem;
+
+/* -------------------------------------------------------------------------
+ * Form
+ * ------------------------------------------------------------------------- */
+
+.auth-card .form-group {
+    margin-bottom: 0;
 }
 
-.form-checkbox {
-    margin-top: 1.5rem;
+.auth-card .form-group + .form-group {
+    margin-top: var(--space-5);
 }
 
-.checkbox {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.5rem;
-    cursor: pointer;
+.auth-card .form-checkbox {
+    margin-top: var(--space-6);
 }
 
-.checkbox input {
-    margin: 0;
+.auth-card .form-actions {
+    margin-top: var(--space-8);
 }
 
-.form-actions {
-    display: flex;
-    justify-content: stretch;
-    margin-top: 2rem;
-}
-
-.form-actions .btn {
+.auth-card .form-actions .btn {
     width: 100%;
 }
 
-.field-error {
-    margin-top: 0.35rem;
-    font-size: 0.875rem;
-    color: var(--colour-danger);
+
+/* -------------------------------------------------------------------------
+ * Decorative accent
+ * ------------------------------------------------------------------------- */
+
+.auth-card {
+    position: relative;
+    overflow: hidden;
 }
 
-.is-invalid {
-    border-color: var(--colour-danger);
+.auth-card::before {
+    position: absolute;
+    top: 0;
+    right: 0;
+    left: 0;
+    height: 0.2rem;
+    background: var(--color-primary);
+    content: "";
 }
 
-@media (max-width: 480px) {
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 36rem) {
     .auth-page {
-        padding: 1rem;
+        padding-block: var(--space-4);
     }
 
     .auth-card {
-        max-width: none;
+        width: 100%;
+        padding: var(--space-5);
+    }
+
+    .auth-header {
+        margin-bottom: var(--space-6);
     }
 }

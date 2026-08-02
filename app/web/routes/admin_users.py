@@ -8,10 +8,13 @@ from app.services.user_service import (
     UserNotFoundError,
     UserPermissionError,
     UserService,
+    UserServiceError,
 )
 from app.web.dependencies.auth import (
     AdministratorUser,
     DatabaseSession,
+    get_client_ip_address,
+    get_user_agent,
 )
 from app.web.dependencies.csrf import ValidatedCSRFSession
 from app.web.forms.auth import PasswordResetForm
@@ -45,7 +48,8 @@ def list_users(
     """
     users = UserService.list_users(
         db,
-        actor=administrator,
+        include_inactive=True,
+        include_anonymised=True,
     )
 
     return templates.TemplateResponse(
@@ -54,6 +58,9 @@ def list_users(
         context={
             "current_user": administrator,
             "users": users,
+            "csrf_token": _get_authenticated_csrf_token(
+                request,
+            ),
             "flash_messages": _build_flash_messages(
                 success=success,
                 error=error,
@@ -95,9 +102,8 @@ def reset_password_page(
             "current_user": administrator,
             "user": user,
             "form": PasswordResetForm(),
-            "csrf_token": request.cookies.get(
-                _get_authenticated_csrf_cookie_name(),
-                "",
+            "csrf_token": _get_authenticated_csrf_token(
+                request,
             ),
             "flash_messages": [],
         },
@@ -151,11 +157,13 @@ async def reset_password_submit(
                 "current_user": administrator,
                 "user": user,
                 "form": form,
-                "csrf_token": _get_form_value(
-                    form_data,
-                    "csrf_token",
-                )
-                or "",
+                "csrf_token": (
+                    _get_form_value(
+                        form_data,
+                        "csrf_token",
+                    )
+                    or ""
+                ),
                 "flash_messages": [],
             },
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -167,6 +175,12 @@ async def reset_password_submit(
             actor=administrator,
             user_id=user_id,
             new_password=password_reset_request.new_password,
+            ip_address=get_client_ip_address(
+                request,
+            ),
+            user_agent=get_user_agent(
+                request,
+            ),
         )
 
     except UserNotFoundError:
@@ -177,6 +191,31 @@ async def reset_password_submit(
     except UserPermissionError:
         return _redirect_to_user_list(
             error="You do not have permission to reset this password.",
+        )
+
+    except UserServiceError as exc:
+        form.errors.add_form_error(
+            str(exc),
+        )
+        form.clear_passwords()
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/reset_password.html",
+            context={
+                "current_user": administrator,
+                "user": user,
+                "form": form,
+                "csrf_token": (
+                    _get_form_value(
+                        form_data,
+                        "csrf_token",
+                    )
+                    or ""
+                ),
+                "flash_messages": [],
+            },
+            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
     return _redirect_to_user_list(
@@ -190,6 +229,7 @@ async def reset_password_submit(
 )
 def activate_user(
     user_id: int,
+    request: Request,
     db: DatabaseSession,
     administrator: AdministratorUser,
     auth_session: ValidatedCSRFSession,
@@ -200,11 +240,22 @@ def activate_user(
     del auth_session
 
     try:
-        user = UserService.set_active_status(
+        user = UserService.require_user(
             db,
-            actor=administrator,
             user_id=user_id,
+        )
+
+        updated_user = UserService.set_active_status(
+            db,
+            acting_user=administrator,
+            target_user=user,
             is_active=True,
+            ip_address=get_client_ip_address(
+                request,
+            ),
+            user_agent=get_user_agent(
+                request,
+            ),
         )
 
     except UserNotFoundError:
@@ -217,8 +268,13 @@ def activate_user(
             error="You do not have permission to activate this user.",
         )
 
+    except UserServiceError as exc:
+        return _redirect_to_user_list(
+            error=str(exc),
+        )
+
     return _redirect_to_user_list(
-        success=f"{user.username} was activated.",
+        success=f"{updated_user.username} was activated.",
     )
 
 
@@ -228,6 +284,7 @@ def activate_user(
 )
 def deactivate_user(
     user_id: int,
+    request: Request,
     db: DatabaseSession,
     administrator: AdministratorUser,
     auth_session: ValidatedCSRFSession,
@@ -237,17 +294,23 @@ def deactivate_user(
     """
     del auth_session
 
-    if user_id == administrator.id:
-        return _redirect_to_user_list(
-            error="You cannot deactivate your own account.",
+    try:
+        user = UserService.require_user(
+            db,
+            user_id=user_id,
         )
 
-    try:
-        user = UserService.set_active_status(
+        updated_user = UserService.set_active_status(
             db,
-            actor=administrator,
-            user_id=user_id,
+            acting_user=administrator,
+            target_user=user,
             is_active=False,
+            ip_address=get_client_ip_address(
+                request,
+            ),
+            user_agent=get_user_agent(
+                request,
+            ),
         )
 
     except UserNotFoundError:
@@ -260,8 +323,13 @@ def deactivate_user(
             error="You do not have permission to deactivate this user.",
         )
 
+    except UserServiceError as exc:
+        return _redirect_to_user_list(
+            error=str(exc),
+        )
+
     return _redirect_to_user_list(
-        success=f"{user.username} was deactivated.",
+        success=f"{updated_user.username} was deactivated.",
     )
 
 
@@ -318,13 +386,16 @@ def _build_flash_messages(
 
 
 def _get_authenticated_csrf_cookie_name() -> str:
-    """
-    Return the authenticated CSRF cookie name.
-
-    The application stores it alongside the session cookie using the
-    `<session-cookie-name>_csrf` naming convention.
-    """
     return f"{settings.session_cookie_name}_csrf"
+
+
+def _get_authenticated_csrf_token(
+    request: Request,
+) -> str:
+    return request.cookies.get(
+        _get_authenticated_csrf_cookie_name(),
+        "",
+    )
 
 
 def _get_form_value(

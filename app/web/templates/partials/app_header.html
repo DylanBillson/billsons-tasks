@@ -1,0 +1,77 @@
+<header class="app-header">
+
+    <div class="app-header-inner">
+
+        <a
+            href="{% if current_user is defined and current_user %}/companies{% else %}/login{% endif %}"
+            class="app-brand"
+            aria-label="{{ settings.application_name }} home"
+        >
+
+            <span
+                class="app-brand-mark"
+                aria-hidden="true"
+            >
+                B
+            </span>
+
+            <span class="app-brand-text">
+                {{ settings.application_name }}
+            </span>
+
+        </a>
+
+        {% if current_user is defined and current_user %}
+
+        <div class="app-header-user">
+
+            <div class="app-user-summary">
+
+                <span class="app-user-name">
+                    {{ current_user.display_name }}
+                </span>
+
+                <span class="app-user-role">
+
+                    {% if current_user.is_administrator %}
+                    Administrator
+                    {% else %}
+                    User
+                    {% endif %}
+
+                </span>
+
+            </div>
+
+            {% if csrf_token is defined and csrf_token %}
+
+            <form
+                method="post"
+                action="/logout"
+                class="app-logout-form"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <button
+                    type="submit"
+                    class="btn btn-secondary btn-small"
+                >
+                    Sign Out
+                </button>
+
+            </form>
+
+            {% endif %}
+
+        </div>
+
+        {% endif %}
+
+    </div>
+
+</header>
