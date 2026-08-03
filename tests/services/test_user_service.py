@@ -575,11 +575,16 @@ def test_set_active_status_deactivates_user_and_revokes_sessions(
         user_agent="Deactivation test",
     )
 
+    db.refresh(target_user)
     db.refresh(first_session)
     db.refresh(second_session)
 
-    assert result is target_user
+    assert result.user_id == target_user.id
+    assert result.is_active is False
+    assert result.revoked_session_count == 2
+
     assert target_user.is_active is False
+
     assert first_session.is_revoked is True
     assert second_session.is_revoked is True
     assert first_session.revoked_at is not None
@@ -620,7 +625,14 @@ def test_set_active_status_reactivates_user(
         is_active=True,
     )
 
-    assert result is target_user
+    db.refresh(
+        target_user,
+    )
+
+    assert result.user_id == target_user.id
+    assert result.is_active is True
+    assert result.revoked_session_count == 0
+
     assert target_user.is_active is True
 
     audit_log = db.scalar(
@@ -673,7 +685,10 @@ def test_set_active_status_returns_without_audit_when_unchanged(
         ).all()
     )
 
-    assert result is target_user
+    assert result.user_id == target_user.id
+    assert result.is_active is True
+    assert result.revoked_session_count == 0
+
     assert target_user.is_active is True
     assert audit_count_after == audit_count_before
 
@@ -772,7 +787,10 @@ def test_set_active_status_does_not_commit_when_commit_is_false(
 
     commit_mock.assert_not_called()
 
-    assert result is target_user
+    assert result.user_id == target_user.id
+    assert result.is_active is False
+    assert result.revoked_session_count == 0
+
     assert target_user.is_active is False
 
 
