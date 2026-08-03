@@ -1,0 +1,337 @@
+{% if filter_validation_failed %}
+
+<div
+    class="form-summary form-summary-error"
+    role="alert"
+>
+
+    <h3>
+        Check the selected filters
+    </h3>
+
+    <p>
+        One or more audit-log filter values are invalid.
+    </p>
+
+    {% for message in filter_form.errors.form_errors %}
+
+    <p>
+        {{ message }}
+    </p>
+
+    {% endfor %}
+
+</div>
+
+{% endif %}
+
+<form
+    method="get"
+    action="{{ url_for('admin_audit') }}"
+    class="filter-panel"
+    data-audit-log-filters
+>
+
+    <div class="filter-grid">
+
+        <div class="form-field">
+
+            <label
+                for="audit-search"
+                class="form-label"
+            >
+                Search
+            </label>
+
+            <input
+                id="audit-search"
+                name="search"
+                type="search"
+                class="form-input"
+                value="{{ filter_form.search }}"
+                maxlength="250"
+                placeholder="Summary, action, user, entity, or IP"
+            >
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-user"
+                class="form-label"
+            >
+                User
+            </label>
+
+            <select
+                id="audit-user"
+                name="user_id"
+                class="form-select"
+            >
+
+                <option value="">
+                    All Users
+                </option>
+
+                {% for user in users %}
+
+                <option
+                    value="{{ user.id }}"
+                    {% if filter_form.user_id == user.id | string %}selected{% endif %}
+                >
+                    {{ user.display_name }}
+                    —
+                    {{ user.username }}
+
+                    {% if user.is_anonymised %}
+                    (Anonymised)
+                    {% elif not user.is_active %}
+                    (Inactive)
+                    {% endif %}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            {% for message in filter_form.errors.field_errors.get(
+                "user_id",
+                []
+            ) %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-action"
+                class="form-label"
+            >
+                Action
+            </label>
+
+            <select
+                id="audit-action"
+                name="action"
+                class="form-select"
+            >
+
+                <option value="">
+                    All Actions
+                </option>
+
+                {% for action in actions %}
+
+                <option
+                    value="{{ action }}"
+                    {% if filter_form.action == action %}selected{% endif %}
+                >
+                    {{ action }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-entity-type"
+                class="form-label"
+            >
+                Entity Type
+            </label>
+
+            <select
+                id="audit-entity-type"
+                name="entity_type"
+                class="form-select"
+            >
+
+                <option value="">
+                    All Entity Types
+                </option>
+
+                {% for entity_type in entity_types %}
+
+                <option
+                    value="{{ entity_type }}"
+                    {% if filter_form.entity_type == entity_type %}selected{% endif %}
+                >
+                    {{ entity_type }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-entity-id"
+                class="form-label"
+            >
+                Entity ID
+            </label>
+
+            <input
+                id="audit-entity-id"
+                name="entity_id"
+                type="number"
+                class="form-input"
+                value="{{ filter_form.entity_id }}"
+                min="1"
+                step="1"
+                inputmode="numeric"
+            >
+
+            {% for message in filter_form.errors.field_errors.get(
+                "entity_id",
+                []
+            ) %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-created-from"
+                class="form-label"
+            >
+                From
+            </label>
+
+            <input
+                id="audit-created-from"
+                name="created_from"
+                type="date"
+                class="form-input"
+                value="{{ filter_form.created_from }}"
+            >
+
+            {% for message in filter_form.errors.field_errors.get(
+                "created_from",
+                []
+            ) %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-created-to"
+                class="form-label"
+            >
+                To
+            </label>
+
+            <input
+                id="audit-created-to"
+                name="created_to"
+                type="date"
+                class="form-input"
+                value="{{ filter_form.created_to }}"
+            >
+
+            {% for message in filter_form.errors.field_errors.get(
+                "created_to",
+                []
+            ) %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="audit-page-size"
+                class="form-label"
+            >
+                Results Per Page
+            </label>
+
+            <select
+                id="audit-page-size"
+                name="page_size"
+                class="form-select"
+            >
+
+                {% for option in [10, 25, 50, 100] %}
+
+                <option
+                    value="{{ option }}"
+                    {% if filter_form.page_size == option | string %}selected{% endif %}
+                >
+                    {{ option }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            {% for message in filter_form.errors.field_errors.get(
+                "page_size",
+                []
+            ) %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <div class="filter-actions">
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Apply Filters
+        </button>
+
+        {% if filter_form.is_active %}
+
+        <a
+            href="{{ url_for('admin_audit') }}"
+            class="btn btn-secondary"
+        >
+            Clear Filters
+        </a>
+
+        {% endif %}
+
+    </div>
+
+</form>

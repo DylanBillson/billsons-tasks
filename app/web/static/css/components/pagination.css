@@ -1,0 +1,36 @@
+.pagination {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    gap: .5rem;
+
+    margin-top: 2rem;
+}
+
+.pagination a,
+.pagination span {
+    min-width: 2.5rem;
+
+    padding: .5rem .75rem;
+
+    border: 1px solid var(--colour-border);
+    border-radius: var(--radius-medium);
+
+    text-align: center;
+    text-decoration: none;
+
+    color: inherit;
+
+    background: var(--colour-surface);
+}
+
+.pagination a:hover {
+    border-color: var(--colour-primary);
+}
+
+.pagination-current {
+    font-weight: 600;
+
+    background: var(--colour-primary);
+    color: white;
+}

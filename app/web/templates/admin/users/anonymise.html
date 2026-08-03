@@ -1,0 +1,305 @@
+{% extends "base.html" %}
+
+{% block title %}
+Anonymise {{ user.display_name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page administration-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Anonymise User
+            </h1>
+
+            <p class="page-subtitle">
+                Permanently remove identifying account information.
+            </p>
+
+        </div>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="anonymise-user-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="anonymise-user-heading">
+                    Irreversible Anonymisation
+                </h2>
+
+                <p class="card-subtitle">
+                    This operation cannot be reversed.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div
+            class="warning-panel"
+            role="alert"
+        >
+
+            <h3>
+                This permanently removes the user's identity
+            </h3>
+
+            <p>
+                Their username and display name will be replaced with a
+                non-identifying label. Their former identity cannot be
+                recovered through Billson's Tasks.
+            </p>
+
+        </div>
+
+        <dl class="detail-list">
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Current Display Name
+                </dt>
+
+                <dd>
+                    {{ preview.display_name }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Current Username
+                </dt>
+
+                <dd>
+                    {{ preview.username }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Company Memberships Removed
+                </dt>
+
+                <dd>
+                    {{ preview.company_membership_count }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Section Memberships Removed
+                </dt>
+
+                <dd>
+                    {{ preview.section_membership_count }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Task Assignments Removed
+                </dt>
+
+                <dd>
+                    {{ preview.task_assignment_count }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Active Sessions Revoked
+                </dt>
+
+                <dd>
+                    {{ preview.active_session_count }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Historical Comments Preserved
+                </dt>
+
+                <dd>
+                    {{ preview.comment_count }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    History Events Preserved
+                </dt>
+
+                <dd>
+                    {{ preview.task_history_event_count }}
+                </dd>
+
+            </div>
+
+        </dl>
+
+        <div class="information-panel">
+
+            <h3>
+                Historical records remain
+            </h3>
+
+            <p>
+                Existing tasks, comments, task history, and audit references
+                remain structurally intact, but they will display the new
+                anonymised identity.
+            </p>
+
+        </div>
+
+        {% if form.errors.has_errors %}
+
+        <div
+            class="form-summary form-summary-error"
+            role="alert"
+        >
+
+            <h3>
+                Check the confirmation
+            </h3>
+
+            <p>
+                Both confirmation requirements must be completed.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+        <form
+            method="post"
+            action="{{ url_for(
+                'admin_user_anonymise_submit',
+                user_id=user.id
+            ) }}"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <div class="form-field">
+
+                <label
+                    for="confirmation-phrase"
+                    class="form-label"
+                >
+                    Type
+                    <strong>
+                        ANONYMISE USER
+                    </strong>
+                    to continue
+                </label>
+
+                <input
+                    id="confirmation-phrase"
+                    name="confirmation_phrase"
+                    type="text"
+                    class="form-input"
+                    value="{{ form.confirmation_phrase }}"
+                    autocomplete="off"
+                    spellcheck="false"
+                >
+
+                {% for message in form.errors.field_errors.get(
+                    "confirmation_phrase",
+                    []
+                ) %}
+
+                <p class="form-error">
+                    {{ message }}
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="form-field form-field-checkbox">
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        name="confirm_irreversible"
+                        value="1"
+                        {% if form.confirm_irreversible %}checked{% endif %}
+                    >
+
+                    I understand that anonymisation is permanent and the
+                    original username and display name cannot be recovered.
+
+                </label>
+
+                {% for message in form.errors.field_errors.get(
+                    "confirm_irreversible",
+                    []
+                ) %}
+
+                <p class="form-error">
+                    {{ message }}
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Anonymise User Permanently
+                </button>
+
+                <a
+                    href="{{ url_for('admin_users') }}"
+                    class="btn btn-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}

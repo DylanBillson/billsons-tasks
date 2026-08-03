@@ -1,6 +1,13 @@
 from datetime import datetime
+from app.models.company import Company
 
-from sqlalchemy import func, or_, select
+from sqlalchemy import (
+    and_,
+    case,
+    func,
+    or_,
+    select,
+)
 from sqlalchemy.orm import (
     Session,
     joinedload,
@@ -12,7 +19,7 @@ from app.models.section import Section
 from app.models.section_list import SectionList
 from app.models.task import Task
 from app.models.task_assignee import TaskAssignee
-
+from app.models.company import Company
 
 class TaskRepository:
     @staticmethod
@@ -222,6 +229,337 @@ class TaskRepository:
         )
 
     @staticmethod
+    def list_my_tasks(
+        db: Session,
+        *,
+        user_id: int,
+        state: str,
+        now: datetime,
+        today_start: datetime,
+        tomorrow_start: datetime,
+        due_soon_end: datetime,
+        company_id: int | None = None,
+        section_id: int | None = None,
+        search: str | None = None,
+    ) -> list[Task]:
+        query = (
+            TaskRepository._base_list_query()
+            .join(
+                TaskAssignee,
+                TaskAssignee.task_id == Task.id,
+            )
+            .join(
+                SectionList,
+                SectionList.id == Task.section_list_id,
+            )
+            .join(
+                Section,
+                Section.id == SectionList.section_id,
+            )
+            .join(
+                Company,
+                Company.id == Section.company_id,
+            )
+            .where(
+                TaskAssignee.user_id == user_id,
+                Task.deleted_at.is_(None),
+                Company.is_archived.is_(False),
+                Section.is_archived.is_(False),
+                SectionList.is_archived.is_(False),
+            )
+        )
+
+        if company_id is not None:
+            query = query.where(
+                Company.id == company_id,
+            )
+
+        if section_id is not None:
+            query = query.where(
+                Section.id == section_id,
+            )
+
+        if search is not None:
+            pattern = f"%{search}%"
+
+            query = query.where(
+                or_(
+                    Task.title.ilike(
+                        pattern,
+                    ),
+                    Task.description.ilike(
+                        pattern,
+                    ),
+                ),
+            )
+
+        query = TaskRepository._apply_my_tasks_state_filter(
+            query,
+            state=state,
+            now=now,
+            today_start=today_start,
+            tomorrow_start=tomorrow_start,
+            due_soon_end=due_soon_end,
+        )
+
+        query = query.order_by(
+            Task.completed_at.asc().nullsfirst(),
+            Task.due_at.asc().nullslast(),
+            Task.updated_at.desc(),
+            Task.id.desc(),
+        )
+
+        return list(
+            db.scalars(
+                query,
+            ).unique().all(),
+        )
+
+    @staticmethod
+    def get_my_tasks_metrics(
+        db: Session,
+        *,
+        user_id: int,
+        now: datetime,
+        today_start: datetime,
+        tomorrow_start: datetime,
+        due_soon_end: datetime,
+    ) -> dict[str, int]:
+        row = db.execute(
+            select(
+                func.count(
+                    Task.id,
+                ).label(
+                    "all_count",
+                ),
+                func.count(
+                    case(
+                        (
+                            Task.completed_at.is_(None),
+                            Task.id,
+                        ),
+                    ),
+                ).label(
+                    "open_count",
+                ),
+                func.count(
+                    case(
+                        (
+                            and_(
+                                Task.completed_at.is_(None),
+                                Task.due_at.is_not(None),
+                                Task.due_at < now,
+                            ),
+                            Task.id,
+                        ),
+                    ),
+                ).label(
+                    "overdue_count",
+                ),
+                func.count(
+                    case(
+                        (
+                            and_(
+                                Task.completed_at.is_(None),
+                                Task.due_at.is_not(None),
+                                Task.due_at >= today_start,
+                                Task.due_at < tomorrow_start,
+                            ),
+                            Task.id,
+                        ),
+                    ),
+                ).label(
+                    "due_today_count",
+                ),
+                func.count(
+                    case(
+                        (
+                            and_(
+                                Task.completed_at.is_(None),
+                                Task.due_at.is_not(None),
+                                Task.due_at >= now,
+                                Task.due_at <= due_soon_end,
+                            ),
+                            Task.id,
+                        ),
+                    ),
+                ).label(
+                    "due_soon_count",
+                ),
+                func.count(
+                    case(
+                        (
+                            Task.completed_at.is_not(None),
+                            Task.id,
+                        ),
+                    ),
+                ).label(
+                    "completed_count",
+                ),
+            )
+            .select_from(
+                Task,
+            )
+            .join(
+                TaskAssignee,
+                TaskAssignee.task_id == Task.id,
+            )
+            .join(
+                SectionList,
+                SectionList.id == Task.section_list_id,
+            )
+            .join(
+                Section,
+                Section.id == SectionList.section_id,
+            )
+            .join(
+                Company,
+                Company.id == Section.company_id,
+            )
+            .where(
+                TaskAssignee.user_id == user_id,
+                Task.deleted_at.is_(None),
+                Company.is_archived.is_(False),
+                Section.is_archived.is_(False),
+                SectionList.is_archived.is_(False),
+            ),
+        ).one()
+
+        return {
+            "all_count": int(
+                row.all_count
+                or 0,
+            ),
+            "open_count": int(
+                row.open_count
+                or 0,
+            ),
+            "overdue_count": int(
+                row.overdue_count
+                or 0,
+            ),
+            "due_today_count": int(
+                row.due_today_count
+                or 0,
+            ),
+            "due_soon_count": int(
+                row.due_soon_count
+                or 0,
+            ),
+            "completed_count": int(
+                row.completed_count
+                or 0,
+            ),
+        }
+
+    @staticmethod
+    def list_my_tasks_companies(
+        db: Session,
+        *,
+        user_id: int,
+    ) -> list[Company]:
+        query = (
+            select(
+                Company,
+            )
+            .join(
+                Section,
+                Section.company_id == Company.id,
+            )
+            .join(
+                SectionList,
+                SectionList.section_id == Section.id,
+            )
+            .join(
+                Task,
+                Task.section_list_id == SectionList.id,
+            )
+            .join(
+                TaskAssignee,
+                TaskAssignee.task_id == Task.id,
+            )
+            .where(
+                TaskAssignee.user_id == user_id,
+                Task.deleted_at.is_(None),
+                Company.is_archived.is_(False),
+                Section.is_archived.is_(False),
+                SectionList.is_archived.is_(False),
+            )
+            .order_by(
+                Company.name.asc(),
+                Company.id.asc(),
+            )
+            .distinct()
+        )
+
+        return list(
+            db.scalars(
+                query,
+            ).unique().all(),
+        )
+
+    @staticmethod
+    def list_my_tasks_sections(
+        db: Session,
+        *,
+        user_id: int,
+        company_id: int | None = None,
+    ) -> list[Section]:
+        query = (
+            select(
+                Section,
+            )
+            .join(
+                Company,
+                Company.id == Section.company_id,
+            )
+            .join(
+                SectionList,
+                SectionList.section_id == Section.id,
+            )
+            .join(
+                Task,
+                Task.section_list_id == SectionList.id,
+            )
+            .join(
+                TaskAssignee,
+                TaskAssignee.task_id == Task.id,
+            )
+            .where(
+                TaskAssignee.user_id == user_id,
+                Task.deleted_at.is_(None),
+                Company.is_archived.is_(False),
+                Section.is_archived.is_(False),
+                SectionList.is_archived.is_(False),
+            )
+            .options(
+                joinedload(
+                    Section.company,
+                ),
+            )
+        )
+
+        if company_id is not None:
+            query = query.where(
+                Company.id == company_id,
+            )
+
+        query = (
+            query
+            .distinct()
+            .order_by(
+                Section.name.asc(),
+                Section.id.asc(),
+            )
+        )
+
+        return list(
+            db.scalars(
+                query,
+            ).unique().all(),
+        )
+
+    @staticmethod
     def list_deleted_for_section(
         db: Session,
         *,
@@ -253,26 +591,122 @@ class TaskRepository:
     def list_all_deleted(
         db: Session,
         *,
+        search: str | None = None,
+        company_id: int | None = None,
+        section_id: int | None = None,
+        deleted_by_user_id: int | None = None,
+        deleted_from: datetime | None = None,
+        deleted_to: datetime | None = None,
         limit: int = 500,
         offset: int = 0,
     ) -> list[Task]:
         query = (
             TaskRepository._base_list_query()
+            .join(
+                SectionList,
+                SectionList.id
+                == Task.section_list_id,
+            )
+            .join(
+                Section,
+                Section.id
+                == SectionList.section_id,
+            )
+            .join(
+                Company,
+                Company.id
+                == Section.company_id,
+            )
             .where(
                 Task.deleted_at.is_not(None),
             )
+        )
+
+        query = TaskRepository._apply_deleted_filters(
+            query,
+            search=search,
+            company_id=company_id,
+            section_id=section_id,
+            deleted_by_user_id=deleted_by_user_id,
+            deleted_from=deleted_from,
+            deleted_to=deleted_to,
+        )
+
+        query = (
+            query
             .order_by(
                 Task.deleted_at.desc(),
                 Task.id.desc(),
             )
-            .limit(limit)
-            .offset(offset)
+            .limit(
+                limit,
+            )
+            .offset(
+                offset,
+            )
         )
 
         return list(
             db.scalars(
                 query,
             ).unique().all(),
+        )
+
+    @staticmethod
+    def count_all_deleted(
+        db: Session,
+        *,
+        search: str | None = None,
+        company_id: int | None = None,
+        section_id: int | None = None,
+        deleted_by_user_id: int | None = None,
+        deleted_from: datetime | None = None,
+        deleted_to: datetime | None = None,
+    ) -> int:
+        query = (
+            select(
+                func.count(
+                    Task.id,
+                ),
+            )
+            .select_from(
+                Task,
+            )
+            .join(
+                SectionList,
+                SectionList.id
+                == Task.section_list_id,
+            )
+            .join(
+                Section,
+                Section.id
+                == SectionList.section_id,
+            )
+            .join(
+                Company,
+                Company.id
+                == Section.company_id,
+            )
+            .where(
+                Task.deleted_at.is_not(None),
+            )
+        )
+
+        query = TaskRepository._apply_deleted_filters(
+            query,
+            search=search,
+            company_id=company_id,
+            section_id=section_id,
+            deleted_by_user_id=deleted_by_user_id,
+            deleted_from=deleted_from,
+            deleted_to=deleted_to,
+        )
+
+        return int(
+            db.scalar(
+                query,
+            )
+            or 0
         )
 
     @staticmethod
@@ -575,6 +1009,115 @@ class TaskRepository:
                 Task.completed_at.is_(None),
                 Task.due_at.is_not(None),
                 Task.due_at < utc_now(),
+            )
+
+        if state == "open":
+            return query.where(
+                Task.completed_at.is_(None),
+            )
+
+        return query
+    
+    @staticmethod
+    def _apply_deleted_filters(
+        query,
+        *,
+        search: str | None,
+        company_id: int | None,
+        section_id: int | None,
+        deleted_by_user_id: int | None,
+        deleted_from: datetime | None,
+        deleted_to: datetime | None,
+    ):
+        if search:
+            pattern = (
+                f"%{search.strip()}%"
+            )
+
+            query = query.where(
+                or_(
+                    Task.title.ilike(
+                        pattern,
+                    ),
+                    Task.description.ilike(
+                        pattern,
+                    ),
+                    Company.name.ilike(
+                        pattern,
+                    ),
+                    Section.name.ilike(
+                        pattern,
+                    ),
+                    SectionList.name.ilike(
+                        pattern,
+                    ),
+                ),
+            )
+
+        if company_id is not None:
+            query = query.where(
+                Company.id == company_id,
+            )
+
+        if section_id is not None:
+            query = query.where(
+                Section.id == section_id,
+            )
+
+        if deleted_by_user_id is not None:
+            query = query.where(
+                Task.deleted_by_user_id
+                == deleted_by_user_id,
+            )
+
+        if deleted_from is not None:
+            query = query.where(
+                Task.deleted_at >= deleted_from,
+            )
+
+        if deleted_to is not None:
+            query = query.where(
+                Task.deleted_at < deleted_to,
+            )
+
+        return query
+    
+    @staticmethod
+    def _apply_my_tasks_state_filter(
+        query,
+        *,
+        state: str,
+        now: datetime,
+        today_start: datetime,
+        tomorrow_start: datetime,
+        due_soon_end: datetime,
+    ):
+        if state == "completed":
+            return query.where(
+                Task.completed_at.is_not(None),
+            )
+
+        if state == "overdue":
+            return query.where(
+                Task.completed_at.is_(None),
+                Task.due_at.is_not(None),
+                Task.due_at < now,
+            )
+
+        if state == "due_today":
+            return query.where(
+                Task.completed_at.is_(None),
+                Task.due_at.is_not(None),
+                Task.due_at >= today_start,
+                Task.due_at < tomorrow_start,
+            )
+
+        if state == "due_soon":
+            return query.where(
+                Task.completed_at.is_(None),
+                Task.due_at.is_not(None),
+                Task.due_at >= now,
+                Task.due_at <= due_soon_end,
             )
 
         if state == "open":

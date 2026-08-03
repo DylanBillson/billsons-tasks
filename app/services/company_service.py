@@ -1,15 +1,22 @@
+from datetime import timedelta
+from typing import Any
+
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import PermissionService
 from app.core.constants import AuditAction
+from app.core.timezone import utc_now
 from app.models.company import Company
 from app.models.user import User
-from app.repositories.company_repository import CompanyRepository
+from app.repositories.company_repository import (
+    CompanyRepository,
+)
 from app.schemas.company import (
     CompanyCreateRequest,
     CompanyUpdateRequest,
 )
 from app.services.audit_service import AuditService
-from app.auth.permissions import PermissionService
+from app.services.dashboard_service import DashboardService
 
 
 class CompanyServiceError(ValueError):
@@ -22,6 +29,10 @@ class CompanyNotFoundError(CompanyServiceError):
 
 class CompanyNameAlreadyExistsError(CompanyServiceError):
     """Raised when another company already uses the requested name."""
+
+
+class CompanyDashboardError(CompanyServiceError):
+    """Raised when company-dashboard arguments are invalid."""
 
 
 class CompanyService:
@@ -92,6 +103,83 @@ class CompanyService:
             user_id=actor.id,
             include_archived=include_archived,
         )
+
+    @staticmethod
+    def get_company_dashboard(
+        db: Session,
+        *,
+        actor: User,
+        company_id: int,
+        due_soon_days: int = 7,
+        task_limit: int = 10,
+    ) -> dict[str, Any]:
+        if due_soon_days < 1:
+            raise CompanyDashboardError(
+                "The due-soon period must be at least one day.",
+            )
+
+        if task_limit < 1:
+            raise CompanyDashboardError(
+                "The task limit must be at least one.",
+            )
+
+        company = CompanyService.get_accessible_company(
+            db,
+            actor=actor,
+            company_id=company_id,
+        )
+
+        generated_at = utc_now()
+
+        metrics = CompanyRepository.get_dashboard_metrics(
+            db,
+            company_id=company.id,
+            actor=actor,
+            now=generated_at,
+        )
+
+        due_soon_tasks = (
+            CompanyRepository.list_dashboard_due_soon_tasks(
+                db,
+                company_id=company.id,
+                actor=actor,
+                due_from=generated_at,
+                due_to=(
+                    generated_at
+                    + timedelta(
+                        days=due_soon_days,
+                    )
+                ),
+                limit=task_limit,
+            )
+        )
+
+        recent_tasks = (
+            CompanyRepository.list_dashboard_recent_tasks(
+                db,
+                company_id=company.id,
+                actor=actor,
+                limit=task_limit,
+            )
+        )
+
+        return {
+            "company": company,
+            "generated_at": generated_at,
+            "metrics": metrics,
+            "due_soon_tasks": [
+                DashboardService._build_task_summary(
+                    task,
+                )
+                for task in due_soon_tasks
+            ],
+            "recent_tasks": [
+                DashboardService._build_task_summary(
+                    task,
+                )
+                for task in recent_tasks
+            ],
+        }
 
     @staticmethod
     def create_company(

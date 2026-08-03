@@ -4,6 +4,7 @@ from app.repositories.company_membership_repository import (
     CompanyMembershipRepository,
 )
 from app.repositories.company_repository import CompanyRepository
+from app.repositories.dashboard_repository import DashboardRepository
 from app.repositories.section_list_repository import (
     SectionListRepository,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "CommentRepository",
     "CompanyMembershipRepository",
     "CompanyRepository",
+    "DashboardRepository",
     "SectionListRepository",
     "SectionMembershipRepository",
     "SectionRepository",

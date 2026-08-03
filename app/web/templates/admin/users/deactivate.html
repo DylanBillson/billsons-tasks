@@ -1,0 +1,220 @@
+{% extends "base.html" %}
+
+{% block title %}
+Deactivate {{ user.display_name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page administration-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Deactivate User
+            </h1>
+
+            <p class="page-subtitle">
+                Disable access for {{ user.display_name }}.
+            </p>
+
+        </div>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="deactivate-user-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="deactivate-user-heading">
+                    Confirm Deactivation
+                </h2>
+
+                <p class="card-subtitle">
+                    This action can be reversed later by reactivating the
+                    account.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="warning-panel">
+
+            <h3>
+                What happens when this account is deactivated?
+            </h3>
+
+            <ul>
+
+                <li>
+                    The user will no longer be able to sign in.
+                </li>
+
+                <li>
+                    All active browser sessions belonging to the user will be
+                    revoked immediately.
+                </li>
+
+                <li>
+                    Existing tasks, comments, assignments, and history will
+                    remain attributed to the user.
+                </li>
+
+                <li>
+                    The account can be reactivated by an administrator.
+                </li>
+
+            </ul>
+
+        </div>
+
+        <dl class="detail-list">
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Display Name
+                </dt>
+
+                <dd>
+                    {{ user.display_name }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Username
+                </dt>
+
+                <dd>
+                    {{ user.username }}
+                </dd>
+
+            </div>
+
+            <div class="detail-list-item">
+
+                <dt>
+                    Role
+                </dt>
+
+                <dd>
+
+                    {% if user.is_administrator %}
+
+                    Administrator
+
+                    {% else %}
+
+                    User
+
+                    {% endif %}
+
+                </dd>
+
+            </div>
+
+        </dl>
+
+        {% if form.errors.has_errors %}
+
+        <div
+            class="form-summary form-summary-error"
+            role="alert"
+        >
+
+            <h3>
+                Confirm the deactivation
+            </h3>
+
+            <p>
+                You must confirm that you understand the effect of this
+                action.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+        <form
+            method="post"
+            action="{{ url_for(
+                'admin_user_deactivate_submit',
+                user_id=user.id
+            ) }}"
+        >
+
+            <input
+                type="hidden"
+                name="csrf_token"
+                value="{{ csrf_token }}"
+            >
+
+            <div class="form-field form-field-checkbox">
+
+                <label>
+
+                    <input
+                        type="checkbox"
+                        name="confirm_deactivation"
+                        value="1"
+                        {% if form.confirm_deactivation %}checked{% endif %}
+                    >
+
+                    I understand that this user will be signed out and unable
+                    to authenticate until the account is reactivated.
+
+                </label>
+
+                {% for message in form.errors.field_errors.get(
+                    "confirm_deactivation",
+                    []
+                ) %}
+
+                <p class="form-error">
+                    {{ message }}
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+            <div class="form-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-danger"
+                >
+                    Deactivate User
+                </button>
+
+                <a
+                    href="{{ url_for('admin_users') }}"
+                    class="btn btn-secondary"
+                >
+                    Cancel
+                </a>
+
+            </div>
+
+        </form>
+
+    </section>
+
+</div>
+
+{% endblock %}

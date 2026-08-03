@@ -1,0 +1,456 @@
+{% extends "base.html" %}
+
+{% block title %}
+Administration
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page administration-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Administration
+            </h1>
+
+            <p class="page-subtitle">
+                Manage users, companies, archived records, deleted tasks,
+                and application audit information.
+            </p>
+
+        </div>
+
+    </div>
+
+    <section
+        class="metric-grid"
+        aria-label="Administration summary"
+    >
+
+        <a
+            href="/admin/users"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Active Users
+            </span>
+
+            <strong class="metric-value">
+                {{ metrics.active_user_count }}
+            </strong>
+
+            <span class="metric-detail">
+                Accounts currently able to sign in
+            </span>
+
+        </a>
+
+        <a
+            href="/admin/companies"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Active Companies
+            </span>
+
+            <strong class="metric-value">
+                {{ metrics.active_company_count }}
+            </strong>
+
+            <span class="metric-detail">
+                Companies currently in use
+            </span>
+
+        </a>
+
+        <a
+            href="/admin/deleted-tasks"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Deleted Tasks
+            </span>
+
+            <strong class="metric-value">
+                {{ metrics.deleted_task_count }}
+            </strong>
+
+            <span class="metric-detail">
+                Awaiting restoration or permanent deletion
+            </span>
+
+        </a>
+
+        <a
+            href="/admin/archived-sections"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Archived Sections
+            </span>
+
+            <strong class="metric-value">
+                {{ metrics.archived_section_count }}
+            </strong>
+
+            <span class="metric-detail">
+                Sections currently archived
+            </span>
+
+        </a>
+
+        <a
+            href="/admin/archived-companies"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Archived Companies
+            </span>
+
+            <strong class="metric-value">
+                {{ metrics.archived_company_count }}
+            </strong>
+
+            <span class="metric-detail">
+                Companies currently archived
+            </span>
+
+        </a>
+
+        <a
+            href="/admin/audit?action=notification_failed"
+            class="metric-card"
+        >
+
+            <span class="metric-label">
+                Notification Failures
+            </span>
+
+            <strong class="metric-value">
+                {{ metrics.notification_failure_count }}
+            </strong>
+
+            <span class="metric-detail">
+                Recorded failed notification events
+            </span>
+
+        </a>
+
+    </section>
+
+    <div class="detail-grid">
+
+        <section
+            class="content-card"
+            aria-labelledby="administration-tools-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="administration-tools-heading">
+                        Administration Tools
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Access application management and data-lifecycle
+                        controls.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="admin-tool-grid">
+
+                <a
+                    href="/admin/users"
+                    class="admin-tool-card"
+                >
+
+                    <div>
+
+                        <h3>
+                            Users
+                        </h3>
+
+                        <p>
+                            Manage accounts, passwords, activation,
+                            deactivation, and GDPR anonymisation.
+                        </p>
+
+                    </div>
+
+                    <span class="admin-tool-meta">
+                        {{ metrics.active_user_count }} active,
+                        {{ metrics.inactive_user_count }} inactive,
+                        {{ metrics.anonymised_user_count }} anonymised
+                    </span>
+
+                </a>
+
+                <a
+                    href="/admin/companies"
+                    class="admin-tool-card"
+                >
+
+                    <div>
+
+                        <h3>
+                            Companies
+                        </h3>
+
+                        <p>
+                            Create companies and manage their details,
+                            status, and memberships.
+                        </p>
+
+                    </div>
+
+                    <span class="admin-tool-meta">
+                        {{ metrics.active_company_count }} active
+                    </span>
+
+                </a>
+
+                <a
+                    href="/admin/archived-companies"
+                    class="admin-tool-card"
+                >
+
+                    <div>
+
+                        <h3>
+                            Archived Companies
+                        </h3>
+
+                        <p>
+                            Review and restore companies that have been
+                            archived.
+                        </p>
+
+                    </div>
+
+                    <span class="admin-tool-meta">
+                        {{ metrics.archived_company_count }} archived
+                    </span>
+
+                </a>
+
+                <a
+                    href="/admin/archived-sections"
+                    class="admin-tool-card"
+                >
+
+                    <div>
+
+                        <h3>
+                            Archived Sections
+                        </h3>
+
+                        <p>
+                            Review and restore archived sections across all
+                            companies.
+                        </p>
+
+                    </div>
+
+                    <span class="admin-tool-meta">
+                        {{ metrics.archived_section_count }} archived
+                    </span>
+
+                </a>
+
+                <a
+                    href="/admin/deleted-tasks"
+                    class="admin-tool-card"
+                >
+
+                    <div>
+
+                        <h3>
+                            Deleted Tasks
+                        </h3>
+
+                        <p>
+                            Restore soft-deleted tasks or remove them
+                            permanently.
+                        </p>
+
+                    </div>
+
+                    <span class="admin-tool-meta">
+                        {{ metrics.deleted_task_count }} deleted
+                    </span>
+
+                </a>
+
+                <a
+                    href="/admin/audit"
+                    class="admin-tool-card"
+                >
+
+                    <div>
+
+                        <h3>
+                            Audit Log
+                        </h3>
+
+                        <p>
+                            Review security, administrative, and significant
+                            application activity.
+                        </p>
+
+                    </div>
+
+                    <span class="admin-tool-meta">
+                        View full audit history
+                    </span>
+
+                </a>
+
+            </div>
+
+        </section>
+
+        <section
+            class="content-card"
+            aria-labelledby="recent-administration-activity-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="recent-administration-activity-heading">
+                        Recent Activity
+                    </h2>
+
+                    <p class="card-subtitle">
+                        The ten most recent audit entries.
+                    </p>
+
+                </div>
+
+                <div class="card-actions">
+
+                    <a
+                        href="/admin/audit"
+                        class="btn btn-secondary btn-small"
+                    >
+                        View Audit Log
+                    </a>
+
+                </div>
+
+            </div>
+
+            {% if recent_audit_logs %}
+
+            <div class="activity-feed">
+
+                {% for audit_log in recent_audit_logs %}
+
+                <article class="activity-feed-item">
+
+                    <div class="activity-feed-content">
+
+                        <div class="activity-feed-header">
+
+                            <code class="activity-feed-action">
+                                {{ audit_log.action }}
+                            </code>
+
+                            <time class="activity-feed-time">
+                                {{ audit_log.created_at }}
+                            </time>
+
+                        </div>
+
+                        <p class="activity-feed-summary">
+                            {{ audit_log.summary }}
+                        </p>
+
+                        <div class="activity-feed-meta">
+
+                            {% if audit_log.user %}
+
+                            <span>
+                                {{ audit_log.user.display_name }}
+                            </span>
+
+                            {% else %}
+
+                            <span>
+                                System
+                            </span>
+
+                            {% endif %}
+
+                            {% if audit_log.entity_type %}
+
+                            <span>
+                                {{ audit_log.entity_type }}
+
+                                {% if audit_log.entity_id is not none %}
+
+                                #{{ audit_log.entity_id }}
+
+                                {% endif %}
+                            </span>
+
+                            {% endif %}
+
+                        </div>
+
+                    </div>
+
+                    <div class="activity-feed-actions">
+
+                        <a
+                            href="/admin/audit/{{ audit_log.id }}"
+                            class="btn btn-secondary btn-small"
+                        >
+                            View
+                        </a>
+
+                    </div>
+
+                </article>
+
+                {% endfor %}
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <p>
+                    No audit activity has been recorded yet.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+    </div>
+
+</div>
+
+{% endblock %}

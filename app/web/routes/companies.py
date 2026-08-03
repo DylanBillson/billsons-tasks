@@ -1,7 +1,11 @@
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    RedirectResponse,
+    Response,
+)
 
 from app.auth.permissions import (
     PermissionDeniedError,
@@ -44,12 +48,6 @@ def list_companies(
     success: str | None = None,
     error: str | None = None,
 ) -> HTMLResponse:
-    """
-    Display companies available to the authenticated user.
-
-    Administrators see every active company. Standard users see only
-    companies where they have a company membership.
-    """
     companies = CompanyService.list_companies_for_actor(
         db,
         actor=current_user,
@@ -116,6 +114,77 @@ def list_companies(
 
 
 @router.get(
+    "/{company_id}/dashboard",
+    response_class=HTMLResponse,
+    name="company_dashboard",
+)
+def company_dashboard(
+    company_id: int,
+    request: Request,
+    db: DatabaseSession,
+    current_user: CurrentUser,
+) -> Response:
+    try:
+        dashboard = CompanyService.get_company_dashboard(
+            db,
+            actor=current_user,
+            company_id=company_id,
+        )
+
+    except CompanyNotFoundError:
+        return _redirect_to_company_list(
+            error=(
+                "The requested company could not "
+                "be found."
+            ),
+        )
+
+    except PermissionDeniedError:
+        return _redirect_to_company_list(
+            error=(
+                "You do not have access to the "
+                "requested company."
+            ),
+        )
+
+    company = dashboard[
+        "company"
+    ]
+
+    sections = SectionService.list_accessible_sections(
+        db,
+        actor=current_user,
+        company_id=company.id,
+        include_archived=False,
+    )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="companies/dashboard.html",
+        context={
+            "current_user": current_user,
+            "company": company,
+            "dashboard": dashboard,
+            "metrics": dashboard[
+                "metrics"
+            ],
+            "due_soon_tasks": dashboard[
+                "due_soon_tasks"
+            ],
+            "recent_tasks": dashboard[
+                "recent_tasks"
+            ],
+            "sections": sections,
+            "csrf_token": _get_authenticated_csrf_token(
+                request,
+            ),
+            "flash_messages": [],
+        },
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@router.get(
     "/{company_id}",
     response_class=HTMLResponse,
     name="company_detail",
@@ -127,15 +196,7 @@ def company_detail(
     current_user: CurrentUser,
     success: str | None = None,
     error: str | None = None,
-) -> HTMLResponse:
-    """
-    Display an accessible company and only those sections available to the
-    authenticated user.
-
-    Company managers do not automatically receive access to every section.
-    Sections are included only when the user created them, was explicitly
-    assigned to them, or is a global administrator.
-    """
+) -> Response:
     try:
         company = CompanyService.get_accessible_company(
             db,
@@ -223,12 +284,6 @@ def company_members(
     db: DatabaseSession,
     current_user: CurrentUser,
 ) -> RedirectResponse:
-    """
-    Reserve the company-members route used by the company detail template.
-
-    The manager-facing membership page has not yet been created. Authorised
-    users are returned to the company detail page with an explanatory message.
-    """
     try:
         company = CompanyService.get_accessible_company(
             db,

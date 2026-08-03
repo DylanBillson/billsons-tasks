@@ -1,0 +1,327 @@
+{% extends "base.html" %}
+
+{% block title %}
+Audit Entry {{ audit_log.id }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page administration-page audit-log-detail-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Audit Entry {{ audit_log.id }}
+            </h1>
+
+            <p class="page-subtitle">
+                Full details for a recorded application event.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_audit') }}"
+                class="btn btn-secondary"
+            >
+                Back to Audit Log
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="detail-grid">
+
+        <section
+            class="content-card"
+            aria-labelledby="audit-summary-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="audit-summary-heading">
+                        Event Summary
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Entry ID
+                    </dt>
+
+                    <dd>
+                        {{ audit_log.id }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Date and Time
+                    </dt>
+
+                    <dd>
+                        {{ audit_log.created_at }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Action
+                    </dt>
+
+                    <dd>
+                        <code>
+                            {{ audit_log.action }}
+                        </code>
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Summary
+                    </dt>
+
+                    <dd>
+                        {{ audit_log.summary }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        User
+                    </dt>
+
+                    <dd>
+
+                        {% if audit_log.user %}
+
+                        <div class="table-primary">
+
+                            <span class="table-primary-text">
+                                {{ audit_log.user.display_name }}
+                            </span>
+
+                            <span class="table-secondary">
+                                {{ audit_log.user.username }}
+                            </span>
+
+                            {% if audit_log.user.is_anonymised %}
+
+                            <span class="status-badge status-badge-muted">
+                                Anonymised
+                            </span>
+
+                            {% elif not audit_log.user.is_active %}
+
+                            <span class="status-badge status-badge-danger">
+                                Inactive
+                            </span>
+
+                            {% endif %}
+
+                        </div>
+
+                        {% else %}
+
+                        <span class="text-muted">
+                            System
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Entity
+                    </dt>
+
+                    <dd>
+
+                        {% if audit_log.entity_type %}
+
+                        <code>
+                            {{ audit_log.entity_type }}
+                        </code>
+
+                            {% if audit_log.entity_id is not none %}
+
+                            <span>
+                                #{{ audit_log.entity_id }}
+                            </span>
+
+                            {% endif %}
+
+                        {% else %}
+
+                        <span class="text-muted">
+                            No entity recorded
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+            </dl>
+
+        </section>
+
+        <section
+            class="content-card"
+            aria-labelledby="audit-request-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="audit-request-heading">
+                        Request Details
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        IP Address
+                    </dt>
+
+                    <dd>
+
+                        {% if audit_log.ip_address %}
+
+                        <code>
+                            {{ audit_log.ip_address }}
+                        </code>
+
+                        {% else %}
+
+                        <span class="text-muted">
+                            Not recorded
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        User Agent
+                    </dt>
+
+                    <dd>
+
+                        {% if audit_log.user_agent %}
+
+                        {{ audit_log.user_agent }}
+
+                        {% else %}
+
+                        <span class="text-muted">
+                            Not recorded
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+            </dl>
+
+        </section>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="audit-metadata-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="audit-metadata-heading">
+                    Metadata
+                </h2>
+
+                <p class="card-subtitle">
+                    Additional structured information recorded with this
+                    event. Sensitive values are redacted before storage.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% if audit_log.metadata_json %}
+
+        <pre class="audit-metadata"><code>{{ audit_log.metadata_json | tojson(indent=2) }}</code></pre>
+
+        {% else %}
+
+        <div class="empty-state empty-state-compact">
+
+            <p>
+                No additional metadata was recorded.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('admin_audit') }}"
+            class="btn btn-secondary"
+        >
+            Back to Audit Log
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

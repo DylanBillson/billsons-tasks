@@ -1,0 +1,208 @@
+{% extends "base.html" %}
+
+{% block title %}
+My Tasks
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page my-tasks-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Personal Workspace
+            </p>
+
+            <h1>
+                My Tasks
+            </h1>
+
+            <p class="page-subtitle">
+                Tasks that have been explicitly assigned to you.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('home') }}"
+                class="btn btn-secondary"
+            >
+                Dashboard
+            </a>
+
+            <a
+                href="{{ url_for('companies') }}"
+                class="btn btn-secondary"
+            >
+                Companies
+            </a>
+
+        </div>
+
+    </div>
+
+    <section
+        aria-labelledby="my-tasks-summary-heading"
+    >
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2 id="my-tasks-summary-heading">
+                    Summary
+                </h2>
+
+                <p class="section-subtitle">
+                    Counts include active tasks assigned to your account.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="metric-grid">
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    All
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.all_count }}
+                </strong>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Open
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.open_count }}
+                </strong>
+
+            </article>
+
+            <article
+                class="
+                    metric-card
+                    {% if metrics.overdue_count %}
+                    metric-card-warning
+                    {% endif %}
+                "
+            >
+
+                <span class="metric-label">
+                    Overdue
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.overdue_count }}
+                </strong>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Due Today
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.due_today_count }}
+                </strong>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Due Soon
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.due_soon_count }}
+                </strong>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Completed
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.completed_count }}
+                </strong>
+
+            </article>
+
+        </div>
+
+    </section>
+
+    <section
+        class="content-card"
+        aria-labelledby="my-task-filters-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="my-task-filters-heading">
+                    Filters
+                </h2>
+
+                <p class="card-subtitle">
+                    Narrow the task list by status, location, or search text.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% include "partials/my_task_filters.html" %}
+
+    </section>
+
+    <section
+        class="content-card"
+        aria-labelledby="my-task-results-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="my-task-results-heading">
+                    Assigned Tasks
+                </h2>
+
+                <p class="card-subtitle">
+                    {{ tasks | length }}
+                    task{% if tasks | length != 1 %}s{% endif %}
+                    match the selected filters.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% include "partials/my_task_table.html" %}
+
+    </section>
+
+</div>
+
+{% endblock %}

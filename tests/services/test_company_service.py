@@ -1,13 +1,20 @@
+from datetime import timedelta
+
 import pytest
 from sqlalchemy import select
 from sqlalchemy.orm import Session
 
 from app.auth.permissions import PermissionDeniedError
 from app.core.constants import AuditAction, CompanyRole
+from app.core.timezone import utc_now
 from app.models.audit_log import AuditLog
 from app.models.company import Company
-from app.schemas.company import CompanyCreateRequest, CompanyUpdateRequest
+from app.schemas.company import (
+    CompanyCreateRequest,
+    CompanyUpdateRequest,
+)
 from app.services.company_service import (
+    CompanyDashboardError,
     CompanyNameAlreadyExistsError,
     CompanyNotFoundError,
     CompanyService,
@@ -16,9 +23,11 @@ from tests.factories import (
     create_administrator,
     create_company,
     create_company_membership,
+    create_section,
+    create_section_list,
+    create_task,
     create_user,
 )
-
 
 def test_require_company_returns_company(db: Session) -> None:
     company = create_company(db)
@@ -203,3 +212,187 @@ def test_delete_company_removes_record(db: Session) -> None:
     assert db.scalar(
         select(Company).where(Company.id == company_id)
     ) is None
+
+def test_get_company_dashboard_returns_company_data(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    creator = create_user(
+        db,
+    )
+
+    company = create_company(
+        db,
+        name="Dashboard Company",
+    )
+
+    section = create_section(
+        db,
+        company=company,
+        created_by=creator,
+        name="Operations",
+    )
+
+    section_list = create_section_list(
+        db,
+        section=section,
+    )
+
+    task = create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Due Soon",
+        due_at=utc_now() + timedelta(
+            days=1,
+        ),
+    )
+
+    dashboard = CompanyService.get_company_dashboard(
+        db,
+        actor=administrator,
+        company_id=company.id,
+    )
+
+    assert dashboard["company"] is company
+    assert dashboard["metrics"]["section_count"] == 1
+    assert dashboard["metrics"]["open_task_count"] == 1
+    assert dashboard["due_soon_tasks"][0].id == task.id
+
+
+def test_company_dashboard_scopes_standard_user_sections(
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+    )
+
+    other_creator = create_user(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=company,
+        user=user,
+    )
+
+    visible_section = create_section(
+        db,
+        company=company,
+        created_by=user,
+        name="Visible Section",
+    )
+
+    hidden_section = create_section(
+        db,
+        company=company,
+        created_by=other_creator,
+        name="Hidden Section",
+    )
+
+    visible_list = create_section_list(
+        db,
+        section=visible_section,
+    )
+
+    hidden_list = create_section_list(
+        db,
+        section=hidden_section,
+    )
+
+    visible_task = create_task(
+        db,
+        section_list=visible_list,
+        created_by=user,
+    )
+
+    create_task(
+        db,
+        section_list=hidden_list,
+        created_by=other_creator,
+    )
+
+    dashboard = CompanyService.get_company_dashboard(
+        db,
+        actor=user,
+        company_id=company.id,
+    )
+
+    assert dashboard["metrics"]["section_count"] == 1
+
+    assert [
+        task.id
+        for task in dashboard["recent_tasks"]
+    ] == [
+        visible_task.id,
+    ]
+
+
+def test_company_dashboard_requires_company_access(
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    with pytest.raises(
+        PermissionDeniedError,
+    ):
+        CompanyService.get_company_dashboard(
+            db,
+            actor=user,
+            company_id=company.id,
+        )
+
+
+@pytest.mark.parametrize(
+    (
+        "due_soon_days",
+        "task_limit",
+    ),
+    [
+        (
+            0,
+            10,
+        ),
+        (
+            7,
+            0,
+        ),
+    ],
+)
+def test_company_dashboard_rejects_invalid_limits(
+    db: Session,
+    due_soon_days: int,
+    task_limit: int,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    with pytest.raises(
+        CompanyDashboardError,
+    ):
+        CompanyService.get_company_dashboard(
+            db,
+            actor=administrator,
+            company_id=company.id,
+            due_soon_days=due_soon_days,
+            task_limit=task_limit,
+        )

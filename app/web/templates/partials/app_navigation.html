@@ -5,29 +5,38 @@
 
     <div class="app-navigation-inner">
 
+        {% if current_user %}
+
         <div class="app-navigation-primary">
 
-            {% if current_user %}
+            <a
+                href="{{ url_for('home') }}"
+                class="app-navigation-link{% if request.url.path == '/' %} is-active{% endif %}"
+            >
+                Dashboard
+            </a>
 
             <a
                 href="{{ url_for('companies') }}"
-                class="
-                    app-navigation-link
-                    {% if request.url.path == '/companies' %}is-active{% endif %}
-                "
+                class="app-navigation-link{% if request.url.path.startswith('/companies') %} is-active{% endif %}"
             >
                 Companies
             </a>
 
-            {% endif %}
+            <a
+                href="{{ url_for('my_tasks') }}"
+                class="app-navigation-link{% if request.url.path.startswith('/my-tasks') %} is-active{% endif %}"
+            >
+                My Tasks
+            </a>
 
         </div>
 
-        {% if current_user %}
+        {% endif %}
+
+        {% if current_user and current_user.is_administrator %}
 
         <div class="app-navigation-secondary">
-
-            {% if current_user.is_administrator %}
 
             <div class="app-navigation-group">
 
@@ -36,79 +45,53 @@
                 </span>
 
                 <a
-                    href="{{ url_for('admin_companies') }}"
-                    class="
-                        app-navigation-link
-                        {% if request.url.path.startswith('/admin/companies') %}is-active{% endif %}
-                    "
+                    href="{{ url_for('admin_dashboard') }}"
+                    class="app-navigation-link{% if request.url.path == '/admin' %} is-active{% endif %}"
                 >
-                    Manage Companies
+                    Overview
                 </a>
 
                 <a
                     href="{{ url_for('admin_users') }}"
-                    class="
-                        app-navigation-link
-                        {% if request.url.path.startswith('/admin/users') %}is-active{% endif %}
-                    "
+                    class="app-navigation-link{% if request.url.path.startswith('/admin/users') %} is-active{% endif %}"
                 >
-                    Manage Users
+                    Users
+                </a>
+
+                <a
+                    href="{{ url_for('admin_companies') }}"
+                    class="app-navigation-link{% if request.url.path.startswith('/admin/companies') %} is-active{% endif %}"
+                >
+                    Companies
+                </a>
+
+                <a
+                    href="{{ url_for('admin_archived_companies') }}"
+                    class="app-navigation-link{% if request.url.path.startswith('/admin/archived-companies') %} is-active{% endif %}"
+                >
+                    Archived Companies
+                </a>
+
+                <a
+                    href="{{ url_for('admin_archived_sections') }}"
+                    class="app-navigation-link{% if request.url.path.startswith('/admin/archived-sections') %} is-active{% endif %}"
+                >
+                    Archived Sections
                 </a>
 
                 <a
                     href="{{ url_for('admin_deleted_tasks') }}"
-                    class="
-                        app-navigation-link
-                        {% if request.url.path.startswith('/admin/deleted-tasks') %}is-active{% endif %}
-                    "
+                    class="app-navigation-link{% if request.url.path.startswith('/admin/deleted-tasks') %} is-active{% endif %}"
                 >
                     Deleted Tasks
                 </a>
 
-            </div>
-
-            {% endif %}
-
-            <div class="app-navigation-user">
-
-                <span class="app-navigation-user-name">
-                    {{ current_user.display_name }}
-                </span>
-
-                <span class="app-navigation-user-role">
-
-                    {% if current_user.is_administrator %}
-
-                    Administrator
-
-                    {% else %}
-
-                    User
-
-                    {% endif %}
-
-                </span>
-
-                <form
-                    method="post"
-                    action="{{ url_for('logout') }}"
-                    class="inline-form"
+                <a
+                    href="{{ url_for('admin_audit') }}"
+                    class="app-navigation-link{% if request.url.path.startswith('/admin/audit') %} is-active{% endif %}"
                 >
-
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token }}"
-                    >
-
-                    <button
-                        type="submit"
-                        class="btn btn-secondary btn-small"
-                    >
-                        Sign Out
-                    </button>
-
-                </form>
+                    Audit Log
+                </a>
 
             </div>
 

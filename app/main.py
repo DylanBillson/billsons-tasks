@@ -20,12 +20,18 @@ from app.web.dependencies.auth import (
     AuthenticationRequiredError,
 )
 from app.web.routes import (
+    admin_audit_router,
+    admin_archived_companies_router,
+    admin_archived_sections_router,
     admin_companies_router,
     admin_deleted_tasks_router,
+    admin_router,
     admin_users_router,
     auth_router,
     comments_router,
     companies_router,
+    home_router,
+    my_tasks_router,
     section_lists_router,
     sections_router,
     tasks_router,
@@ -163,6 +169,10 @@ app.include_router(
 )
 
 app.include_router(
+    home_router,
+)
+
+app.include_router(
     companies_router,
 )
 
@@ -183,6 +193,14 @@ app.include_router(
 )
 
 app.include_router(
+    my_tasks_router,
+)
+
+app.include_router(
+    admin_router,
+)
+
+app.include_router(
     admin_users_router,
 )
 
@@ -191,5 +209,17 @@ app.include_router(
 )
 
 app.include_router(
+    admin_archived_companies_router,
+)
+
+app.include_router(
+    admin_archived_sections_router,
+)
+
+app.include_router(
     admin_deleted_tasks_router,
+)
+
+app.include_router(
+    admin_audit_router,
 )

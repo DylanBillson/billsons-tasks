@@ -21,8 +21,8 @@ Manage Users
             </h1>
 
             <p class="page-subtitle">
-                Review user accounts, reset passwords, and control whether
-                users can sign in.
+                Review user accounts, reset passwords, control sign-in access,
+                and permanently anonymise inactive users.
             </p>
 
         </div>
@@ -41,11 +41,7 @@ Manage Users
 
                 <p class="card-subtitle">
                     {{ users | length }}
-                    {% if users | length == 1 %}
-                        account
-                    {% else %}
-                        accounts
-                    {% endif %}
+                    account{% if users | length != 1 %}s{% endif %}
                 </p>
 
             </div>
@@ -61,6 +57,7 @@ Manage Users
                 <thead>
 
                     <tr>
+
                         <th scope="col">
                             User
                         </th>
@@ -79,6 +76,7 @@ Manage Users
                         >
                             Actions
                         </th>
+
                     </tr>
 
                 </thead>
@@ -151,7 +149,13 @@ Manage Users
 
                             <div class="table-actions">
 
-                                {% if not user.is_anonymised %}
+                                {% if user.is_anonymised %}
+
+                                <span class="text-muted">
+                                    No account actions available
+                                </span>
+
+                                {% else %}
 
                                 <a
                                     href="{{ url_for(
@@ -167,29 +171,21 @@ Manage Users
 
                                     {% if user.id != current_user.id %}
 
-                                    <form
-                                        method="post"
-                                        action="{{ url_for(
+                                    <a
+                                        href="{{ url_for(
                                             'admin_user_deactivate',
                                             user_id=user.id
                                         ) }}"
-                                        class="inline-form"
+                                        class="btn btn-danger btn-small"
                                     >
+                                        Deactivate
+                                    </a>
 
-                                        <input
-                                            type="hidden"
-                                            name="csrf_token"
-                                            value="{{ csrf_token }}"
-                                        >
+                                    {% else %}
 
-                                        <button
-                                            type="submit"
-                                            class="btn btn-danger btn-small"
-                                        >
-                                            Deactivate
-                                        </button>
-
-                                    </form>
+                                    <span class="text-muted">
+                                        Current account
+                                    </span>
 
                                     {% endif %}
 
@@ -218,6 +214,16 @@ Manage Users
                                     </button>
 
                                 </form>
+
+                                <a
+                                    href="{{ url_for(
+                                        'admin_user_anonymise',
+                                        user_id=user.id
+                                    ) }}"
+                                    class="btn btn-danger btn-small"
+                                >
+                                    Anonymise
+                                </a>
 
                                 {% endif %}
 

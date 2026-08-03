@@ -1,4 +1,5 @@
 from datetime import datetime
+from math import ceil
 from typing import Any
 
 from sqlalchemy.orm import Session
@@ -7,10 +8,30 @@ from app.core.constants import AuditAction
 from app.models.audit_log import AuditLog
 from app.models.user import User
 from app.repositories.audit_repository import AuditRepository
+from app.schemas.audit_log import (
+    AuditLogDetail,
+    AuditLogFilterChoices,
+    AuditLogFilterOptions,
+    AuditLogPage,
+    AuditLogSummary,
+    AuditLogUserSummary,
+)
+
+
+class AuditServiceError(ValueError):
+    """Base exception for audit-service failures."""
 
 
 class AuditLogNotFoundError(LookupError):
     """Raised when an audit log entry cannot be found."""
+
+
+class AuditLogPermissionError(AuditServiceError):
+    """Raised when a user cannot access audit information."""
+
+
+class AuditLogFilterError(AuditServiceError):
+    """Raised when audit-log filters are invalid."""
 
 
 class AuditService:
@@ -51,8 +72,10 @@ class AuditService:
                 summary,
             ),
             user_id=resolved_user_id,
-            entity_type=AuditService.normalise_optional_string(
-                entity_type,
+            entity_type=(
+                AuditService.normalise_optional_string(
+                    entity_type,
+                )
             ),
             entity_id=entity_id,
             metadata_json=AuditService.sanitise_metadata(
@@ -87,9 +110,6 @@ class AuditService:
         user_agent: str | None = None,
         commit: bool = False,
     ) -> AuditLog:
-        """
-        Create an audit entry that is not associated with a user.
-        """
         return AuditService.record(
             db,
             action=action,
@@ -132,6 +152,123 @@ class AuditService:
         return audit_log
 
     @staticmethod
+    def get_log_detail(
+        db: Session,
+        *,
+        actor: User,
+        audit_log_id: int,
+    ) -> AuditLogDetail:
+        AuditService.require_administrator(
+            actor,
+        )
+
+        audit_log = AuditService.require_log(
+            db,
+            audit_log_id=audit_log_id,
+        )
+
+        return AuditService.build_detail(
+            audit_log,
+        )
+
+    @staticmethod
+    def get_log_page(
+        db: Session,
+        *,
+        actor: User,
+        filters: AuditLogFilterOptions | None = None,
+    ) -> AuditLogPage:
+        AuditService.require_administrator(
+            actor,
+        )
+
+        resolved_filters = (
+            filters
+            if filters is not None
+            else AuditLogFilterOptions()
+        )
+
+        if (
+            resolved_filters.created_from is not None
+            and resolved_filters.created_to is not None
+            and resolved_filters.created_from
+            >= resolved_filters.created_to
+        ):
+            raise AuditLogFilterError(
+                "The start date must be before the end date.",
+            )
+
+        total_items = AuditRepository.count_logs(
+            db,
+            search=resolved_filters.search,
+            user_id=resolved_filters.user_id,
+            action=resolved_filters.action,
+            entity_type=resolved_filters.entity_type,
+            entity_id=resolved_filters.entity_id,
+            created_from=resolved_filters.created_from,
+            created_to=resolved_filters.created_to,
+        )
+
+        total_pages = max(
+            1,
+            ceil(
+                total_items
+                / resolved_filters.page_size,
+            ),
+        )
+
+        logs = AuditRepository.list_logs(
+            db,
+            search=resolved_filters.search,
+            user_id=resolved_filters.user_id,
+            action=resolved_filters.action,
+            entity_type=resolved_filters.entity_type,
+            entity_id=resolved_filters.entity_id,
+            created_from=resolved_filters.created_from,
+            created_to=resolved_filters.created_to,
+            limit=resolved_filters.page_size,
+            offset=(
+                resolved_filters.page - 1
+            )
+            * resolved_filters.page_size,
+        )
+
+        return AuditLogPage(
+            filters=resolved_filters,
+            logs=[
+                AuditService.build_summary(
+                    audit_log,
+                )
+                for audit_log in logs
+            ],
+            total_items=total_items,
+            total_pages=total_pages,
+            current_page=resolved_filters.page,
+            page_size=resolved_filters.page_size,
+        )
+
+    @staticmethod
+    def get_filter_choices(
+        db: Session,
+        *,
+        actor: User,
+    ) -> AuditLogFilterChoices:
+        AuditService.require_administrator(
+            actor,
+        )
+
+        return AuditLogFilterChoices(
+            actions=AuditRepository.list_actions(
+                db,
+            ),
+            entity_types=(
+                AuditRepository.list_entity_types(
+                    db,
+                )
+            ),
+        )
+
+    @staticmethod
     def list_logs(
         db: Session,
         *,
@@ -141,19 +278,27 @@ class AuditService:
         entity_id: int | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
+        search: str | None = None,
         limit: int = 100,
         offset: int = 0,
     ) -> list[AuditLog]:
         return AuditRepository.list_logs(
             db,
+            search=AuditService.normalise_optional_string(
+                search,
+            ),
             user_id=user_id,
             action=(
-                AuditService.normalise_action(action)
+                AuditService.normalise_action(
+                    action,
+                )
                 if action is not None
                 else None
             ),
-            entity_type=AuditService.normalise_optional_string(
-                entity_type,
+            entity_type=(
+                AuditService.normalise_optional_string(
+                    entity_type,
+                )
             ),
             entity_id=entity_id,
             created_from=created_from,
@@ -176,17 +321,25 @@ class AuditService:
         entity_id: int | None = None,
         created_from: datetime | None = None,
         created_to: datetime | None = None,
+        search: str | None = None,
     ) -> int:
         return AuditRepository.count_logs(
             db,
+            search=AuditService.normalise_optional_string(
+                search,
+            ),
             user_id=user_id,
             action=(
-                AuditService.normalise_action(action)
+                AuditService.normalise_action(
+                    action,
+                )
                 if action is not None
                 else None
             ),
-            entity_type=AuditService.normalise_optional_string(
-                entity_type,
+            entity_type=(
+                AuditService.normalise_optional_string(
+                    entity_type,
+                )
             ),
             entity_id=entity_id,
             created_from=created_from,
@@ -203,9 +356,11 @@ class AuditService:
     ) -> list[AuditLog]:
         return AuditRepository.list_for_entity(
             db,
-            entity_type=AuditService.normalise_required_string(
-                entity_type,
-                field_name="entity_type",
+            entity_type=(
+                AuditService.normalise_required_string(
+                    entity_type,
+                    field_name="entity_type",
+                )
             ),
             entity_id=entity_id,
             limit=AuditService.normalise_limit(
@@ -214,15 +369,73 @@ class AuditService:
         )
 
     @staticmethod
+    def build_summary(
+        audit_log: AuditLog,
+    ) -> AuditLogSummary:
+        return AuditLogSummary(
+            id=audit_log.id,
+            action=audit_log.action,
+            summary=audit_log.summary,
+            user=(
+                AuditService.build_user_summary(
+                    audit_log.user,
+                )
+                if audit_log.user is not None
+                else None
+            ),
+            entity_type=audit_log.entity_type,
+            entity_id=audit_log.entity_id,
+            ip_address=audit_log.ip_address,
+            user_agent=audit_log.user_agent,
+            created_at=audit_log.created_at,
+        )
+
+    @staticmethod
+    def build_detail(
+        audit_log: AuditLog,
+    ) -> AuditLogDetail:
+        summary = AuditService.build_summary(
+            audit_log,
+        )
+
+        return AuditLogDetail(
+            **summary.model_dump(),
+            metadata_json=(
+                audit_log.metadata_json
+                or {}
+            ),
+        )
+
+    @staticmethod
+    def build_user_summary(
+        user: User,
+    ) -> AuditLogUserSummary:
+        return AuditLogUserSummary(
+            id=user.id,
+            username=user.username,
+            display_name=user.display_name,
+            is_active=user.is_active,
+            is_anonymised=user.is_anonymised,
+        )
+
+    @staticmethod
+    def require_administrator(
+        actor: User,
+    ) -> None:
+        if not actor.is_administrator:
+            raise AuditLogPermissionError(
+                "Administrator access is required.",
+            )
+
+        if not actor.can_authenticate:
+            raise AuditLogPermissionError(
+                "The administrator account is not available.",
+            )
+
+    @staticmethod
     def sanitise_metadata(
         metadata_json: dict[str, Any],
     ) -> dict[str, Any]:
-        """
-        Convert audit metadata into JSON-safe values and redact secrets.
-
-        Sensitive values are redacted recursively, including values nested in
-        dictionaries, lists and tuples.
-        """
         sensitive_keys = {
             "password",
             "password_hash",
@@ -252,8 +465,13 @@ class AuditService:
             "deleted_comment_content",
         }
 
-        def sanitise_value(value: Any) -> Any:
-            if isinstance(value, dict):
+        def sanitise_value(
+            value: Any,
+        ) -> Any:
+            if isinstance(
+                value,
+                dict,
+            ):
                 cleaned: dict[str, Any] = {}
 
                 for key, nested_value in value.items():
@@ -261,11 +479,18 @@ class AuditService:
                         key,
                     )
 
-                    if key_string.casefold() in sensitive_keys:
-                        cleaned[key_string] = "[REDACTED]"
+                    if (
+                        key_string.casefold()
+                        in sensitive_keys
+                    ):
+                        cleaned[key_string] = (
+                            "[REDACTED]"
+                        )
                     else:
-                        cleaned[key_string] = sanitise_value(
-                            nested_value,
+                        cleaned[key_string] = (
+                            sanitise_value(
+                                nested_value,
+                            )
                         )
 
                 return cleaned
@@ -275,25 +500,41 @@ class AuditService:
                 list | tuple | set,
             ):
                 return [
-                    sanitise_value(item)
+                    sanitise_value(
+                        item,
+                    )
                     for item in value
                 ]
 
-            if isinstance(value, datetime):
+            if isinstance(
+                value,
+                datetime,
+            ):
                 return value.isoformat()
 
-            if isinstance(value, AuditAction):
+            if isinstance(
+                value,
+                AuditAction,
+            ):
                 return value.value
 
-            if isinstance(value, User):
+            if isinstance(
+                value,
+                User,
+            ):
                 return {
                     "id": value.id,
-                    "display_name": value.display_name,
+                    "display_name": (
+                        value.display_name
+                    ),
                 }
 
-            if value is None or isinstance(
-                value,
-                str | int | float | bool,
+            if (
+                value is None
+                or isinstance(
+                    value,
+                    str | int | float | bool,
+                )
             ):
                 return value
 
@@ -313,21 +554,28 @@ class AuditService:
     def normalise_action(
         action: str | AuditAction,
     ) -> str:
-        if isinstance(action, AuditAction):
+        if isinstance(
+            action,
+            AuditAction,
+        ):
             return action.value
 
-        return AuditService.normalise_required_string(
-            action,
-            field_name="action",
+        return (
+            AuditService.normalise_required_string(
+                action,
+                field_name="action",
+            )
         )
 
     @staticmethod
     def normalise_summary(
         summary: str,
     ) -> str:
-        return AuditService.normalise_required_string(
-            summary,
-            field_name="summary",
+        return (
+            AuditService.normalise_required_string(
+                summary,
+                field_name="summary",
+            )
         )
 
     @staticmethod

@@ -105,3 +105,8 @@ APPLICATION_SETTINGS: dict[SettingKey, str] = {
     SettingKey.APPLICATION_NAME: "Billson's Tasks",
     SettingKey.DEFAULT_TIMEZONE: "Europe/London",
 }
+
+
+ANONYMISATION_CONFIRMATION_PHRASE = "ANONYMISE USER"
+ANONYMISED_USERNAME_PREFIX = "anonymised-user"
+ANONYMISED_DISPLAY_NAME_PREFIX = "Anonymised User"

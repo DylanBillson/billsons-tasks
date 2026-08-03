@@ -20,6 +20,12 @@ class PermissionDeniedError(PermissionError):
 
 class PermissionService:
     @staticmethod
+    def is_authenticated_user(
+        actor: User,
+    ) -> bool:
+        return actor.can_authenticate
+
+    @staticmethod
     def is_administrator(
         actor: User,
     ) -> bool:
@@ -64,7 +70,8 @@ class PermissionService:
 
         return (
             membership is not None
-            and membership.role == CompanyRole.MANAGER.value
+            and membership.role
+            == CompanyRole.MANAGER.value
         )
 
     @staticmethod
@@ -75,7 +82,8 @@ class PermissionService:
     ) -> bool:
         return (
             actor.can_authenticate
-            and section.created_by_user_id == actor.id
+            and section.created_by_user_id
+            == actor.id
         )
 
     @staticmethod
@@ -93,6 +101,166 @@ class PermissionService:
             section_id=section.id,
             user_id=actor.id,
         )
+
+    # ------------------------------------------------------------------
+    # Dashboard permissions
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def can_view_global_dashboard(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.is_authenticated_user(
+            actor,
+        )
+
+    @staticmethod
+    def can_view_company_dashboard(
+        db: Session,
+        *,
+        actor: User,
+        company: Company,
+    ) -> bool:
+        return PermissionService.can_view_company(
+            db,
+            actor=actor,
+            company=company,
+        )
+
+    @staticmethod
+    def can_view_my_tasks(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.is_authenticated_user(
+            actor,
+        )
+
+    # ------------------------------------------------------------------
+    # Administration permissions
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def can_access_administration(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.is_administrator(
+            actor,
+        )
+
+    @staticmethod
+    def can_view_archived_companies(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_access_administration(
+            actor=actor,
+        )
+
+    @staticmethod
+    def can_view_archived_sections(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_access_administration(
+            actor=actor,
+        )
+
+    @staticmethod
+    def can_view_deleted_tasks(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_access_administration(
+            actor=actor,
+        )
+
+    @staticmethod
+    def can_manage_users(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_access_administration(
+            actor=actor,
+        )
+
+    @staticmethod
+    def can_deactivate_user(
+        *,
+        actor: User,
+        target_user: User,
+    ) -> bool:
+        if not PermissionService.can_manage_users(
+            actor=actor,
+        ):
+            return False
+
+        if actor.id == target_user.id:
+            return False
+
+        if target_user.is_anonymised:
+            return False
+
+        return target_user.is_active
+
+    @staticmethod
+    def can_reactivate_user(
+        *,
+        actor: User,
+        target_user: User,
+    ) -> bool:
+        if not PermissionService.can_manage_users(
+            actor=actor,
+        ):
+            return False
+
+        return (
+            not target_user.is_active
+            and not target_user.is_anonymised
+        )
+
+    @staticmethod
+    def can_anonymise_user(
+        *,
+        actor: User,
+        target_user: User,
+    ) -> bool:
+        if not PermissionService.can_manage_users(
+            actor=actor,
+        ):
+            return False
+
+        if actor.id == target_user.id:
+            return False
+
+        return (
+            not target_user.is_active
+            and not target_user.is_anonymised
+        )
+
+    @staticmethod
+    def can_view_audit_log(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_access_administration(
+            actor=actor,
+        )
+
+    @staticmethod
+    def can_view_audit_log_entry(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_view_audit_log(
+            actor=actor,
+        )
+
+    # ------------------------------------------------------------------
+    # Company permissions
+    # ------------------------------------------------------------------
 
     @staticmethod
     def can_view_company(
@@ -150,6 +318,10 @@ class PermissionService:
             actor=actor,
             company=company,
         )
+
+    # ------------------------------------------------------------------
+    # Section permissions
+    # ------------------------------------------------------------------
 
     @staticmethod
     def can_create_section(
@@ -234,6 +406,10 @@ class PermissionService:
             section=section,
         )
 
+    # ------------------------------------------------------------------
+    # Section-list permissions
+    # ------------------------------------------------------------------
+
     @staticmethod
     def can_view_section_list(
         db: Session,
@@ -297,6 +473,10 @@ class PermissionService:
             actor=actor,
             section=section,
         )
+
+    # ------------------------------------------------------------------
+    # Task permissions
+    # ------------------------------------------------------------------
 
     @staticmethod
     def can_view_task(
@@ -374,7 +554,10 @@ class PermissionService:
         ):
             return False
 
-        if destination_list.section_id != task.section_id:
+        if (
+            destination_list.section_id
+            != task.section_id
+        ):
             return False
 
         return PermissionService.can_create_task(
@@ -498,6 +681,184 @@ class PermissionService:
             )
         )
 
+    # ------------------------------------------------------------------
+    # Dashboard requirements
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def require_global_dashboard_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_global_dashboard(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "You do not have access to the dashboard.",
+            )
+
+    @staticmethod
+    def require_company_dashboard_access(
+        db: Session,
+        *,
+        actor: User,
+        company: Company,
+    ) -> None:
+        if not PermissionService.can_view_company_dashboard(
+            db,
+            actor=actor,
+            company=company,
+        ):
+            raise PermissionDeniedError(
+                "You do not have access to this company dashboard.",
+            )
+
+    @staticmethod
+    def require_my_tasks_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_my_tasks(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "You do not have access to My Tasks.",
+            )
+
+    # ------------------------------------------------------------------
+    # Administration requirements
+    # ------------------------------------------------------------------
+
+    @staticmethod
+    def require_administration_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_access_administration(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required.",
+            )
+
+    @staticmethod
+    def require_archived_company_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_archived_companies(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required to view archived companies.",
+            )
+
+    @staticmethod
+    def require_archived_section_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_archived_sections(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required to view archived sections.",
+            )
+
+    @staticmethod
+    def require_deleted_task_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_deleted_tasks(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required to view deleted tasks.",
+            )
+
+    @staticmethod
+    def require_user_management(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_manage_users(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required to manage users.",
+            )
+
+    @staticmethod
+    def require_user_deactivation(
+        *,
+        actor: User,
+        target_user: User,
+    ) -> None:
+        if not PermissionService.can_deactivate_user(
+            actor=actor,
+            target_user=target_user,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to deactivate this user.",
+            )
+
+    @staticmethod
+    def require_user_reactivation(
+        *,
+        actor: User,
+        target_user: User,
+    ) -> None:
+        if not PermissionService.can_reactivate_user(
+            actor=actor,
+            target_user=target_user,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to reactivate this user.",
+            )
+
+    @staticmethod
+    def require_user_anonymisation(
+        *,
+        actor: User,
+        target_user: User,
+    ) -> None:
+        if not PermissionService.can_anonymise_user(
+            actor=actor,
+            target_user=target_user,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to anonymise this user.",
+            )
+
+    @staticmethod
+    def require_audit_log_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_audit_log(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required to view the audit log.",
+            )
+
+    @staticmethod
+    def require_audit_log_entry_access(
+        *,
+        actor: User,
+    ) -> None:
+        if not PermissionService.can_view_audit_log_entry(
+            actor=actor,
+        ):
+            raise PermissionDeniedError(
+                "Administrator access is required to view this audit entry.",
+            )
+
+    # ------------------------------------------------------------------
+    # Company requirements
+    # ------------------------------------------------------------------
+
     @staticmethod
     def require_company_access(
         db: Session,
@@ -555,6 +916,10 @@ class PermissionService:
             raise PermissionDeniedError(
                 "You do not have permission to manage this company's members.",
             )
+
+    # ------------------------------------------------------------------
+    # Section requirements
+    # ------------------------------------------------------------------
 
     @staticmethod
     def require_section_creation(
@@ -620,6 +985,10 @@ class PermissionService:
                 "You do not have permission to manage this section's members.",
             )
 
+    # ------------------------------------------------------------------
+    # Section-list requirements
+    # ------------------------------------------------------------------
+
     @staticmethod
     def require_section_list_access(
         db: Session,
@@ -683,6 +1052,10 @@ class PermissionService:
             raise PermissionDeniedError(
                 "You do not have permission to reorder lists in this section.",
             )
+
+    # ------------------------------------------------------------------
+    # Task requirements
+    # ------------------------------------------------------------------
 
     @staticmethod
     def require_task_access(

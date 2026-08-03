@@ -1,6 +1,7 @@
-from sqlalchemy import or_, select
+from sqlalchemy import func, or_, select
 from sqlalchemy.orm import Session, joinedload, selectinload
 
+from app.models.company import Company
 from app.models.section import Section
 from app.models.section_membership import SectionMembership
 
@@ -14,9 +15,15 @@ class SectionRepository:
         query = (
             select(Section)
             .options(
-                joinedload(Section.company),
-                joinedload(Section.created_by),
-                selectinload(Section.memberships),
+                joinedload(
+                    Section.company,
+                ),
+                joinedload(
+                    Section.created_by,
+                ),
+                selectinload(
+                    Section.memberships,
+                ),
             )
             .where(
                 Section.id == section_id,
@@ -56,8 +63,12 @@ class SectionRepository:
         query = (
             select(Section)
             .options(
-                joinedload(Section.created_by),
-                selectinload(Section.memberships),
+                joinedload(
+                    Section.created_by,
+                ),
+                selectinload(
+                    Section.memberships,
+                ),
             )
             .where(
                 Section.company_id == company_id,
@@ -91,8 +102,12 @@ class SectionRepository:
         query = (
             select(Section)
             .options(
-                joinedload(Section.company),
-                selectinload(Section.memberships),
+                joinedload(
+                    Section.company,
+                ),
+                selectinload(
+                    Section.memberships,
+                ),
             )
             .where(
                 Section.created_by_user_id == user_id,
@@ -132,11 +147,16 @@ class SectionRepository:
             select(Section)
             .join(
                 SectionMembership,
-                SectionMembership.section_id == Section.id,
+                SectionMembership.section_id
+                == Section.id,
             )
             .options(
-                joinedload(Section.company),
-                joinedload(Section.created_by),
+                joinedload(
+                    Section.company,
+                ),
+                joinedload(
+                    Section.created_by,
+                ),
             )
             .where(
                 SectionMembership.user_id == user_id,
@@ -188,9 +208,15 @@ class SectionRepository:
         query = (
             select(Section)
             .options(
-                joinedload(Section.company),
-                joinedload(Section.created_by),
-                selectinload(Section.memberships),
+                joinedload(
+                    Section.company,
+                ),
+                joinedload(
+                    Section.created_by,
+                ),
+                selectinload(
+                    Section.memberships,
+                ),
             )
             .where(
                 or_(
@@ -221,6 +247,104 @@ class SectionRepository:
             db.scalars(
                 query,
             ).unique().all(),
+        )
+
+    @staticmethod
+    def list_archived(
+        db: Session,
+        *,
+        company_id: int | None = None,
+        search: str | None = None,
+        offset: int = 0,
+        limit: int = 25,
+    ) -> list[Section]:
+        query = (
+            select(
+                Section,
+            )
+            .join(
+                Company,
+                Company.id == Section.company_id,
+            )
+            .options(
+                joinedload(
+                    Section.company,
+                ),
+                joinedload(
+                    Section.created_by,
+                ),
+                selectinload(
+                    Section.memberships,
+                ),
+            )
+            .where(
+                Section.is_archived.is_(True),
+            )
+        )
+
+        query = SectionRepository._apply_archived_filters(
+            query,
+            company_id=company_id,
+            search=search,
+        )
+
+        query = (
+            query
+            .order_by(
+                Company.name.asc(),
+                Section.name.asc(),
+                Section.id.asc(),
+            )
+            .offset(
+                offset,
+            )
+            .limit(
+                limit,
+            )
+        )
+
+        return list(
+            db.scalars(
+                query,
+            ).unique().all(),
+        )
+
+    @staticmethod
+    def count_archived(
+        db: Session,
+        *,
+        company_id: int | None = None,
+        search: str | None = None,
+    ) -> int:
+        query = (
+            select(
+                func.count(
+                    Section.id,
+                ),
+            )
+            .select_from(
+                Section,
+            )
+            .join(
+                Company,
+                Company.id == Section.company_id,
+            )
+            .where(
+                Section.is_archived.is_(True),
+            )
+        )
+
+        query = SectionRepository._apply_archived_filters(
+            query,
+            company_id=company_id,
+            search=search,
+        )
+
+        return int(
+            db.scalar(
+                query,
+            )
+            or 0
         )
 
     @staticmethod
@@ -284,3 +408,36 @@ class SectionRepository:
             section,
         )
         db.flush()
+
+    @staticmethod
+    def _apply_archived_filters(
+        query,
+        *,
+        company_id: int | None,
+        search: str | None,
+    ):
+        if company_id is not None:
+            query = query.where(
+                Section.company_id == company_id,
+            )
+
+        if search:
+            pattern = (
+                f"%{search.strip()}%"
+            )
+
+            query = query.where(
+                or_(
+                    Section.name.ilike(
+                        pattern,
+                    ),
+                    Section.description.ilike(
+                        pattern,
+                    ),
+                    Company.name.ilike(
+                        pattern,
+                    ),
+                ),
+            )
+
+        return query

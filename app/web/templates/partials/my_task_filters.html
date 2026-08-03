@@ -1,0 +1,228 @@
+{% if filter_validation_failed %}
+
+<div
+    class="form-summary form-summary-error"
+    role="alert"
+>
+
+    <h3>
+        Check the selected filters
+    </h3>
+
+    <p>
+        One or more filter values are invalid.
+    </p>
+
+    {% for message in filter_form.errors.form_errors %}
+
+    <p>
+        {{ message }}
+    </p>
+
+    {% endfor %}
+
+    {% for field_name, messages in filter_form.errors.field_errors.items() %}
+
+        {% for message in messages %}
+
+        <p>
+            {{ message }}
+        </p>
+
+        {% endfor %}
+
+    {% endfor %}
+
+</div>
+
+{% endif %}
+
+<form
+    method="get"
+    action="{{ url_for('my_tasks') }}"
+    class="filter-panel"
+    data-my-task-filters
+>
+
+    <div class="filter-grid">
+
+        <div class="form-field">
+
+            <label
+                for="my-tasks-state"
+                class="form-label"
+            >
+                Status
+            </label>
+
+            <select
+                id="my-tasks-state"
+                name="state"
+                class="form-select"
+            >
+
+                <option
+                    value="all"
+                    {% if filter_form.state == "all" %}selected{% endif %}
+                >
+                    All
+                </option>
+
+                <option
+                    value="open"
+                    {% if filter_form.state == "open" %}selected{% endif %}
+                >
+                    Open
+                </option>
+
+                <option
+                    value="overdue"
+                    {% if filter_form.state == "overdue" %}selected{% endif %}
+                >
+                    Overdue
+                </option>
+
+                <option
+                    value="due_today"
+                    {% if filter_form.state == "due_today" %}selected{% endif %}
+                >
+                    Due Today
+                </option>
+
+                <option
+                    value="due_soon"
+                    {% if filter_form.state == "due_soon" %}selected{% endif %}
+                >
+                    Due Soon
+                </option>
+
+                <option
+                    value="completed"
+                    {% if filter_form.state == "completed" %}selected{% endif %}
+                >
+                    Completed
+                </option>
+
+            </select>
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="my-tasks-company"
+                class="form-label"
+            >
+                Company
+            </label>
+
+            <select
+                id="my-tasks-company"
+                name="company_id"
+                class="form-select"
+                data-my-tasks-company
+            >
+
+                <option value="">
+                    All Companies
+                </option>
+
+                {% for company in companies %}
+
+                <option
+                    value="{{ company.id }}"
+                    {% if filter_form.company_id == company.id | string %}selected{% endif %}
+                >
+                    {{ company.name }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="my-tasks-section"
+                class="form-label"
+            >
+                Section
+            </label>
+
+            <select
+                id="my-tasks-section"
+                name="section_id"
+                class="form-select"
+                data-my-tasks-section
+            >
+
+                <option value="">
+                    All Sections
+                </option>
+
+                {% for section in sections %}
+
+                <option
+                    value="{{ section.id }}"
+                    data-company-id="{{ section.company_id }}"
+                    {% if filter_form.section_id == section.id | string %}selected{% endif %}
+                >
+                    {{ section.company_name }}
+                    —
+                    {{ section.name }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <div class="form-field">
+
+            <label
+                for="my-tasks-search"
+                class="form-label"
+            >
+                Search
+            </label>
+
+            <input
+                id="my-tasks-search"
+                name="search"
+                type="search"
+                class="form-input"
+                value="{{ filter_form.search }}"
+                maxlength="250"
+                placeholder="Search task title or description"
+            >
+
+        </div>
+
+    </div>
+
+    <div class="filter-actions">
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Apply Filters
+        </button>
+
+        {% if filter_form.is_active %}
+
+        <a
+            href="{{ url_for('my_tasks') }}"
+            class="btn btn-secondary"
+        >
+            Clear Filters
+        </a>
+
+        {% endif %}
+
+    </div>
+
+</form>

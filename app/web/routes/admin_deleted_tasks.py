@@ -1,16 +1,23 @@
+from math import ceil
 from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request, status
-from fastapi.responses import HTMLResponse, RedirectResponse
+from fastapi.responses import (
+    HTMLResponse,
+    RedirectResponse,
+)
 
+from app.auth.permissions import PermissionDeniedError
 from app.core.config import settings
-from app.repositories.task_repository import TaskRepository
+from app.repositories.company_repository import CompanyRepository
+from app.repositories.section_repository import SectionRepository
+from app.repositories.user_repository import UserRepository
 from app.services.task_service import (
+    DeletedTaskFilterError,
     TaskNotDeletedError,
     TaskNotFoundError,
     TaskService,
 )
-from app.auth.permissions import PermissionDeniedError
 from app.web.dependencies.auth import (
     AdministratorUser,
     DatabaseSession,
@@ -18,6 +25,10 @@ from app.web.dependencies.auth import (
     get_user_agent,
 )
 from app.web.dependencies.csrf import ValidatedCSRFSession
+from app.web.forms.deleted_task_filters import (
+    DeletedTaskFilterForm,
+    DeletedTaskFilters,
+)
 from app.web.templating import templates
 
 
@@ -40,31 +51,94 @@ def deleted_tasks_page(
     administrator: AdministratorUser,
     success: str | None = None,
     error: str | None = None,
-    page: int = 1,
 ) -> HTMLResponse:
-    resolved_page = max(
-        page,
-        1,
+    filter_form = DeletedTaskFilterForm.from_query_params(
+        request.query_params,
     )
 
-    per_page = 100
+    filters = filter_form.validate(
+        timezone_name=settings.default_timezone,
+    )
 
-    tasks = TaskRepository.list_all_deleted(
-        db,
-        limit=per_page + 1,
-        offset=(
-            resolved_page - 1
+    filter_validation_failed = (
+        filters is None
+    )
+
+    response_status = status.HTTP_200_OK
+
+    if filters is None:
+        filters = DeletedTaskFilters()
+
+        response_status = (
+            status.HTTP_422_UNPROCESSABLE_CONTENT
         )
-        * per_page,
+
+    try:
+        tasks, total_items = (
+            TaskService.list_deleted_tasks(
+                db,
+                actor=administrator,
+                search=filters.search,
+                company_id=filters.company_id,
+                section_id=filters.section_id,
+                deleted_by_user_id=(
+                    filters.deleted_by_user_id
+                ),
+                deleted_from=filters.deleted_from,
+                deleted_to=filters.deleted_to,
+                page=filters.page,
+                page_size=filters.page_size,
+            )
+        )
+
+    except DeletedTaskFilterError as exc:
+        return _redirect_to_deleted_tasks(
+            error=str(
+                exc,
+            ),
+        )
+
+    total_pages = max(
+        1,
+        ceil(
+            total_items
+            / filters.page_size,
+        ),
     )
 
-    has_next_page = len(
-        tasks,
-    ) > per_page
+    if (
+        total_items > 0
+        and filters.page > total_pages
+    ):
+        return RedirectResponse(
+            url=_build_page_url(
+                filter_form=filter_form,
+                page=total_pages,
+            ),
+            status_code=status.HTTP_303_SEE_OTHER,
+        )
 
-    tasks = tasks[
-        :per_page
-    ]
+    companies = CompanyRepository.list_all(
+        db,
+        include_archived=True,
+    )
+
+    sections = []
+
+    for company in companies:
+        sections.extend(
+            SectionRepository.list_for_company(
+                db,
+                company_id=company.id,
+                include_archived=True,
+            ),
+        )
+
+    users = UserRepository.list_all(
+        db,
+        include_inactive=True,
+        include_anonymised=True,
+    )
 
     return templates.TemplateResponse(
         request=request,
@@ -72,9 +146,32 @@ def deleted_tasks_page(
         context={
             "current_user": administrator,
             "tasks": tasks,
-            "page": resolved_page,
-            "has_previous_page": resolved_page > 1,
-            "has_next_page": has_next_page,
+            "companies": companies,
+            "sections": sections,
+            "users": users,
+            "filter_form": filter_form,
+            "filter_validation_failed": (
+                filter_validation_failed
+            ),
+            "total_items": total_items,
+            "total_pages": total_pages,
+            "current_page": filters.page,
+            "previous_page_url": (
+                _build_page_url(
+                    filter_form=filter_form,
+                    page=filters.page - 1,
+                )
+                if filters.page > 1
+                else None
+            ),
+            "next_page_url": (
+                _build_page_url(
+                    filter_form=filter_form,
+                    page=filters.page + 1,
+                )
+                if filters.page < total_pages
+                else None
+            ),
             "csrf_token": _get_authenticated_csrf_token(
                 request,
             ),
@@ -83,7 +180,7 @@ def deleted_tasks_page(
                 error=error,
             ),
         },
-        status_code=status.HTTP_200_OK,
+        status_code=response_status,
     )
 
 
@@ -120,12 +217,16 @@ def restore_deleted_task(
 
     except TaskNotFoundError:
         return _redirect_to_deleted_tasks(
-            error="The requested task could not be found.",
+            error=(
+                "The requested task could not be found."
+            ),
         )
 
     except TaskNotDeletedError as exc:
         return _redirect_to_deleted_tasks(
-            error=str(exc),
+            error=str(
+                exc,
+            ),
         )
 
     except PermissionDeniedError:
@@ -137,7 +238,9 @@ def restore_deleted_task(
         )
 
     return _redirect_to_deleted_tasks(
-        success=f"{task.title} was restored.",
+        success=(
+            f"{task.title} was restored."
+        ),
     )
 
 
@@ -176,12 +279,16 @@ def permanently_delete_task(
 
     except TaskNotFoundError:
         return _redirect_to_deleted_tasks(
-            error="The requested task could not be found.",
+            error=(
+                "The requested task could not be found."
+            ),
         )
 
     except TaskNotDeletedError as exc:
         return _redirect_to_deleted_tasks(
-            error=str(exc),
+            error=str(
+                exc,
+            ),
         )
 
     except PermissionDeniedError:
@@ -193,7 +300,47 @@ def permanently_delete_task(
         )
 
     return _redirect_to_deleted_tasks(
-        success=f"{task_title} was permanently deleted.",
+        success=(
+            f"{task_title} was permanently deleted."
+        ),
+    )
+
+
+def _build_page_url(
+    *,
+    filter_form: DeletedTaskFilterForm,
+    page: int,
+) -> str:
+    query: dict[str, str] = {
+        "page": str(
+            page,
+        ),
+        "page_size": filter_form.page_size,
+    }
+
+    for key in (
+        "search",
+        "company_id",
+        "section_id",
+        "deleted_by_user_id",
+        "deleted_from",
+        "deleted_to",
+    ):
+        value = getattr(
+            filter_form,
+            key,
+        )
+
+        if value:
+            query[
+                key
+            ] = value
+
+    return (
+        "/admin/deleted-tasks?"
+        + urlencode(
+            query,
+        )
     )
 
 
@@ -205,15 +352,22 @@ def _redirect_to_deleted_tasks(
     query: dict[str, str] = {}
 
     if success:
-        query["success"] = success
+        query[
+            "success"
+        ] = success
 
     if error:
-        query["error"] = error
+        query[
+            "error"
+        ] = error
 
     url = "/admin/deleted-tasks"
 
     if query:
-        url = f"{url}?{urlencode(query)}"
+        url = (
+            f"{url}?"
+            f"{urlencode(query)}"
+        )
 
     return RedirectResponse(
         url=url,
@@ -225,8 +379,18 @@ def _build_flash_messages(
     *,
     success: str | None,
     error: str | None,
-) -> list[dict[str, str | None]]:
-    messages: list[dict[str, str | None]] = []
+) -> list[
+    dict[
+        str,
+        str | None,
+    ]
+]:
+    messages: list[
+        dict[
+            str,
+            str | None,
+        ]
+    ] = []
 
     if success:
         messages.append(
@@ -241,7 +405,9 @@ def _build_flash_messages(
         messages.append(
             {
                 "category": "error",
-                "title": "Unable to complete request",
+                "title": (
+                    "Unable to complete request"
+                ),
                 "message": error,
             },
         )
@@ -253,6 +419,9 @@ def _get_authenticated_csrf_token(
     request: Request,
 ) -> str:
     return request.cookies.get(
-        f"{settings.session_cookie_name}_csrf",
+        (
+            f"{settings.session_cookie_name}"
+            "_csrf"
+        ),
         "",
     )

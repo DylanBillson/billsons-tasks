@@ -1,5 +1,9 @@
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import (
+    PermissionDeniedError,
+    PermissionService,
+)
 from app.core.constants import AuditAction
 from app.models.company import Company
 from app.models.section import Section
@@ -11,7 +15,6 @@ from app.schemas.section import (
     SectionUpdateRequest,
 )
 from app.services.audit_service import AuditService
-from app.auth.permissions import PermissionService
 
 
 class SectionServiceError(ValueError):
@@ -28,6 +31,14 @@ class SectionNameAlreadyExistsError(SectionServiceError):
 
 class SectionCompanyNotFoundError(SectionServiceError):
     """Raised when the requested parent company cannot be found."""
+
+
+class SectionParentCompanyArchivedError(SectionServiceError):
+    """Raised when a section cannot be restored into an archived company."""
+
+
+class SectionArchiveFilterError(SectionServiceError):
+    """Raised when archived-section filters are invalid."""
 
 
 class SectionService:
@@ -119,6 +130,75 @@ class SectionService:
             user_id=actor.id,
             company_id=company_id,
             include_archived=include_archived,
+        )
+
+    @staticmethod
+    def list_archived_sections(
+        db: Session,
+        *,
+        actor: User,
+        company_id: int | None = None,
+        search: str | None = None,
+        page: int = 1,
+        page_size: int = 25,
+    ) -> tuple[
+        list[Section],
+        int,
+    ]:
+        if not actor.is_administrator:
+            raise PermissionDeniedError(
+                "Administrator access is required.",
+            )
+
+        if page < 1:
+            raise SectionArchiveFilterError(
+                "The page number must be at least one.",
+            )
+
+        if page_size < 1 or page_size > 100:
+            raise SectionArchiveFilterError(
+                "The page size must be between 1 and 100.",
+            )
+
+        if company_id is not None:
+            company = CompanyRepository.get_by_id(
+                db,
+                company_id,
+            )
+
+            if company is None:
+                raise SectionCompanyNotFoundError(
+                    "Company was not found.",
+                )
+
+        normalised_search = (
+            search.strip()
+            if search
+            else None
+        )
+
+        if normalised_search == "":
+            normalised_search = None
+
+        total_items = SectionRepository.count_archived(
+            db,
+            company_id=company_id,
+            search=normalised_search,
+        )
+
+        sections = SectionRepository.list_archived(
+            db,
+            company_id=company_id,
+            search=normalised_search,
+            offset=(
+                page - 1
+            ) * page_size,
+            limit=page_size,
+        )
+
+        return (
+            sections,
+            total_items,
         )
 
     @staticmethod
@@ -338,6 +418,14 @@ class SectionService:
             section=section,
         )
 
+        if (
+            not is_archived
+            and section.company.is_archived
+        ):
+            raise SectionParentCompanyArchivedError(
+                "The section cannot be restored while its company is archived.",
+            )
+
         if section.is_archived == is_archived:
             return section
 
@@ -370,6 +458,7 @@ class SectionService:
             entity_id=section.id,
             metadata_json={
                 "company_id": section.company_id,
+                "company_name": section.company.name,
                 "name": section.name,
                 "is_archived": is_archived,
             },

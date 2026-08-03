@@ -152,6 +152,15 @@ class TaskPermissionService:
         )
 
     @staticmethod
+    def can_view_deleted_administration(
+        *,
+        actor: User,
+    ) -> bool:
+        return PermissionService.can_view_deleted_tasks(
+            actor=actor,
+        )
+
+    @staticmethod
     def can_permanently_delete(
         *,
         actor: User,
@@ -295,6 +304,15 @@ class TaskPermissionService:
         )
 
     @staticmethod
+    def require_view_deleted_administration(
+        *,
+        actor: User,
+    ) -> None:
+        PermissionService.require_deleted_task_access(
+            actor=actor,
+        )
+
+    @staticmethod
     def require_permanent_delete(
         *,
         actor: User,
@@ -318,7 +336,10 @@ class TaskPermissionService:
         administrator must use a deliberate cross-section workflow rather
         than modifying a task through a same-section operation.
         """
-        if task.section_id != section_list.section_id:
+        if (
+            task.section_id
+            != section_list.section_id
+        ):
             raise PermissionDeniedError(
                 "The task and list must belong to the same section.",
             )

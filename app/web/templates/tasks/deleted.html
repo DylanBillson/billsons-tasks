@@ -6,7 +6,7 @@ Deleted Tasks
 
 {% block content %}
 
-<div class="app-page deleted-tasks-page">
+<div class="app-page deleted-tasks-page administration-page">
 
     <div class="page-header">
 
@@ -21,12 +21,287 @@ Deleted Tasks
             </h1>
 
             <p class="page-subtitle">
-                Review, restore or permanently remove deleted tasks.
+                Review, restore, or permanently remove deleted tasks.
             </p>
 
         </div>
 
     </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="deleted-task-filters-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="deleted-task-filters-heading">
+                    Filters
+                </h2>
+
+                <p class="card-subtitle">
+                    Search and filter deleted tasks across the application.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% if filter_validation_failed %}
+
+        <div
+            class="form-summary form-summary-error"
+            role="alert"
+        >
+
+            <h3>
+                Check the selected filters
+            </h3>
+
+            <p>
+                One or more filter values are invalid.
+            </p>
+
+        </div>
+
+        {% endif %}
+
+        <form
+            method="get"
+            action="{{ url_for('admin_deleted_tasks') }}"
+            class="filter-panel"
+        >
+
+            <div class="filter-grid">
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-search"
+                        class="form-label"
+                    >
+                        Search
+                    </label>
+
+                    <input
+                        id="deleted-task-search"
+                        name="search"
+                        type="search"
+                        class="form-input"
+                        value="{{ filter_form.search }}"
+                        maxlength="250"
+                        placeholder="Task, company, section, or list"
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-company"
+                        class="form-label"
+                    >
+                        Company
+                    </label>
+
+                    <select
+                        id="deleted-task-company"
+                        name="company_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Companies
+                        </option>
+
+                        {% for company in companies %}
+
+                        <option
+                            value="{{ company.id }}"
+                            {% if filter_form.company_id == company.id | string %}selected{% endif %}
+                        >
+                            {{ company.name }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-section"
+                        class="form-label"
+                    >
+                        Section
+                    </label>
+
+                    <select
+                        id="deleted-task-section"
+                        name="section_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Sections
+                        </option>
+
+                        {% for section in sections %}
+
+                        <option
+                            value="{{ section.id }}"
+                            data-company-id="{{ section.company_id }}"
+                            {% if filter_form.section_id == section.id | string %}selected{% endif %}
+                        >
+                            {{ section.company.name }}
+                            —
+                            {{ section.name }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-user"
+                        class="form-label"
+                    >
+                        Deleted By
+                    </label>
+
+                    <select
+                        id="deleted-task-user"
+                        name="deleted_by_user_id"
+                        class="form-select"
+                    >
+
+                        <option value="">
+                            All Users
+                        </option>
+
+                        {% for user in users %}
+
+                        <option
+                            value="{{ user.id }}"
+                            {% if filter_form.deleted_by_user_id == user.id | string %}selected{% endif %}
+                        >
+                            {{ user.display_name }}
+                            {% if user.is_anonymised %}
+                            (Anonymised)
+                            {% elif not user.is_active %}
+                            (Inactive)
+                            {% endif %}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-from"
+                        class="form-label"
+                    >
+                        Deleted From
+                    </label>
+
+                    <input
+                        id="deleted-task-from"
+                        name="deleted_from"
+                        type="date"
+                        class="form-input"
+                        value="{{ filter_form.deleted_from }}"
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-to"
+                        class="form-label"
+                    >
+                        Deleted To
+                    </label>
+
+                    <input
+                        id="deleted-task-to"
+                        name="deleted_to"
+                        type="date"
+                        class="form-input"
+                        value="{{ filter_form.deleted_to }}"
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="deleted-task-page-size"
+                        class="form-label"
+                    >
+                        Results Per Page
+                    </label>
+
+                    <select
+                        id="deleted-task-page-size"
+                        name="page_size"
+                        class="form-select"
+                    >
+
+                        {% for option in [10, 25, 50, 100] %}
+
+                        <option
+                            value="{{ option }}"
+                            {% if filter_form.page_size == option | string %}selected{% endif %}
+                        >
+                            {{ option }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div class="filter-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Apply Filters
+                </button>
+
+                {% if filter_form.is_active %}
+
+                <a
+                    href="{{ url_for('admin_deleted_tasks') }}"
+                    class="btn btn-secondary"
+                >
+                    Clear Filters
+                </a>
+
+                {% endif %}
+
+            </div>
+
+        </form>
+
+    </section>
 
     <section
         class="content-card"
@@ -42,7 +317,7 @@ Deleted Tasks
                 </h2>
 
                 <p class="card-subtitle">
-                    Permanent deletion also removes task comments, assignees
+                    Permanent deletion also removes task comments, assignees,
                     and history.
                 </p>
 
@@ -51,7 +326,7 @@ Deleted Tasks
             <div class="card-actions">
 
                 <span class="status-badge status-badge-muted">
-                    {{ tasks | length }}
+                    {{ total_items }}
                 </span>
 
             </div>
@@ -165,7 +440,9 @@ Deleted Tasks
 
                             {% else %}
 
-                            Unknown
+                            <span class="text-muted">
+                                Unknown
+                            </span>
 
                             {% endif %}
 
@@ -238,17 +515,23 @@ Deleted Tasks
 
         </div>
 
+        {% if total_pages > 1 %}
+
         <nav
             class="pagination"
             aria-label="Deleted task pages"
         >
 
-            <div>
+            <span class="pagination-status">
+                Page {{ current_page }} of {{ total_pages }}
+            </span>
 
-                {% if has_previous_page %}
+            <div class="pagination-actions">
+
+                {% if previous_page_url %}
 
                 <a
-                    href="{{ url_for('admin_deleted_tasks') }}?page={{ page - 1 }}"
+                    href="{{ previous_page_url }}"
                     class="btn btn-secondary btn-small"
                 >
                     Previous
@@ -256,18 +539,10 @@ Deleted Tasks
 
                 {% endif %}
 
-            </div>
-
-            <span class="pagination-status">
-                Page {{ page }}
-            </span>
-
-            <div>
-
-                {% if has_next_page %}
+                {% if next_page_url %}
 
                 <a
-                    href="{{ url_for('admin_deleted_tasks') }}?page={{ page + 1 }}"
+                    href="{{ next_page_url }}"
                     class="btn btn-secondary btn-small"
                 >
                     Next
@@ -279,18 +554,37 @@ Deleted Tasks
 
         </nav>
 
+        {% endif %}
+
         {% else %}
 
         <div class="empty-state">
 
             <h2>
-                No deleted tasks
+                No deleted tasks found
             </h2>
+
+            {% if filter_form.is_active %}
+
+            <p>
+                No deleted tasks match the selected filters.
+            </p>
+
+            <a
+                href="{{ url_for('admin_deleted_tasks') }}"
+                class="btn btn-secondary"
+            >
+                Clear Filters
+            </a>
+
+            {% else %}
 
             <p>
                 Deleted tasks will appear here until they are restored or
                 permanently removed.
             </p>
+
+            {% endif %}
 
         </div>
 

@@ -18,7 +18,9 @@ class SessionRepository:
             AuthSession.id == session_id,
         )
 
-        return db.scalar(query)
+        return db.scalar(
+            query,
+        )
 
     @staticmethod
     def get_by_token_hash(
@@ -30,7 +32,9 @@ class SessionRepository:
             AuthSession.token_hash == token_hash,
         )
 
-        return db.scalar(query)
+        return db.scalar(
+            query,
+        )
 
     @staticmethod
     def get_active_by_token_hash(
@@ -47,7 +51,9 @@ class SessionRepository:
             AuthSession.expires_at > current_time,
         )
 
-        return db.scalar(query)
+        return db.scalar(
+            query,
+        )
 
     @staticmethod
     def list_for_user(
@@ -81,7 +87,9 @@ class SessionRepository:
         )
 
         return list(
-            db.scalars(query).all(),
+            db.scalars(
+                query,
+            ).all(),
         )
 
     @staticmethod
@@ -110,7 +118,9 @@ class SessionRepository:
             user_agent=user_agent,
         )
 
-        db.add(auth_session)
+        db.add(
+            auth_session,
+        )
         db.flush()
 
         return auth_session
@@ -124,7 +134,10 @@ class SessionRepository:
         ip_address: str | None = None,
         user_agent: str | None = None,
     ) -> AuthSession:
-        auth_session.last_seen_at = last_seen_at or utc_now()
+        auth_session.last_seen_at = (
+            last_seen_at
+            or utc_now()
+        )
 
         if ip_address is not None:
             auth_session.ip_address = ip_address
@@ -132,7 +145,9 @@ class SessionRepository:
         if user_agent is not None:
             auth_session.user_agent = user_agent
 
-        db.add(auth_session)
+        db.add(
+            auth_session,
+        )
         db.flush()
 
         return auth_session
@@ -146,7 +161,9 @@ class SessionRepository:
     ) -> AuthSession:
         auth_session.csrf_token_hash = csrf_token_hash
 
-        db.add(auth_session)
+        db.add(
+            auth_session,
+        )
         db.flush()
 
         return auth_session
@@ -162,9 +179,14 @@ class SessionRepository:
             return auth_session
 
         auth_session.is_revoked = True
-        auth_session.revoked_at = revoked_at or utc_now()
+        auth_session.revoked_at = (
+            revoked_at
+            or utc_now()
+        )
 
-        db.add(auth_session)
+        db.add(
+            auth_session,
+        )
         db.flush()
 
         return auth_session
@@ -176,22 +198,34 @@ class SessionRepository:
         token_hash: str,
         revoked_at: datetime | None = None,
     ) -> int:
+        resolved_revoked_at = (
+            revoked_at
+            or utc_now()
+        )
+
         statement = (
-            update(AuthSession)
+            update(
+                AuthSession,
+            )
             .where(
                 AuthSession.token_hash == token_hash,
                 AuthSession.is_revoked.is_(False),
+                AuthSession.expires_at
+                > resolved_revoked_at,
             )
             .values(
                 is_revoked=True,
-                revoked_at=revoked_at or utc_now(),
+                revoked_at=resolved_revoked_at,
             )
         )
 
-        result = db.execute(statement)
+        result = db.execute(
+            statement,
+        )
 
         return int(
-            result.rowcount or 0,
+            result.rowcount
+            or 0,
         )
 
     @staticmethod
@@ -202,27 +236,40 @@ class SessionRepository:
         exclude_session_id: int | None = None,
         revoked_at: datetime | None = None,
     ) -> int:
+        resolved_revoked_at = (
+            revoked_at
+            or utc_now()
+        )
+
         statement = (
-            update(AuthSession)
+            update(
+                AuthSession,
+            )
             .where(
                 AuthSession.user_id == user_id,
                 AuthSession.is_revoked.is_(False),
+                AuthSession.expires_at
+                > resolved_revoked_at,
             )
             .values(
                 is_revoked=True,
-                revoked_at=revoked_at or utc_now(),
+                revoked_at=resolved_revoked_at,
             )
         )
 
         if exclude_session_id is not None:
             statement = statement.where(
-                AuthSession.id != exclude_session_id,
+                AuthSession.id
+                != exclude_session_id,
             )
 
-        result = db.execute(statement)
+        result = db.execute(
+            statement,
+        )
 
         return int(
-            result.rowcount or 0,
+            result.rowcount
+            or 0,
         )
 
     @staticmethod
@@ -231,16 +278,24 @@ class SessionRepository:
         *,
         expired_before: datetime | None = None,
     ) -> int:
-        cutoff = expired_before or utc_now()
+        cutoff = (
+            expired_before
+            or utc_now()
+        )
 
-        statement = delete(AuthSession).where(
+        statement = delete(
+            AuthSession,
+        ).where(
             AuthSession.expires_at <= cutoff,
         )
 
-        result = db.execute(statement)
+        result = db.execute(
+            statement,
+        )
 
         return int(
-            result.rowcount or 0,
+            result.rowcount
+            or 0,
         )
 
     @staticmethod
@@ -249,14 +304,19 @@ class SessionRepository:
         *,
         revoked_before: datetime,
     ) -> int:
-        statement = delete(AuthSession).where(
+        statement = delete(
+            AuthSession,
+        ).where(
             AuthSession.is_revoked.is_(True),
             AuthSession.revoked_at.is_not(None),
             AuthSession.revoked_at <= revoked_before,
         )
 
-        result = db.execute(statement)
+        result = db.execute(
+            statement,
+        )
 
         return int(
-            result.rowcount or 0,
+            result.rowcount
+            or 0,
         )

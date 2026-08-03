@@ -3,7 +3,7 @@
     <div class="app-header-inner">
 
         <a
-            href="{% if current_user is defined and current_user %}/companies{% else %}/login{% endif %}"
+            href="{% if current_user is defined and current_user %}{{ url_for('home') }}{% else %}{{ url_for('login') }}{% endif %}"
             class="app-brand"
             aria-label="{{ settings.application_name }} home"
         >
@@ -12,7 +12,7 @@
                 class="app-brand-mark"
                 aria-hidden="true"
             >
-                B
+                Billson's Tasks
             </span>
 
             <span class="app-brand-text">
@@ -33,10 +33,18 @@
 
                 <span class="app-user-role">
 
-                    {% if current_user.is_administrator %}
+                    {% if current_user.is_anonymised %}
+
+                    Anonymised User
+
+                    {% elif current_user.is_administrator %}
+
                     Administrator
+
                     {% else %}
+
                     User
+
                     {% endif %}
 
                 </span>
@@ -47,7 +55,7 @@
 
             <form
                 method="post"
-                action="/logout"
+                action="{{ url_for('logout') }}"
                 class="app-logout-form"
             >
 

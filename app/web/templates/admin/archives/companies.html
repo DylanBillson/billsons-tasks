@@ -1,0 +1,387 @@
+{% extends "base.html" %}
+
+{% block title %}
+Archived Companies
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page administration-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Archived Companies
+            </h1>
+
+            <p class="page-subtitle">
+                Review and restore companies that have been archived.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="/admin/companies"
+                class="btn btn-secondary"
+            >
+                Manage Companies
+            </a>
+
+        </div>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="archived-company-filter-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="archived-company-filter-heading">
+                    Filters
+                </h2>
+
+                <p class="card-subtitle">
+                    Search archived companies by name or description.
+                </p>
+
+            </div>
+
+        </div>
+
+        <form
+            method="get"
+            action="{{ url_for('admin_archived_companies') }}"
+            class="filter-panel"
+        >
+
+            <div class="filter-grid">
+
+                <div class="form-field">
+
+                    <label
+                        for="archived-company-search"
+                        class="form-label"
+                    >
+                        Search
+                    </label>
+
+                    <input
+                        id="archived-company-search"
+                        name="search"
+                        type="search"
+                        class="form-input"
+                        value="{{ filter_form.search }}"
+                        maxlength="250"
+                        placeholder="Search name or description"
+                    >
+
+                </div>
+
+                <div class="form-field">
+
+                    <label
+                        for="archived-company-page-size"
+                        class="form-label"
+                    >
+                        Results Per Page
+                    </label>
+
+                    <select
+                        id="archived-company-page-size"
+                        name="page_size"
+                        class="form-select"
+                    >
+
+                        {% for option in [10, 25, 50, 100] %}
+
+                        <option
+                            value="{{ option }}"
+                            {% if filter_form.page_size == option %}selected{% endif %}
+                        >
+                            {{ option }}
+                        </option>
+
+                        {% endfor %}
+
+                    </select>
+
+                </div>
+
+            </div>
+
+            <div class="filter-actions">
+
+                <button
+                    type="submit"
+                    class="btn btn-primary"
+                >
+                    Apply Filters
+                </button>
+
+                {% if filter_form.is_active %}
+
+                <a
+                    href="{{ url_for('admin_archived_companies') }}"
+                    class="btn btn-secondary"
+                >
+                    Clear Filters
+                </a>
+
+                {% endif %}
+
+            </div>
+
+        </form>
+
+    </section>
+
+    <section
+        class="content-card"
+        aria-labelledby="archived-company-results-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="archived-company-results-heading">
+                    Archived Companies
+                </h2>
+
+                <p class="card-subtitle">
+                    {{ total_items }}
+                    archived
+                    compan{% if total_items == 1 %}y{% else %}ies{% endif %}
+                    found.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% if companies %}
+
+        <div class="table-container">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Company
+                        </th>
+
+                        <th scope="col">
+                            Description
+                        </th>
+
+                        <th scope="col">
+                            Members
+                        </th>
+
+                        <th scope="col">
+                            Last Updated
+                        </th>
+
+                        <th
+                            scope="col"
+                            class="table-actions-column"
+                        >
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for company in companies %}
+
+                    <tr>
+
+                        <td>
+
+                            <div class="table-primary">
+
+                                <a
+                                    href="/admin/companies/{{ company.id }}"
+                                    class="table-primary-text"
+                                >
+                                    {{ company.name }}
+                                </a>
+
+                                <span class="status-badge status-badge-muted">
+                                    Archived
+                                </span>
+
+                            </div>
+
+                        </td>
+
+                        <td>
+
+                            {% if company.description %}
+
+                            {{ company.description }}
+
+                            {% else %}
+
+                            <span class="text-muted">
+                                No description
+                            </span>
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+                            {{ company.memberships | length }}
+                        </td>
+
+                        <td>
+                            {{ company.updated_at }}
+                        </td>
+
+                        <td>
+
+                            <div class="table-actions">
+
+                                <a
+                                    href="/admin/companies/{{ company.id }}"
+                                    class="btn btn-secondary btn-small"
+                                >
+                                    View
+                                </a>
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for(
+                                        'admin_archived_company_restore',
+                                        company_id=company.id
+                                    ) }}"
+                                    class="inline-form"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-primary btn-small"
+                                    >
+                                        Restore
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% if total_pages > 1 %}
+
+        <nav
+            class="pagination"
+            aria-label="Archived company pages"
+        >
+
+            <div class="pagination-summary">
+                Page {{ current_page }} of {{ total_pages }}
+            </div>
+
+            <div class="pagination-actions">
+
+                {% if previous_page_url %}
+
+                <a
+                    href="{{ previous_page_url }}"
+                    class="btn btn-secondary btn-small"
+                >
+                    Previous
+                </a>
+
+                {% endif %}
+
+                {% if next_page_url %}
+
+                <a
+                    href="{{ next_page_url }}"
+                    class="btn btn-secondary btn-small"
+                >
+                    Next
+                </a>
+
+                {% endif %}
+
+            </div>
+
+        </nav>
+
+        {% endif %}
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No archived companies found
+            </h2>
+
+            {% if filter_form.is_active %}
+
+            <p>
+                No archived companies match the selected filters.
+            </p>
+
+            <a
+                href="{{ url_for('admin_archived_companies') }}"
+                class="btn btn-secondary"
+            >
+                Clear Filters
+            </a>
+
+            {% else %}
+
+            <p>
+                There are currently no archived companies.
+            </p>
+
+            {% endif %}
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}

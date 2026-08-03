@@ -1,10 +1,19 @@
 from datetime import datetime
 from typing import Any
 
-from sqlalchemy import Select, func, select
-from sqlalchemy.orm import Session
+from sqlalchemy import (
+    Select,
+    func,
+    or_,
+    select,
+)
+from sqlalchemy.orm import (
+    Session,
+    joinedload,
+)
 
 from app.models.audit_log import AuditLog
+from app.models.user import User
 
 
 class AuditRepository:
@@ -13,9 +22,22 @@ class AuditRepository:
         db: Session,
         audit_log_id: int,
     ) -> AuditLog | None:
-        return db.get(
-            AuditLog,
-            audit_log_id,
+        query = (
+            select(
+                AuditLog,
+            )
+            .options(
+                joinedload(
+                    AuditLog.user,
+                ),
+            )
+            .where(
+                AuditLog.id == audit_log_id,
+            )
+        )
+
+        return db.scalar(
+            query,
         )
 
     @staticmethod
@@ -42,7 +64,9 @@ class AuditRepository:
             user_agent=user_agent,
         )
 
-        db.add(audit_log)
+        db.add(
+            audit_log,
+        )
         db.flush()
 
         return audit_log
@@ -51,6 +75,7 @@ class AuditRepository:
     def list_logs(
         db: Session,
         *,
+        search: str | None = None,
         user_id: int | None = None,
         action: str | None = None,
         entity_type: str | None = None,
@@ -61,6 +86,7 @@ class AuditRepository:
         offset: int = 0,
     ) -> list[AuditLog]:
         query = AuditRepository._build_filtered_query(
+            search=search,
             user_id=user_id,
             action=action,
             entity_type=entity_type,
@@ -70,22 +96,35 @@ class AuditRepository:
         )
 
         query = (
-            query.order_by(
+            query
+            .options(
+                joinedload(
+                    AuditLog.user,
+                ),
+            )
+            .order_by(
                 AuditLog.created_at.desc(),
                 AuditLog.id.desc(),
             )
-            .limit(limit)
-            .offset(offset)
+            .limit(
+                limit,
+            )
+            .offset(
+                offset,
+            )
         )
 
         return list(
-            db.scalars(query).all(),
+            db.scalars(
+                query,
+            ).unique().all(),
         )
 
     @staticmethod
     def count_logs(
         db: Session,
         *,
+        search: str | None = None,
         user_id: int | None = None,
         action: str | None = None,
         entity_type: str | None = None,
@@ -93,23 +132,33 @@ class AuditRepository:
         created_from: datetime | None = None,
         created_to: datetime | None = None,
     ) -> int:
-        filtered_query = AuditRepository._build_filtered_query(
-            user_id=user_id,
-            action=action,
-            entity_type=entity_type,
-            entity_id=entity_id,
-            created_from=created_from,
-            created_to=created_to,
+        filtered_query = (
+            AuditRepository._build_filtered_query(
+                search=search,
+                user_id=user_id,
+                action=action,
+                entity_type=entity_type,
+                entity_id=entity_id,
+                created_from=created_from,
+                created_to=created_to,
+            )
         )
 
         count_query = select(
             func.count(),
         ).select_from(
-            filtered_query.order_by(None).subquery(),
+            filtered_query
+            .order_by(
+                None,
+            )
+            .subquery(),
         )
 
         return int(
-            db.scalar(count_query) or 0,
+            db.scalar(
+                count_query,
+            )
+            or 0,
         )
 
     @staticmethod
@@ -121,7 +170,14 @@ class AuditRepository:
         limit: int = 100,
     ) -> list[AuditLog]:
         query = (
-            select(AuditLog)
+            select(
+                AuditLog,
+            )
+            .options(
+                joinedload(
+                    AuditLog.user,
+                ),
+            )
             .where(
                 AuditLog.entity_type == entity_type,
                 AuditLog.entity_id == entity_id,
@@ -130,16 +186,71 @@ class AuditRepository:
                 AuditLog.created_at.desc(),
                 AuditLog.id.desc(),
             )
-            .limit(limit)
+            .limit(
+                limit,
+            )
         )
 
         return list(
-            db.scalars(query).all(),
+            db.scalars(
+                query,
+            ).unique().all(),
         )
+
+    @staticmethod
+    def list_actions(
+        db: Session,
+    ) -> list[str]:
+        query = (
+            select(
+                AuditLog.action,
+            )
+            .where(
+                AuditLog.action.is_not(None),
+                AuditLog.action != "",
+            )
+            .distinct()
+            .order_by(
+                AuditLog.action.asc(),
+            )
+        )
+
+        return list(
+            db.scalars(
+                query,
+            ).all(),
+        )
+
+    @staticmethod
+    def list_entity_types(
+        db: Session,
+    ) -> list[str]:
+        query = (
+            select(
+                AuditLog.entity_type,
+            )
+            .where(
+                AuditLog.entity_type.is_not(None),
+                AuditLog.entity_type != "",
+            )
+            .distinct()
+            .order_by(
+                AuditLog.entity_type.asc(),
+            )
+        )
+
+        return [
+            entity_type
+            for entity_type in db.scalars(
+                query,
+            ).all()
+            if entity_type is not None
+        ]
 
     @staticmethod
     def _build_filtered_query(
         *,
+        search: str | None = None,
         user_id: int | None = None,
         action: str | None = None,
         entity_type: str | None = None,
@@ -147,7 +258,43 @@ class AuditRepository:
         created_from: datetime | None = None,
         created_to: datetime | None = None,
     ) -> Select[tuple[AuditLog]]:
-        query = select(AuditLog)
+        query = (
+            select(
+                AuditLog,
+            )
+            .outerjoin(
+                User,
+                User.id == AuditLog.user_id,
+            )
+        )
+
+        if search is not None:
+            pattern = (
+                f"%{search.strip()}%"
+            )
+
+            query = query.where(
+                or_(
+                    AuditLog.summary.ilike(
+                        pattern,
+                    ),
+                    AuditLog.action.ilike(
+                        pattern,
+                    ),
+                    AuditLog.entity_type.ilike(
+                        pattern,
+                    ),
+                    AuditLog.ip_address.ilike(
+                        pattern,
+                    ),
+                    User.username.ilike(
+                        pattern,
+                    ),
+                    User.display_name.ilike(
+                        pattern,
+                    ),
+                ),
+            )
 
         if user_id is not None:
             query = query.where(
@@ -176,7 +323,7 @@ class AuditRepository:
 
         if created_to is not None:
             query = query.where(
-                AuditLog.created_at <= created_to,
+                AuditLog.created_at < created_to,
             )
 
         return query

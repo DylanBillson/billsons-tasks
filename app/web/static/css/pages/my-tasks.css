@@ -1,0 +1,63 @@
+.my-tasks-page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.my-tasks-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    gap: 2rem;
+}
+
+.my-tasks-table {
+    width: 100%;
+}
+
+.my-task-title {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.my-task-title a {
+    font-weight: 600;
+    text-decoration: none;
+    color: inherit;
+}
+
+.my-task-title a:hover {
+    color: var(--colour-primary);
+}
+
+.my-task-meta {
+    font-size: .875rem;
+    color: var(--colour-text-muted);
+}
+
+.my-task-state {
+    white-space: nowrap;
+}
+
+.my-task-due {
+    white-space: nowrap;
+}
+
+.my-task-empty {
+    padding: 3rem;
+
+    text-align: center;
+
+    border: 2px dashed var(--colour-border);
+    border-radius: var(--radius-large);
+}
+
+@media (max-width: 900px) {
+
+    .my-tasks-header {
+        flex-direction: column;
+        gap: 1rem;
+    }
+
+}

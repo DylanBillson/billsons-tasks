@@ -1,0 +1,208 @@
+{% if tasks %}
+
+<div class="table-container">
+
+    <table class="data-table my-task-table">
+
+        <thead>
+
+            <tr>
+
+                <th scope="col">
+                    Task
+                </th>
+
+                <th scope="col">
+                    Company
+                </th>
+
+                <th scope="col">
+                    Section
+                </th>
+
+                <th scope="col">
+                    Due
+                </th>
+
+                <th scope="col">
+                    Status
+                </th>
+
+                <th
+                    scope="col"
+                    class="table-actions-column"
+                >
+                    Actions
+                </th>
+
+            </tr>
+
+        </thead>
+
+        <tbody>
+
+            {% for task in tasks %}
+
+            <tr
+                {% if task.state == "overdue" %}
+                class="table-row-warning"
+                {% endif %}
+            >
+
+                <td>
+
+                    <div class="table-primary">
+
+                        <a
+                            href="{{ url_for('task_detail', task_id=task.id) }}"
+                            class="table-primary-text"
+                        >
+                            {{ task.title }}
+                        </a>
+
+                        {% if task.description %}
+
+                        <span class="table-secondary">
+                            {{ task.description }}
+                        </span>
+
+                        {% else %}
+
+                        <span class="table-secondary">
+                            No description
+                        </span>
+
+                        {% endif %}
+
+                    </div>
+
+                </td>
+
+                <td>
+
+                    <a
+                        href="{{ url_for('company_dashboard', company_id=task.company_id) }}"
+                    >
+                        {{ task.company_name }}
+                    </a>
+
+                </td>
+
+                <td>
+
+                    <div class="table-primary">
+
+                        <a
+                            href="{{ url_for('section_detail', section_id=task.section_id) }}"
+                            class="table-primary-text"
+                        >
+                            {{ task.section_name }}
+                        </a>
+
+                        <span class="table-secondary">
+                            {{ task.section_list_name }}
+                        </span>
+
+                    </div>
+
+                </td>
+
+                <td>
+
+                    {% if task.due_at %}
+
+                    <span
+                        {% if task.state == "overdue" %}
+                        class="text-danger"
+                        {% endif %}
+                    >
+                        {{ task.due_at }}
+                    </span>
+
+                    {% else %}
+
+                    <span class="text-muted">
+                        No deadline
+                    </span>
+
+                    {% endif %}
+
+                </td>
+
+                <td>
+
+                    {% if task.state == "completed" %}
+
+                    <span class="status-badge status-badge-success">
+                        Completed
+                    </span>
+
+                    {% elif task.state == "overdue" %}
+
+                    <span class="status-badge status-badge-danger">
+                        Overdue
+                    </span>
+
+                    {% else %}
+
+                    <span class="status-badge status-badge-primary">
+                        Open
+                    </span>
+
+                    {% endif %}
+
+                </td>
+
+                <td>
+
+                    <a
+                        href="{{ url_for('task_detail', task_id=task.id) }}"
+                        class="btn btn-secondary btn-small"
+                    >
+                        Open
+                    </a>
+
+                </td>
+
+            </tr>
+
+            {% endfor %}
+
+        </tbody>
+
+    </table>
+
+</div>
+
+{% else %}
+
+<div class="empty-state">
+
+    <h2>
+        No assigned tasks found
+    </h2>
+
+    {% if filter_form.is_active %}
+
+    <p>
+        No tasks assigned to you match the selected filters.
+    </p>
+
+    <a
+        href="{{ url_for('my_tasks') }}"
+        class="btn btn-secondary"
+    >
+        Clear Filters
+    </a>
+
+    {% else %}
+
+    <p>
+        You do not currently have any open tasks assigned to you.
+    </p>
+
+    {% endif %}
+
+</div>
+
+{% endif %}

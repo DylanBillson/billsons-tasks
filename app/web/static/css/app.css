@@ -14,13 +14,21 @@
 @import "components/empty-states.css";
 @import "components/utilities.css";
 
-@import "pages/auth.css";
-@import "pages/companies.css";
-@import "pages/sections.css";
-
 @import "components/task-board.css";
 @import "components/task-cards.css";
 @import "components/comments.css";
 @import "components/history.css";
 
+@import "components/metrics.css";
+@import "components/activity-feed.css";
+@import "components/pagination.css";
+@import "components/filter-panels.css";
+
+@import "pages/auth.css";
+@import "pages/companies.css";
+@import "pages/sections.css";
 @import "pages/tasks.css";
+@import "pages/dashboard.css";
+@import "pages/my-tasks.css";
+@import "pages/administration.css";
+@import "pages/audit-log.css";

@@ -1,5 +1,22 @@
 from typing import Any
-
+from datetime import (
+    datetime,
+    time,
+    timedelta,
+    timezone,
+)
+from zoneinfo import (
+    ZoneInfo,
+    ZoneInfoNotFoundError,
+)
+from app.schemas.my_tasks import (
+    MyTaskSummary,
+    MyTasksCompanyOption,
+    MyTasksData,
+    MyTasksFilterOptions,
+    MyTasksMetrics,
+    MyTasksSectionOption,
+)
 from sqlalchemy.orm import Session
 
 from app.core.constants import (
@@ -33,7 +50,8 @@ from app.services.task_history_service import (
 from app.services.task_permission_service import (
     TaskPermissionService,
 )
-
+from app.core.timezone import utc_now
+from app.auth.permissions import PermissionDeniedError
 
 class TaskServiceError(ValueError):
     """Base exception for task-service failures."""
@@ -66,6 +84,11 @@ class TaskAlreadyDeletedError(TaskServiceError):
 class TaskNotDeletedError(TaskServiceError):
     """Raised when a non-deleted task is restored."""
 
+class MyTasksFilterError(TaskServiceError):
+    """Raised when My Tasks filters are invalid."""
+
+class DeletedTaskFilterError(TaskServiceError):
+    """Raised when deleted-task filters are invalid."""
 
 class TaskService:
     @staticmethod
@@ -116,7 +139,86 @@ class TaskService:
         )
 
         return task
+    
+    @staticmethod
+    def list_deleted_tasks(
+        db: Session,
+        *,
+        actor: User,
+        search: str | None = None,
+        company_id: int | None = None,
+        section_id: int | None = None,
+        deleted_by_user_id: int | None = None,
+        deleted_from: datetime | None = None,
+        deleted_to: datetime | None = None,
+        page: int = 1,
+        page_size: int = 25,
+    ) -> tuple[
+        list[Task],
+        int,
+    ]:
+        if not actor.is_administrator:
+            raise PermissionDeniedError(
+                "Administrator access is required.",
+            )
 
+        if page < 1:
+            raise DeletedTaskFilterError(
+                "The page number must be at least one.",
+            )
+
+        if page_size < 1 or page_size > 100:
+            raise DeletedTaskFilterError(
+                "The page size must be between 1 and 100.",
+            )
+
+        if (
+            deleted_from is not None
+            and deleted_to is not None
+            and deleted_from >= deleted_to
+        ):
+            raise DeletedTaskFilterError(
+                "The deletion start date must be before the end date.",
+            )
+
+        normalised_search = (
+            search.strip()
+            if search
+            else None
+        )
+
+        if normalised_search == "":
+            normalised_search = None
+
+        total_items = TaskRepository.count_all_deleted(
+            db,
+            search=normalised_search,
+            company_id=company_id,
+            section_id=section_id,
+            deleted_by_user_id=deleted_by_user_id,
+            deleted_from=deleted_from,
+            deleted_to=deleted_to,
+        )
+
+        tasks = TaskRepository.list_all_deleted(
+            db,
+            search=normalised_search,
+            company_id=company_id,
+            section_id=section_id,
+            deleted_by_user_id=deleted_by_user_id,
+            deleted_from=deleted_from,
+            deleted_to=deleted_to,
+            limit=page_size,
+            offset=(
+                page - 1
+            ) * page_size,
+        )
+
+        return (
+            tasks,
+            total_items,
+        )
+    
     @staticmethod
     def list_for_section(
         db: Session,
@@ -188,6 +290,219 @@ class TaskService:
             actor=actor,
             section=section,
             filters=filters,
+        )
+
+    @staticmethod
+    def get_my_tasks(
+        db: Session,
+        *,
+        actor: User,
+        filters: MyTasksFilterOptions | None = None,
+        timezone_name: str = "Europe/London",
+        due_soon_days: int = 7,
+    ) -> MyTasksData:
+        if not actor.can_authenticate:
+            raise MyTasksFilterError(
+                "An active user account is required.",
+            )
+
+        if due_soon_days < 1:
+            raise MyTasksFilterError(
+                "The due-soon period must be at least one day.",
+            )
+
+        resolved_filters = (
+            filters
+            if filters is not None
+            else MyTasksFilterOptions()
+        )
+
+        (
+            generated_at,
+            today_start,
+            tomorrow_start,
+            due_soon_end,
+        ) = TaskService._get_my_tasks_date_boundaries(
+            timezone_name=timezone_name,
+            due_soon_days=due_soon_days,
+        )
+
+        companies = TaskRepository.list_my_tasks_companies(
+            db,
+            user_id=actor.id,
+        )
+
+        company_ids = {
+            company.id
+            for company in companies
+        }
+
+        if (
+            resolved_filters.company_id is not None
+            and resolved_filters.company_id not in company_ids
+        ):
+            raise MyTasksFilterError(
+                "The selected company is not available in My Tasks.",
+            )
+
+        sections = TaskRepository.list_my_tasks_sections(
+            db,
+            user_id=actor.id,
+            company_id=resolved_filters.company_id,
+        )
+
+        section_ids = {
+            section.id
+            for section in sections
+        }
+
+        if (
+            resolved_filters.section_id is not None
+            and resolved_filters.section_id not in section_ids
+        ):
+            raise MyTasksFilterError(
+                "The selected section is not available in My Tasks.",
+            )
+
+        tasks = TaskRepository.list_my_tasks(
+            db,
+            user_id=actor.id,
+            state=resolved_filters.state,
+            now=generated_at,
+            today_start=today_start,
+            tomorrow_start=tomorrow_start,
+            due_soon_end=due_soon_end,
+            company_id=resolved_filters.company_id,
+            section_id=resolved_filters.section_id,
+            search=resolved_filters.search,
+        )
+
+        metrics_data = TaskRepository.get_my_tasks_metrics(
+            db,
+            user_id=actor.id,
+            now=generated_at,
+            today_start=today_start,
+            tomorrow_start=tomorrow_start,
+            due_soon_end=due_soon_end,
+        )
+
+        return MyTasksData(
+            generated_at=generated_at,
+            filters=resolved_filters,
+            metrics=MyTasksMetrics(
+                **metrics_data,
+            ),
+            tasks=[
+                TaskService._build_my_task_summary(
+                    task,
+                )
+                for task in tasks
+            ],
+            companies=[
+                MyTasksCompanyOption(
+                    id=company.id,
+                    name=company.name,
+                )
+                for company in companies
+            ],
+            sections=[
+                MyTasksSectionOption(
+                    id=section.id,
+                    company_id=section.company_id,
+                    name=section.name,
+                    company_name=section.company.name,
+                )
+                for section in sections
+            ],
+        )
+
+    @staticmethod
+    def _build_my_task_summary(
+        task: Task,
+    ) -> MyTaskSummary:
+        section_list = task.section_list
+        section = section_list.section
+        company = section.company
+
+        return MyTaskSummary(
+            id=task.id,
+            title=task.title,
+            description=task.description,
+            company_id=company.id,
+            company_name=company.name,
+            section_id=section.id,
+            section_name=section.name,
+            section_list_id=section_list.id,
+            section_list_name=section_list.name,
+            due_at=task.due_at,
+            completed_at=task.completed_at,
+            updated_at=task.updated_at,
+            state=task.state,
+            assignee_names=[
+                assignment.user.display_name
+                for assignment in task.assignees
+            ],
+        )
+
+    @staticmethod
+    def _get_my_tasks_date_boundaries(
+        *,
+        timezone_name: str,
+        due_soon_days: int,
+    ) -> tuple[
+        datetime,
+        datetime,
+        datetime,
+        datetime,
+    ]:
+        try:
+            local_timezone = ZoneInfo(
+                timezone_name,
+            )
+
+        except ZoneInfoNotFoundError as exc:
+            raise MyTasksFilterError(
+                "The configured application timezone is invalid.",
+            ) from exc
+
+        generated_at = utc_now()
+
+        local_now = generated_at.astimezone(
+            local_timezone,
+        )
+
+        local_today = local_now.date()
+
+        today_start = datetime.combine(
+            local_today,
+            time.min,
+            tzinfo=local_timezone,
+        ).astimezone(
+            timezone.utc,
+        )
+
+        tomorrow_start = datetime.combine(
+            local_today + timedelta(
+                days=1,
+            ),
+            time.min,
+            tzinfo=local_timezone,
+        ).astimezone(
+            timezone.utc,
+        )
+
+        due_soon_end = (
+            generated_at
+            + timedelta(
+                days=due_soon_days,
+            )
+        )
+
+        return (
+            generated_at,
+            today_start,
+            tomorrow_start,
+            due_soon_end,
         )
 
     @staticmethod

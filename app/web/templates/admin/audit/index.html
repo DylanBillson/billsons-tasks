@@ -1,0 +1,142 @@
+{% extends "base.html" %}
+
+{% block title %}
+Audit Log
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page administration-page audit-log-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+            </p>
+
+            <h1>
+                Audit Log
+            </h1>
+
+            <p class="page-subtitle">
+                Review significant activity recorded throughout the
+                application.
+            </p>
+
+        </div>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="audit-filter-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="audit-filter-heading">
+                    Filters
+                </h2>
+
+                <p class="card-subtitle">
+                    Search audit entries and narrow results by user,
+                    action, entity, or date.
+                </p>
+
+            </div>
+
+        </div>
+
+        {% include "partials/audit_log_filters.html" %}
+
+    </section>
+
+    <section
+        class="content-card"
+        aria-labelledby="audit-results-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="audit-results-heading">
+                    Recorded Activity
+                </h2>
+
+                <p class="card-subtitle">
+                    {{ audit_page.total_items }}
+                    entr{% if audit_page.total_items == 1 %}y{% else %}ies{% endif %}
+                    found.
+                </p>
+
+            </div>
+
+            <div class="card-actions">
+
+                <span class="status-badge status-badge-muted">
+                    Page
+                    {{ audit_page.current_page }}
+                    of
+                    {{ audit_page.total_pages }}
+                </span>
+
+            </div>
+
+        </div>
+
+        {% include "partials/audit_log_table.html" %}
+
+        {% if audit_page.total_pages > 1 %}
+
+        <nav
+            class="pagination"
+            aria-label="Audit log pages"
+        >
+
+            <span class="pagination-status">
+                Page
+                {{ audit_page.current_page }}
+                of
+                {{ audit_page.total_pages }}
+            </span>
+
+            <div class="pagination-actions">
+
+                {% if previous_page_url %}
+
+                <a
+                    href="{{ previous_page_url }}"
+                    class="btn btn-secondary btn-small"
+                >
+                    Previous
+                </a>
+
+                {% endif %}
+
+                {% if next_page_url %}
+
+                <a
+                    href="{{ next_page_url }}"
+                    class="btn btn-secondary btn-small"
+                >
+                    Next
+                </a>
+
+                {% endif %}
+
+            </div>
+
+        </nav>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}

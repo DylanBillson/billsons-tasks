@@ -38,6 +38,13 @@
 
         <div class="page-actions">
 
+            <a
+                href="{{ url_for('company_dashboard', company_id=company.id) }}"
+                class="btn btn-primary"
+            >
+                Company Dashboard
+            </a>
+            
             {% if can_create_section and not company.is_archived %}
 
             <a

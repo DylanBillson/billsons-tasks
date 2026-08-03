@@ -1,3 +1,6 @@
+from dataclasses import dataclass
+from datetime import datetime
+
 from sqlalchemy.orm import Session
 
 from app.core.constants import AuditAction, GlobalRole
@@ -24,6 +27,22 @@ class UserPermissionError(UserServiceError):
 
 class UsernameAlreadyExistsError(UserServiceError):
     """Raised when a username is already assigned to another user."""
+
+
+class UserSelfDeactivationError(UserServiceError):
+    """Raised when an administrator attempts to deactivate themselves."""
+
+
+class AnonymisedUserStatusError(UserServiceError):
+    """Raised when account status is changed for an anonymised user."""
+
+
+@dataclass(frozen=True)
+class UserStatusChangeResult:
+    user_id: int
+    is_active: bool
+    changed_at: datetime
+    revoked_session_count: int
 
 
 class UserService:
@@ -91,13 +110,6 @@ class UserService:
         user_agent: str | None = None,
         commit: bool = True,
     ) -> PasswordResetResult:
-        """
-        Reset a user's password as an administrator.
-
-        All existing authentication sessions belonging to the target user are
-        revoked so that the previous password cannot leave existing browser
-        sessions active.
-        """
         UserService._require_administrator(
             acting_user,
         )
@@ -145,7 +157,9 @@ class UserService:
             metadata_json={
                 "username": target_user.username,
                 "revoked_session_count": revoked_session_count,
-                "password_reset_at": password_reset_at.isoformat(),
+                "password_reset_at": (
+                    password_reset_at.isoformat()
+                ),
             },
             ip_address=ip_address,
             user_agent=user_agent,
@@ -153,7 +167,9 @@ class UserService:
 
         if commit:
             db.commit()
-            db.refresh(target_user)
+            db.refresh(
+                target_user,
+            )
 
         return PasswordResetResult(
             user_id=target_user.id,
@@ -172,14 +188,6 @@ class UserService:
         user_agent: str | None = None,
         commit: bool = True,
     ) -> PasswordResetResult:
-        """
-        Retrieve a target user by ID and reset their password.
-
-        This method provides the simpler interface used by administrator web
-        routes. The password has already been confirmed by the route's form
-        validation, so it is used for both password fields in the service
-        request.
-        """
         target_user = UserService.require_user(
             db,
             user_id=user_id,
@@ -210,31 +218,41 @@ class UserService:
         ip_address: str | None = None,
         user_agent: str | None = None,
         commit: bool = True,
-    ) -> User:
+    ) -> UserStatusChangeResult:
         """
         Activate or deactivate a user.
 
-        Deactivation immediately revokes all of the target user's active
-        authentication sessions.
+        Deactivation revokes every active authentication session belonging to
+        the target account. Reactivation does not restore previous sessions.
         """
         UserService._require_administrator(
             acting_user,
         )
 
         if target_user.is_anonymised:
-            raise UserServiceError(
+            raise AnonymisedUserStatusError(
                 "An anonymised user cannot be activated or deactivated.",
             )
 
-        if acting_user.id == target_user.id and not is_active:
-            raise UserServiceError(
+        if (
+            acting_user.id == target_user.id
+            and not is_active
+        ):
+            raise UserSelfDeactivationError(
                 "You cannot deactivate your own account.",
             )
 
-        if target_user.is_active == is_active:
-            return target_user
+        changed_at = utc_now()
 
-        UserRepository.update_profile(
+        if target_user.is_active == is_active:
+            return UserStatusChangeResult(
+                user_id=target_user.id,
+                is_active=target_user.is_active,
+                changed_at=changed_at,
+                revoked_session_count=0,
+            )
+
+        UserRepository.set_active_status(
             db,
             user=target_user,
             is_active=is_active,
@@ -247,6 +265,7 @@ class UserService:
                 SessionRepository.revoke_all_for_user(
                     db,
                     user_id=target_user.id,
+                    revoked_at=changed_at,
                 )
             )
 
@@ -256,7 +275,7 @@ class UserService:
             else AuditAction.USER_DEACTIVATED
         )
 
-        status = (
+        status_text = (
             "reactivated"
             if is_active
             else "deactivated"
@@ -267,15 +286,21 @@ class UserService:
             user=acting_user,
             action=action,
             summary=(
-                f"{acting_user.display_name} {status} "
+                f"{acting_user.display_name} {status_text} "
                 f"{target_user.display_name}."
             ),
             entity_type="user",
             entity_id=target_user.id,
             metadata_json={
                 "username": target_user.username,
+                "display_name": target_user.display_name,
                 "is_active": is_active,
-                "revoked_session_count": revoked_session_count,
+                "revoked_session_count": (
+                    revoked_session_count
+                ),
+                "status_changed_at": (
+                    changed_at.isoformat()
+                ),
             },
             ip_address=ip_address,
             user_agent=user_agent,
@@ -283,9 +308,44 @@ class UserService:
 
         if commit:
             db.commit()
-            db.refresh(target_user)
+            db.refresh(
+                target_user,
+            )
 
-        return target_user
+        return UserStatusChangeResult(
+            user_id=target_user.id,
+            is_active=target_user.is_active,
+            changed_at=changed_at,
+            revoked_session_count=(
+                revoked_session_count
+            ),
+        )
+
+    @staticmethod
+    def set_active_status_by_user_id(
+        db: Session,
+        *,
+        actor: User,
+        user_id: int,
+        is_active: bool,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        commit: bool = True,
+    ) -> UserStatusChangeResult:
+        target_user = UserService.require_user(
+            db,
+            user_id=user_id,
+        )
+
+        return UserService.set_active_status(
+            db,
+            acting_user=actor,
+            target_user=target_user,
+            is_active=is_active,
+            ip_address=ip_address,
+            user_agent=user_agent,
+            commit=commit,
+        )
 
     @staticmethod
     def _require_administrator(

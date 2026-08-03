@@ -1,0 +1,74 @@
+.audit-log-page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.audit-log-detail {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.audit-log-meta {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(220px, 1fr)
+    );
+    gap: 1rem;
+}
+
+.audit-log-meta-item {
+    padding: 1rem;
+
+    border: 1px solid var(--colour-border);
+    border-radius: var(--radius-medium);
+
+    background: var(--colour-surface-alt);
+}
+
+.audit-log-meta-label {
+    display: block;
+
+    margin-bottom: .35rem;
+
+    font-size: .75rem;
+    font-weight: 600;
+
+    color: var(--colour-text-muted);
+
+    text-transform: uppercase;
+    letter-spacing: .05em;
+}
+
+.audit-log-meta-value {
+    word-break: break-word;
+}
+
+.audit-log-json {
+    overflow-x: auto;
+
+    padding: 1rem;
+
+    border-radius: var(--radius-medium);
+
+    background: #1f2430;
+
+    color: #f5f5f5;
+
+    font-family:
+        "SFMono-Regular",
+        Consolas,
+        "Liberation Mono",
+        monospace;
+
+    font-size: .85rem;
+    line-height: 1.55;
+}
+
+.audit-log-json pre {
+    margin: 0;
+    white-space: pre-wrap;
+    word-break: break-word;
+}

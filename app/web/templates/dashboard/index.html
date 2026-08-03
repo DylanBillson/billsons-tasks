@@ -1,0 +1,627 @@
+{% extends "base.html" %}
+
+{% block title %}
+Dashboard
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page dashboard-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Billson's Tasks
+            </p>
+
+            <h1>
+                Dashboard
+            </h1>
+
+            <p class="page-subtitle">
+                Welcome back, {{ current_user.display_name }}.
+                Here is an overview of the work available to you.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('companies') }}"
+                class="btn btn-primary"
+            >
+                View Companies
+            </a>
+
+        </div>
+
+    </div>
+
+    <section
+        class="dashboard-metrics"
+        aria-labelledby="dashboard-overview-heading"
+    >
+
+        <div class="section-heading">
+
+            <div>
+
+                <h2 id="dashboard-overview-heading">
+                    Overview
+                </h2>
+
+                <p class="section-subtitle">
+
+                    {% if dashboard.is_administrator_view %}
+
+                    System-wide activity across active companies and sections.
+
+                    {% else %}
+
+                    Activity across the companies and sections available to
+                    you.
+
+                    {% endif %}
+
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="metric-grid">
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Companies
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.company_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Active companies
+                </span>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Sections
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.section_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Accessible active sections
+                </span>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Open Tasks
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.open_task_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Tasks awaiting completion
+                </span>
+
+            </article>
+
+            <article
+                class="
+                    metric-card
+                    {% if metrics.overdue_task_count %}
+                    metric-card-warning
+                    {% endif %}
+                "
+            >
+
+                <span class="metric-label">
+                    Overdue Tasks
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.overdue_task_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Open tasks past their deadline
+                </span>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Completed Tasks
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.completed_task_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Completed active tasks
+                </span>
+
+            </article>
+
+            {% if dashboard.is_administrator_view %}
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Active Users
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.active_user_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Active non-anonymised users
+                </span>
+
+            </article>
+
+            <article class="metric-card">
+
+                <span class="metric-label">
+                    Deleted Tasks
+                </span>
+
+                <strong class="metric-value">
+                    {{ metrics.deleted_task_count }}
+                </strong>
+
+                <span class="metric-description">
+                    Tasks awaiting restoration or removal
+                </span>
+
+            </article>
+
+            {% endif %}
+
+        </div>
+
+    </section>
+
+    <div class="dashboard-grid">
+
+        <section
+            class="content-card"
+            aria-labelledby="due-soon-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="due-soon-heading">
+                        Due Soon
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Open tasks due within the next seven days.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if due_soon_tasks %}
+
+            <div class="table-container">
+
+                <table class="data-table">
+
+                    <thead>
+
+                        <tr>
+
+                            <th scope="col">
+                                Task
+                            </th>
+
+                            <th scope="col">
+                                Location
+                            </th>
+
+                            <th scope="col">
+                                Due
+                            </th>
+
+                            <th scope="col">
+                                Assignees
+                            </th>
+
+                        </tr>
+
+                    </thead>
+
+                    <tbody>
+
+                        {% for task in due_soon_tasks %}
+
+                        <tr>
+
+                            <td>
+
+                                <div class="table-primary">
+
+                                    <a
+                                        href="{{ url_for('task_detail', task_id=task.id) }}"
+                                        class="table-primary-text"
+                                    >
+                                        {{ task.title }}
+                                    </a>
+
+                                    <span class="table-secondary">
+                                        {{ task.section_list_name }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+                            <td>
+
+                                <div class="table-primary">
+
+                                    <a
+                                        href="{{ url_for('company_detail', company_id=task.company_id) }}"
+                                        class="table-primary-text"
+                                    >
+                                        {{ task.company_name }}
+                                    </a>
+
+                                    <span class="table-secondary">
+                                        {{ task.section_name }}
+                                    </span>
+
+                                </div>
+
+                            </td>
+
+                            <td>
+                                {{ task.due_at }}
+                            </td>
+
+                            <td>
+
+                                {% if task.assignee_names %}
+
+                                {{ task.assignee_names | join(", ") }}
+
+                                {% else %}
+
+                                <span class="text-muted">
+                                    Unassigned
+                                </span>
+
+                                {% endif %}
+
+                            </td>
+
+                        </tr>
+
+                        {% endfor %}
+
+                    </tbody>
+
+                </table>
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <h3>
+                    Nothing due soon
+                </h3>
+
+                <p>
+                    There are no open tasks due within the next seven days.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+        <section
+            class="content-card"
+            aria-labelledby="recent-tasks-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="recent-tasks-heading">
+                        Recently Updated
+                    </h2>
+
+                    <p class="card-subtitle">
+                        The most recently updated tasks available to you.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if recent_tasks %}
+
+            <div class="dashboard-task-list">
+
+                {% for task in recent_tasks %}
+
+                <article class="dashboard-task-item">
+
+                    <div class="dashboard-task-item-main">
+
+                        <a
+                            href="{{ url_for('task_detail', task_id=task.id) }}"
+                            class="dashboard-task-title"
+                        >
+                            {{ task.title }}
+                        </a>
+
+                        <p class="dashboard-task-location">
+                            {{ task.company_name }}
+                            &middot;
+                            {{ task.section_name }}
+                            &middot;
+                            {{ task.section_list_name }}
+                        </p>
+
+                    </div>
+
+                    <div class="dashboard-task-item-meta">
+
+                        {% if task.state == "completed" %}
+
+                        <span class="status-badge status-badge-success">
+                            Completed
+                        </span>
+
+                        {% elif task.state == "overdue" %}
+
+                        <span class="status-badge status-badge-danger">
+                            Overdue
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-primary">
+                            Open
+                        </span>
+
+                        {% endif %}
+
+                        <span class="dashboard-task-updated">
+                            {{ task.updated_at }}
+                        </span>
+
+                    </div>
+
+                </article>
+
+                {% endfor %}
+
+            </div>
+
+            {% else %}
+
+            <div class="empty-state empty-state-compact">
+
+                <h3>
+                    No recent tasks
+                </h3>
+
+                <p>
+                    No active tasks are currently available to display.
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </section>
+
+    </div>
+
+    <section
+        class="content-card"
+        aria-labelledby="dashboard-companies-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="dashboard-companies-heading">
+                    Companies
+                </h2>
+
+                <p class="card-subtitle">
+                    A summary of the active companies available to you.
+                </p>
+
+            </div>
+
+            <div class="card-actions">
+
+                <a
+                    href="{{ url_for('companies') }}"
+                    class="btn btn-secondary btn-small"
+                >
+                    View All Companies
+                </a>
+
+            </div>
+
+        </div>
+
+        {% if companies %}
+
+        <div class="table-container">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            Company
+                        </th>
+
+                        <th scope="col">
+                            Sections
+                        </th>
+
+                        <th scope="col">
+                            Open
+                        </th>
+
+                        <th scope="col">
+                            Overdue
+                        </th>
+
+                        <th scope="col">
+                            Completed
+                        </th>
+
+                        <th
+                            scope="col"
+                            class="table-actions-column"
+                        >
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for company in companies %}
+
+                    <tr>
+
+                        <td>
+
+                            <a
+                                href="{{ url_for('company_detail', company_id=company.id) }}"
+                                class="table-primary-text"
+                            >
+                                {{ company.name }}
+                            </a>
+
+                        </td>
+
+                        <td>
+                            {{ company.section_count }}
+                        </td>
+
+                        <td>
+                            {{ company.open_task_count }}
+                        </td>
+
+                        <td>
+
+                            {% if company.overdue_task_count %}
+
+                            <span class="status-badge status-badge-danger">
+                                {{ company.overdue_task_count }}
+                            </span>
+
+                            {% else %}
+
+                            0
+
+                            {% endif %}
+
+                        </td>
+
+                        <td>
+                            {{ company.completed_task_count }}
+                        </td>
+
+                        <td>
+
+                            <a
+                                href="{{ url_for('company_detail', company_id=company.id) }}"
+                                class="btn btn-secondary btn-small"
+                            >
+                                Open
+                            </a>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
+
+        </div>
+
+        {% else %}
+
+        <div class="empty-state">
+
+            <h2>
+                No companies available
+            </h2>
+
+            <p>
+
+                {% if current_user.is_administrator %}
+
+                No active companies have been created.
+
+                {% else %}
+
+                You have not been assigned to any active companies.
+
+                {% endif %}
+
+            </p>
+
+            <a
+                href="{{ url_for('companies') }}"
+                class="btn btn-secondary"
+            >
+                View Companies
+            </a>
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+</div>
+
+{% endblock %}
