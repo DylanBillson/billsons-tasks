@@ -16,10 +16,12 @@ from app.repositories.company_membership_repository import (
 from app.repositories.section_membership_repository import (
     SectionMembershipRepository,
 )
+from app.schemas.task import TaskFilterOptions
 from app.services.company_service import (
     CompanyNotFoundError,
     CompanyService,
 )
+from app.services.section_list_service import SectionListService
 from app.services.section_membership_service import (
     SectionCompanyMembershipRequiredError,
     SectionMembershipAlreadyExistsError,
@@ -36,6 +38,10 @@ from app.services.section_service import (
     SectionService,
     SectionServiceError,
 )
+from app.services.task_service import (
+    TaskService,
+    TaskServiceError,
+)
 from app.web.dependencies.auth import (
     CurrentUser,
     DatabaseSession,
@@ -47,6 +53,7 @@ from app.web.forms.section import (
     SectionForm,
     SectionMembershipCreateForm,
 )
+from app.web.forms.task import TaskFilterForm
 from app.web.templating import templates
 
 
@@ -279,7 +286,12 @@ def section_detail(
     error: str | None = None,
 ) -> HTMLResponse:
     """
-    Display a section after enforcing server-side access isolation.
+    Display a section and its task board after enforcing server-side access
+    isolation.
+
+    Task filters are parsed from the query string. Invalid filters are shown
+    back to the user and ignored rather than allowing malformed or foreign
+    identifiers to produce a server error.
     """
     try:
         section = SectionService.get_accessible_section(
@@ -322,6 +334,91 @@ def section_detail(
         )
     )
 
+    can_create_section_list = (
+        PermissionService.can_create_section_list(
+            db,
+            actor=current_user,
+            section=section,
+        )
+    )
+
+    all_section_lists = SectionListService.list_for_section(
+        db,
+        actor=current_user,
+        section=section,
+        include_archived=True,
+    )
+
+    section_lists = [
+        section_list
+        for section_list in all_section_lists
+        if not section_list.is_archived
+    ]
+
+    archived_section_lists = [
+        section_list
+        for section_list in all_section_lists
+        if section_list.is_archived
+    ]
+
+    filter_form = TaskFilterForm.from_query_params(
+        request.query_params,
+    )
+
+    task_filters = filter_form.validate(
+        timezone_name=settings.default_timezone,
+    )
+
+    if task_filters is None:
+        task_filters = TaskFilterOptions()
+
+    try:
+        tasks = TaskService.list_for_section(
+            db,
+            actor=current_user,
+            section=section,
+            filters=task_filters,
+        )
+
+    except TaskServiceError as exc:
+        filter_form.errors.add_form_error(
+            str(exc),
+        )
+
+        task_filters = TaskFilterOptions()
+
+        tasks = TaskService.list_for_section(
+            db,
+            actor=current_user,
+            section=section,
+            filters=task_filters,
+        )
+
+    active_list_ids = {
+        section_list.id
+        for section_list in section_lists
+    }
+
+    tasks = [
+        task
+        for task in tasks
+        if task.section_list_id in active_list_ids
+    ]
+
+    can_create_task = any(
+        PermissionService.can_create_task(
+            db,
+            actor=current_user,
+            section_list=section_list,
+        )
+        for section_list in section_lists
+    )
+
+    available_assignees = _get_available_task_assignees(
+        section=section,
+        section_memberships=memberships,
+    )
+
     return templates.TemplateResponse(
         request=request,
         name="sections/detail.html",
@@ -330,10 +427,18 @@ def section_detail(
             "section": section,
             "memberships": memberships,
             "company_memberships": company_memberships,
+            "section_lists": section_lists,
+            "archived_section_lists": archived_section_lists,
+            "tasks": tasks,
+            "task_filters": task_filters,
+            "task_filter_form": filter_form,
+            "available_assignees": available_assignees,
             "can_manage_section": can_manage_section,
             "can_manage_section_memberships": (
                 can_manage_section_memberships
             ),
+            "can_create_section_list": can_create_section_list,
+            "can_create_task": can_create_task,
             "csrf_token": _get_authenticated_csrf_token(
                 request,
             ),
@@ -1004,6 +1109,36 @@ def _get_available_section_users(
         ),
     )
 
+
+
+def _get_available_task_assignees(
+    *,
+    section: object,
+    section_memberships: list[SectionMembership],
+) -> list[object]:
+    """
+    Return active users who may be selected as task assignees in the section.
+
+    The section creator has implicit section access and therefore remains
+    eligible even when they do not have an explicit SectionMembership row.
+    """
+    users_by_id = {
+        membership.user.id: membership.user
+        for membership in section_memberships
+        if membership.user.can_authenticate
+    }
+
+    if section.created_by.can_authenticate:
+        users_by_id[section.created_by.id] = section.created_by
+
+    return sorted(
+        users_by_id.values(),
+        key=lambda user: (
+            user.display_name.casefold(),
+            user.username.casefold(),
+            user.id,
+        ),
+    )
 
 def _redirect_to_company_list(
     *,

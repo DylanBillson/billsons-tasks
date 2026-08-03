@@ -1,0 +1,249 @@
+<form
+    method="get"
+    action="{{ url_for('section_detail', section_id=section.id) }}"
+    class="task-filters"
+    data-task-filters
+>
+
+    {% if task_filter_form.errors.form_errors %}
+
+    <div
+        class="form-error-summary"
+        role="alert"
+    >
+
+        {% for message in task_filter_form.errors.form_errors %}
+
+        <p>
+            {{ message }}
+        </p>
+
+        {% endfor %}
+
+    </div>
+
+    {% endif %}
+
+    <div class="task-filter-grid">
+
+        <div class="form-group">
+
+            <label for="task-filter-state">
+                Status
+            </label>
+
+            <select
+                id="task-filter-state"
+                name="state"
+            >
+
+                <option
+                    value="all"
+                    {% if task_filter_form.state == "all" %}selected{% endif %}
+                >
+                    All Tasks
+                </option>
+
+                <option
+                    value="open"
+                    {% if task_filter_form.state == "open" %}selected{% endif %}
+                >
+                    Open
+                </option>
+
+                <option
+                    value="completed"
+                    {% if task_filter_form.state == "completed" %}selected{% endif %}
+                >
+                    Completed
+                </option>
+
+                <option
+                    value="overdue"
+                    {% if task_filter_form.state == "overdue" %}selected{% endif %}
+                >
+                    Overdue
+                </option>
+
+                <option
+                    value="deleted"
+                    {% if task_filter_form.state == "deleted" %}selected{% endif %}
+                >
+                    Deleted
+                </option>
+
+            </select>
+
+            {% for message in task_filter_form.errors.for_field("state") %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="task-filter-list">
+                List
+            </label>
+
+            <select
+                id="task-filter-list"
+                name="section_list_id"
+            >
+
+                <option value="">
+                    All Lists
+                </option>
+
+                {% for section_list in section_lists %}
+
+                <option
+                    value="{{ section_list.id }}"
+                    {% if task_filter_form.section_list_id == section_list.id|string %}selected{% endif %}
+                >
+                    {{ section_list.name }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            {% for message in task_filter_form.errors.for_field("section_list_id") %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="task-filter-assignee">
+                Assignee
+            </label>
+
+            <select
+                id="task-filter-assignee"
+                name="assignee_user_id"
+            >
+
+                <option value="">
+                    Anyone
+                </option>
+
+                {% for user in available_assignees %}
+
+                <option
+                    value="{{ user.id }}"
+                    {% if task_filter_form.assignee_user_id == user.id|string %}selected{% endif %}
+                >
+                    {{ user.display_name }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            {% for message in task_filter_form.errors.for_field("assignee_user_id") %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-group task-filter-search">
+
+            <label for="task-filter-search">
+                Search
+            </label>
+
+            <input
+                id="task-filter-search"
+                name="search"
+                type="search"
+                value="{{ task_filter_form.search }}"
+                placeholder="Search titles and descriptions"
+            >
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="task-filter-due-from">
+                Due From
+            </label>
+
+            <input
+                id="task-filter-due-from"
+                name="due_from"
+                type="datetime-local"
+                value="{{ task_filter_form.due_from }}"
+            >
+
+            {% for message in task_filter_form.errors.for_field("due_from") %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="task-filter-due-to">
+                Due To
+            </label>
+
+            <input
+                id="task-filter-due-to"
+                name="due_to"
+                type="datetime-local"
+                value="{{ task_filter_form.due_to }}"
+            >
+
+            {% for message in task_filter_form.errors.for_field("due_to") %}
+
+            <p class="form-error">
+                {{ message }}
+            </p>
+
+            {% endfor %}
+
+        </div>
+
+    </div>
+
+    <div class="form-actions">
+
+        <button
+            type="submit"
+            class="btn btn-primary"
+        >
+            Apply Filters
+        </button>
+
+        {% if task_filter_form.is_active %}
+
+        <a
+            href="{{ url_for('section_detail', section_id=section.id) }}"
+            class="btn btn-secondary"
+        >
+            Clear Filters
+        </a>
+
+        {% endif %}
+
+    </div>
+
+</form>

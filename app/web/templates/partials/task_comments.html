@@ -1,0 +1,190 @@
+<section
+    class="content-card"
+    aria-labelledby="task-comments-heading"
+>
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 id="task-comments-heading">
+                Comments
+            </h2>
+
+            <p class="card-subtitle">
+                Discussion and updates related to this task.
+            </p>
+
+        </div>
+
+        <div class="card-actions">
+
+            <span class="status-badge status-badge-muted">
+                {{ comments | length }}
+            </span>
+
+        </div>
+
+    </div>
+
+    {% if can_comment and not task.is_deleted %}
+
+    <form
+        method="post"
+        action="{{ url_for('task_comment_add', task_id=task.id) }}"
+        class="task-comment-form"
+        novalidate
+    >
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
+
+        <div class="form-group">
+
+            <label for="comment-body">
+                Add Comment
+            </label>
+
+            <textarea
+                id="comment-body"
+                name="body"
+                rows="4"
+                maxlength="10000"
+                required
+                placeholder="Write a comment..."
+            >{{ comment_form.body }}</textarea>
+
+        </div>
+
+        <div class="form-actions">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+            >
+                Add Comment
+            </button>
+
+        </div>
+
+    </form>
+
+    {% endif %}
+
+    {% if comments %}
+
+    <div class="task-comments">
+
+        {% for comment in comments %}
+
+        <article
+            class="
+                task-comment
+                {% if comment.is_deleted %}is-deleted{% endif %}
+            "
+        >
+
+            <header class="task-comment-header">
+
+                <div>
+
+                    <span class="task-comment-author">
+
+                        {% if comment.user %}
+
+                        {{ comment.user.display_name }}
+
+                        {% else %}
+
+                        Removed User
+
+                        {% endif %}
+
+                    </span>
+
+                    <time class="task-comment-date">
+                        {{ comment.created_at }}
+                    </time>
+
+                </div>
+
+                {% if (
+                    not comment.is_deleted
+                    and not task.is_deleted
+                    and (
+                        current_user.is_administrator
+                        or current_user.id == comment.user_id
+                        or current_user.id == section.created_by_user_id
+                    )
+                ) %}
+
+                <form
+                    method="post"
+                    action="{{ url_for(
+                        'task_comment_delete',
+                        task_id=task.id,
+                        comment_id=comment.id
+                    ) }}"
+                    class="inline-form"
+                    data-confirm="Delete this comment?"
+                >
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-danger btn-small"
+                    >
+                        Delete
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </header>
+
+            <div class="task-comment-body">
+
+                {% if comment.is_deleted %}
+
+                <p class="text-muted">
+                    This comment was deleted.
+                </p>
+
+                {% else %}
+
+                <p>
+                    {{ comment.body }}
+                </p>
+
+                {% endif %}
+
+            </div>
+
+        </article>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-state empty-state-compact">
+
+        <p>
+            No comments have been added to this task.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</section>

@@ -1,0 +1,139 @@
+<section
+    class="task-list-column"
+    data-task-list
+    data-list-id="{{ section_list.id }}"
+    data-sort-position="{{ section_list.sort_position }}"
+    {% if (
+        task_board_drag_enabled
+        and can_manage_section
+    ) %}
+    draggable="true"
+    {% endif %}
+    aria-labelledby="task-list-{{ section_list.id }}-heading"
+>
+
+    <header class="task-list-header">
+
+        <div class="task-list-heading">
+
+            {% if (
+                task_board_drag_enabled
+                and can_manage_section
+            ) %}
+
+            <span
+                class="task-list-drag-handle"
+                data-list-drag-handle
+                role="button"
+                tabindex="0"
+                aria-label="Drag {{ section_list.name }} to reorder"
+                title="Drag to reorder list"
+            >
+                <span aria-hidden="true">
+                    ⋮⋮
+                </span>
+            </span>
+
+            {% endif %}
+
+            <div>
+
+                <h3 id="task-list-{{ section_list.id }}-heading">
+                    {{ section_list.name }}
+                </h3>
+
+                {% if section_list.description %}
+
+                <p class="task-list-description">
+                    {{ section_list.description }}
+                </p>
+
+                {% endif %}
+
+            </div>
+
+            <span
+                class="task-list-count"
+                data-task-list-count
+                aria-label="{{ list_tasks | length }} tasks"
+            >
+                {{ list_tasks | length }}
+            </span>
+
+        </div>
+
+        <div class="task-list-actions">
+
+            {% if can_create_task and not section.is_archived %}
+
+            <a
+                href="{{ url_for('task_create', section_list_id=section_list.id) }}"
+                class="btn btn-primary btn-small"
+            >
+                Add Task
+            </a>
+
+            {% endif %}
+
+            {% if can_manage_section %}
+
+            <a
+                href="{{ url_for('section_list_edit', section_list_id=section_list.id) }}"
+                class="btn btn-secondary btn-small"
+            >
+                Manage
+            </a>
+
+            {% endif %}
+
+        </div>
+
+    </header>
+
+    <div
+        class="task-list-items"
+        data-task-list-items
+        data-list-id="{{ section_list.id }}"
+    >
+
+        {% for task in list_tasks %}
+
+            {% include "partials/task_card.html" %}
+
+        {% else %}
+
+        <div
+            class="empty-state empty-state-compact task-list-empty"
+            data-task-list-empty
+        >
+
+            <p>
+                {% if task_filter_form.is_active %}
+                No tasks match the current filters.
+                {% else %}
+                No tasks in this list.
+                {% endif %}
+            </p>
+
+            {% if (
+                can_create_task
+                and not task_filter_form.is_active
+                and not section.is_archived
+            ) %}
+
+            <a
+                href="{{ url_for('task_create', section_list_id=section_list.id) }}"
+                class="btn btn-primary btn-small"
+            >
+                Add First Task
+            </a>
+
+            {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+</section>

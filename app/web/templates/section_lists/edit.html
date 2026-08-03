@@ -1,0 +1,474 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit {{ section_list.name }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page section-list-form-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                {{ section.company.name }}
+                &middot;
+                {{ section.name }}
+            </p>
+
+            <h1>
+                Edit List
+            </h1>
+
+            <p class="page-subtitle">
+                Update this list’s name, description, or status.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('section_detail', section_id=section.id) }}"
+                class="btn btn-secondary"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="form-page-layout">
+
+        <section
+            class="content-card form-card"
+            aria-labelledby="edit-list-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="edit-list-heading">
+                        List Details
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Changes apply to this list within
+                        {{ section.name }}.
+                    </p>
+
+                </div>
+
+                <div class="card-actions">
+
+                    {% if section_list.is_archived %}
+
+                    <span class="status-badge status-badge-muted">
+                        Archived
+                    </span>
+
+                    {% else %}
+
+                    <span class="status-badge status-badge-success">
+                        Active
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-error-summary"
+                role="alert"
+                aria-labelledby="list-form-errors-heading"
+            >
+
+                <h3 id="list-form-errors-heading">
+                    Please correct the following
+                </h3>
+
+                <ul>
+
+                    {% for message in form.errors.form_errors %}
+
+                    <li>
+                        {{ message }}
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('section_list_edit_submit', section_list_id=section_list.id) }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="name">
+                        List Name
+                    </label>
+
+                    <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        maxlength="150"
+                        autocomplete="off"
+                        required
+                        autofocus
+                        value="{{ form.name }}"
+                        {% if form.errors.for_field("name") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="name-errors"
+                        {% endif %}
+                    >
+
+                    <p class="form-help">
+                        Use a clear name that describes the task stage or
+                        category.
+                    </p>
+
+                    {% if form.errors.for_field("name") %}
+
+                    <div
+                        id="name-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("name") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="description">
+                        Description
+                        <span class="form-label-optional">
+                            Optional
+                        </span>
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="5"
+                        maxlength="2000"
+                        {% if form.errors.for_field("description") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="description-errors"
+                        {% endif %}
+                    >{{ form.description }}</textarea>
+
+                    <p class="form-help">
+                        Explain what kind of work belongs in this list.
+                    </p>
+
+                    {% if form.errors.for_field("description") %}
+
+                    <div
+                        id="description-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("description") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Save Changes
+                    </button>
+
+                    <a
+                        href="{{ url_for('section_detail', section_id=section.id) }}"
+                        class="btn btn-secondary"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <aside
+            class="content-card form-context-card"
+            aria-labelledby="list-context-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="list-context-heading">
+                        List Information
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Company
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('company_detail', company_id=section.company_id) }}"
+                        >
+                            {{ section.company.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Section
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('section_detail', section_id=section.id) }}"
+                        >
+                            {{ section.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Status
+                    </dt>
+
+                    <dd>
+
+                        {% if section_list.is_archived %}
+
+                        <span class="status-badge status-badge-muted">
+                            Archived
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-success">
+                            Active
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Sort Position
+                    </dt>
+
+                    <dd>
+                        {{ section_list.sort_position }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created
+                    </dt>
+
+                    <dd>
+                        {{ section_list.created_at }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Last Updated
+                    </dt>
+
+                    <dd>
+                        {{ section_list.updated_at }}
+                    </dd>
+
+                </div>
+
+            </dl>
+
+            <div class="form-context-description">
+
+                <h3>
+                    List Actions
+                </h3>
+
+                {% if section_list.is_archived %}
+
+                <p>
+                    Restore this list to return it to the active task board.
+                </p>
+
+                <form
+                    method="post"
+                    action="{{ url_for('section_list_restore', section_list_id=section_list.id) }}"
+                >
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Restore List
+                    </button>
+
+                </form>
+
+                {% else %}
+
+                <p>
+                    Archiving removes this list from the active task board
+                    without deleting its tasks.
+                </p>
+
+                <form
+                    method="post"
+                    action="{{ url_for('section_list_archive', section_list_id=section_list.id) }}"
+                >
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-secondary"
+                    >
+                        Archive List
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </div>
+
+            <div class="form-context-description">
+
+                <h3>
+                    Delete List
+                </h3>
+
+                <p>
+                    A list can only be deleted when it contains no tasks.
+                </p>
+
+                <form
+                    method="post"
+                    action="{{ url_for('section_list_delete', section_list_id=section_list.id) }}"
+                    data-confirm="Delete this empty list permanently?"
+                >
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-danger"
+                    >
+                        Delete List
+                    </button>
+
+                </form>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('section_detail', section_id=section.id) }}"
+            class="btn btn-secondary"
+        >
+            Back to Section
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

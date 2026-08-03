@@ -1,0 +1,91 @@
+<section
+    class="content-card"
+    aria-labelledby="task-history-heading"
+>
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 id="task-history-heading">
+                Task History
+            </h2>
+
+            <p class="card-subtitle">
+                A chronological record of changes to this task.
+            </p>
+
+        </div>
+
+        <div class="card-actions">
+
+            <span class="status-badge status-badge-muted">
+                {{ history_events | length }}
+            </span>
+
+        </div>
+
+    </div>
+
+    {% if history_events %}
+
+    <ol class="task-history">
+
+        {% for event in history_events %}
+
+        <li class="task-history-event">
+
+            <div
+                class="task-history-marker"
+                aria-hidden="true"
+            ></div>
+
+            <div class="task-history-content">
+
+                <div class="task-history-header">
+
+                    <span class="task-history-summary">
+                        {{ event.summary }}
+                    </span>
+
+                    <time class="task-history-date">
+                        {{ event.created_at }}
+                    </time>
+
+                </div>
+
+                <p class="task-history-actor">
+
+                    {% if event.user %}
+
+                    {{ event.user.display_name }}
+
+                    {% else %}
+
+                    System
+
+                    {% endif %}
+
+                </p>
+
+            </div>
+
+        </li>
+
+        {% endfor %}
+
+    </ol>
+
+    {% else %}
+
+    <div class="empty-state empty-state-compact">
+
+        <p>
+            No task history is available.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</section>

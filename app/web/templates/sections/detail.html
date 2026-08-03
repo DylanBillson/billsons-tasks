@@ -6,7 +6,7 @@
 
 {% block content %}
 
-<div class="app-page">
+<div class="app-page section-detail-page">
 
     <div class="page-header">
 
@@ -37,6 +37,17 @@
         </div>
 
         <div class="page-actions">
+
+            {% if can_create_section_list and not section.is_archived %}
+
+            <a
+                href="{{ url_for('section_list_create', section_id=section.id) }}"
+                class="btn btn-primary"
+            >
+                Add List
+            </a>
+
+            {% endif %}
 
             {% if can_manage_section %}
 
@@ -107,6 +118,29 @@
         </div>
 
     </div>
+
+    {% if section.is_archived %}
+
+    <div
+        class="flash-message flash-message-warning"
+        role="status"
+    >
+
+        <div class="flash-message-content">
+
+            <strong class="flash-message-title">
+                Archived section
+            </strong>
+
+            <p class="flash-message-text">
+                This section is read-only until it is restored.
+            </p>
+
+        </div>
+
+    </div>
+
+    {% endif %}
 
     <div class="detail-grid">
 
@@ -193,6 +227,30 @@
 
                     <dd>
                         {{ memberships | length }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Active Lists
+                    </dt>
+
+                    <dd>
+                        {{ section_lists | length }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Visible Tasks
+                    </dt>
+
+                    <dd>
+                        {{ tasks | length }}
                     </dd>
 
                 </div>
@@ -394,7 +452,7 @@
     </div>
 
     <section
-        class="content-card"
+        class="content-card task-board-section"
         aria-labelledby="section-content-heading"
     >
 
@@ -407,12 +465,35 @@
                 </h2>
 
                 <p class="card-subtitle">
-                    Lists and tasks for this section will appear here.
+                    Organise, filter and manage the work in this section.
                 </p>
 
             </div>
 
+            <div class="card-actions">
+
+                {% if can_create_section_list and not section.is_archived %}
+
+                <a
+                    href="{{ url_for('section_list_create', section_id=section.id) }}"
+                    class="btn btn-secondary btn-small"
+                >
+                    Add List
+                </a>
+
+                {% endif %}
+
+            </div>
+
         </div>
+
+        {% include "partials/task_filters.html" %}
+
+        {% if section_lists %}
+
+        {% include "partials/task_board.html" %}
+
+        {% else %}
 
         <div class="empty-state">
 
@@ -421,12 +502,156 @@
             </h2>
 
             <p>
-                List and task management will be added in a later phase.
+                Create the first list to begin organising tasks in this
+                section.
             </p>
+
+            {% if can_create_section_list and not section.is_archived %}
+
+            <a
+                href="{{ url_for('section_list_create', section_id=section.id) }}"
+                class="btn btn-primary"
+            >
+                Create First List
+            </a>
+
+            {% endif %}
+
+        </div>
+
+        {% endif %}
+
+    </section>
+
+    {% if archived_section_lists and can_manage_section %}
+
+    <section
+        class="content-card"
+        aria-labelledby="archived-lists-heading"
+    >
+
+        <div class="card-header">
+
+            <div>
+
+                <h2 id="archived-lists-heading">
+                    Archived Lists
+                </h2>
+
+                <p class="card-subtitle">
+                    Restore an archived list to return it to the task board.
+                </p>
+
+            </div>
+
+        </div>
+
+        <div class="table-container">
+
+            <table class="data-table">
+
+                <thead>
+
+                    <tr>
+
+                        <th scope="col">
+                            List
+                        </th>
+
+                        <th scope="col">
+                            Position
+                        </th>
+
+                        <th
+                            scope="col"
+                            class="table-actions-column"
+                        >
+                            Actions
+                        </th>
+
+                    </tr>
+
+                </thead>
+
+                <tbody>
+
+                    {% for section_list in archived_section_lists %}
+
+                    <tr>
+
+                        <td>
+
+                            <div class="table-primary">
+
+                                <span class="table-primary-text">
+                                    {{ section_list.name }}
+                                </span>
+
+                                {% if section_list.description %}
+
+                                <span class="table-secondary">
+                                    {{ section_list.description }}
+                                </span>
+
+                                {% endif %}
+
+                            </div>
+
+                        </td>
+
+                        <td>
+                            {{ section_list.sort_position }}
+                        </td>
+
+                        <td>
+
+                            <div class="table-actions">
+
+                                <a
+                                    href="{{ url_for('section_list_edit', section_list_id=section_list.id) }}"
+                                    class="btn btn-secondary btn-small"
+                                >
+                                    Edit
+                                </a>
+
+                                <form
+                                    method="post"
+                                    action="{{ url_for('section_list_restore', section_list_id=section_list.id) }}"
+                                    class="inline-form"
+                                >
+
+                                    <input
+                                        type="hidden"
+                                        name="csrf_token"
+                                        value="{{ csrf_token }}"
+                                    >
+
+                                    <button
+                                        type="submit"
+                                        class="btn btn-primary btn-small"
+                                    >
+                                        Restore
+                                    </button>
+
+                                </form>
+
+                            </div>
+
+                        </td>
+
+                    </tr>
+
+                    {% endfor %}
+
+                </tbody>
+
+            </table>
 
         </div>
 
     </section>
+
+    {% endif %}
 
     <div class="page-footer-actions">
 
@@ -440,5 +665,19 @@
     </div>
 
 </div>
+
+{% endblock %}
+
+{% block scripts %}
+
+<script
+    src="{{ url_for('static', path='js/task-board.js') }}"
+    defer
+></script>
+
+<script
+    src="{{ url_for('static', path='js/task-filters.js') }}"
+    defer
+></script>
 
 {% endblock %}

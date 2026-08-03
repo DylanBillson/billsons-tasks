@@ -1,0 +1,48 @@
+.task-detail-page {
+    display: flex;
+    flex-direction: column;
+    gap: 2rem;
+}
+
+.task-detail-layout {
+    display: grid;
+    grid-template-columns: minmax(0, 2fr) 22rem;
+    gap: 2rem;
+    align-items: start;
+}
+
+.task-detail-main,
+.task-detail-sidebar {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.task-title-row {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.task-board-section {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.danger-zone {
+    border-color: var(--colour-danger);
+}
+
+.text-danger {
+    color: var(--colour-danger);
+}
+
+@media (max-width: 1100px) {
+
+    .task-detail-layout {
+        grid-template-columns: 1fr;
+    }
+
+}

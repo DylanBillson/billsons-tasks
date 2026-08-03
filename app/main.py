@@ -8,17 +8,27 @@ from contextlib import asynccontextmanager
 from urllib.parse import urlencode
 
 from fastapi import FastAPI, Request
-from fastapi.responses import JSONResponse, RedirectResponse
+from fastapi.responses import (
+    JSONResponse,
+    RedirectResponse,
+    Response,
+)
 from fastapi.staticfiles import StaticFiles
 
 from app.core.config import settings
-from app.web.dependencies.auth import AuthenticationRequiredError
+from app.web.dependencies.auth import (
+    AuthenticationRequiredError,
+)
 from app.web.routes import (
     admin_companies_router,
+    admin_deleted_tasks_router,
     admin_users_router,
     auth_router,
+    comments_router,
     companies_router,
+    section_lists_router,
     sections_router,
+    tasks_router,
 )
 from app.web.routes.health import router as health_router
 
@@ -28,7 +38,9 @@ logging.basicConfig(
     format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
 )
 
-logger = logging.getLogger(__name__)
+logger = logging.getLogger(
+    __name__,
+)
 
 
 @asynccontextmanager
@@ -71,11 +83,13 @@ app = FastAPI(
 )
 
 
-@app.exception_handler(AuthenticationRequiredError)
+@app.exception_handler(
+    AuthenticationRequiredError,
+)
 async def authentication_required_handler(
     request: Request,
     exc: AuthenticationRequiredError,
-) -> JSONResponse | RedirectResponse:
+) -> Response:
     """
     Redirect browser page requests to the login page.
 
@@ -89,10 +103,15 @@ async def authentication_required_handler(
 
     is_api_request = (
         request.url.path == "/api"
-        or request.url.path.startswith("/api/")
+        or request.url.path.startswith(
+            "/api/",
+        )
     )
 
-    accepts_html = "text/html" in accept_header
+    accepts_html = (
+        "text/html"
+        in accept_header
+    )
 
     if accepts_html and not is_api_request:
         next_url = request.url.path
@@ -152,9 +171,25 @@ app.include_router(
 )
 
 app.include_router(
+    section_lists_router,
+)
+
+app.include_router(
+    tasks_router,
+)
+
+app.include_router(
+    comments_router,
+)
+
+app.include_router(
     admin_users_router,
 )
 
 app.include_router(
     admin_companies_router,
+)
+
+app.include_router(
+    admin_deleted_tasks_router,
 )

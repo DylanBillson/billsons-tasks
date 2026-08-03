@@ -1,0 +1,428 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit {{ task.title }}
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page task-form-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                {{ section.company.name }}
+                &middot;
+                {{ section.name }}
+                &middot;
+                {{ section_list.name }}
+            </p>
+
+            <h1>
+                Edit Task
+            </h1>
+
+            <p class="page-subtitle">
+                Update the task title, description or deadline.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('task_detail', task_id=task.id) }}"
+                class="btn btn-secondary"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="form-page-layout">
+
+        <section
+            class="content-card form-card"
+            aria-labelledby="edit-task-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="edit-task-heading">
+                        Task Details
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Changes are recorded in the task history.
+                    </p>
+
+                </div>
+
+                <div class="card-actions">
+
+                    {% if task.is_completed %}
+
+                    <span class="status-badge status-badge-success">
+                        Completed
+                    </span>
+
+                    {% elif task.is_overdue %}
+
+                    <span class="status-badge status-badge-danger">
+                        Overdue
+                    </span>
+
+                    {% else %}
+
+                    <span class="status-badge status-badge-primary">
+                        Open
+                    </span>
+
+                    {% endif %}
+
+                </div>
+
+            </div>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-error-summary"
+                role="alert"
+                aria-labelledby="task-form-errors-heading"
+            >
+
+                <h3 id="task-form-errors-heading">
+                    Please correct the following
+                </h3>
+
+                <ul>
+
+                    {% for message in form.errors.form_errors %}
+
+                    <li>
+                        {{ message }}
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('task_edit_submit', task_id=task.id) }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="title">
+                        Task Title
+                    </label>
+
+                    <input
+                        id="title"
+                        name="title"
+                        type="text"
+                        maxlength="200"
+                        autocomplete="off"
+                        required
+                        autofocus
+                        value="{{ form.title }}"
+                        {% if form.errors.for_field("title") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="title-errors"
+                        {% endif %}
+                    >
+
+                    {% if form.errors.for_field("title") %}
+
+                    <div
+                        id="title-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("title") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="description">
+                        Description
+                        <span class="form-label-optional">
+                            Optional
+                        </span>
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="8"
+                        maxlength="10000"
+                        {% if form.errors.for_field("description") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="description-errors"
+                        {% endif %}
+                    >{{ form.description }}</textarea>
+
+                    {% if form.errors.for_field("description") %}
+
+                    <div
+                        id="description-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("description") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="due_at">
+                        Due Date and Time
+                        <span class="form-label-optional">
+                            Optional
+                        </span>
+                    </label>
+
+                    <input
+                        id="due_at"
+                        name="due_at"
+                        type="datetime-local"
+                        value="{{ form.due_at }}"
+                        {% if form.errors.for_field("due_at") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="due-at-errors"
+                        {% endif %}
+                    >
+
+                    <p class="form-help">
+                        Clear this field to remove the deadline.
+                    </p>
+
+                    {% if form.errors.for_field("due_at") %}
+
+                    <div
+                        id="due-at-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("due_at") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Save Changes
+                    </button>
+
+                    <a
+                        href="{{ url_for('task_detail', task_id=task.id) }}"
+                        class="btn btn-secondary"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <aside
+            class="content-card form-context-card"
+            aria-labelledby="task-context-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="task-context-heading">
+                        Task Information
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Company
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('company_detail', company_id=section.company_id) }}"
+                        >
+                            {{ section.company.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Section
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('section_detail', section_id=section.id) }}"
+                        >
+                            {{ section.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        List
+                    </dt>
+
+                    <dd>
+                        {{ section_list.name }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created By
+                    </dt>
+
+                    <dd>
+                        {{ task.created_by.display_name }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created
+                    </dt>
+
+                    <dd>
+                        {{ task.created_at }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Last Updated
+                    </dt>
+
+                    <dd>
+                        {{ task.updated_at }}
+                    </dd>
+
+                </div>
+
+            </dl>
+
+            <div class="form-context-description">
+
+                <h3>
+                    Moving Tasks
+                </h3>
+
+                <p>
+                    Return to the section board to move this task between
+                    lists using drag and drop.
+                </p>
+
+                <a
+                    href="{{ url_for('section_detail', section_id=section.id) }}"
+                    class="btn btn-secondary"
+                >
+                    Open Task Board
+                </a>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('task_detail', task_id=task.id) }}"
+            class="btn btn-secondary"
+        >
+            Back to Task
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

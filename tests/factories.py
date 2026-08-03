@@ -12,7 +12,12 @@ from typing import Any
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import AuditAction, CompanyRole, GlobalRole
+from app.core.constants import (
+    AuditAction,
+    CompanyRole,
+    GlobalRole,
+    TaskHistoryEventType,
+)
 from app.core.security import (
     generate_csrf_token,
     generate_session_token,
@@ -24,21 +29,40 @@ from app.models.audit_log import AuditLog
 from app.models.company import Company
 from app.models.company_membership import CompanyMembership
 from app.models.section import Section
+from app.models.section_list import SectionList
 from app.models.section_membership import SectionMembership
 from app.models.session import AuthSession
+from app.models.task import Task
+from app.models.task_assignee import TaskAssignee
+from app.models.task_comment import TaskComment
+from app.models.task_history_event import TaskHistoryEvent
 from app.models.user import User
 from app.services.audit_service import AuditService
 
 
 DEFAULT_TEST_PASSWORD = "Correct-Horse-Battery-Staple-123!"
 
-_user_counter = count(start=1)
+_user_counter = count(
+    start=1,
+)
 
 _company_counter = count(
     start=1,
 )
 
 _section_counter = count(
+    start=1,
+)
+
+_section_list_counter = count(
+    start=1,
+)
+
+_task_counter = count(
+    start=1,
+)
+
+_task_comment_counter = count(
     start=1,
 )
 
@@ -60,6 +84,34 @@ def _next_section_number() -> int:
         _section_counter,
     )
 
+
+def _next_section_list_number() -> int:
+    """
+    Return a process-local unique number for generated list names.
+    """
+    return next(
+        _section_list_counter,
+    )
+
+
+def _next_task_number() -> int:
+    """
+    Return a process-local unique number for generated task titles.
+    """
+    return next(
+        _task_counter,
+    )
+
+
+def _next_task_comment_number() -> int:
+    """
+    Return a process-local unique number for generated comments.
+    """
+    return next(
+        _task_comment_counter,
+    )
+
+
 def create_user(
     db: Session,
     *,
@@ -72,10 +124,16 @@ def create_user(
     is_anonymised: bool = False,
     anonymised_at: datetime | None = None,
 ) -> User:
-    number = next(_user_counter)
+    number = next(
+        _user_counter,
+    )
+
     resolved_role = (
         global_role.value
-        if isinstance(global_role, GlobalRole)
+        if isinstance(
+            global_role,
+            GlobalRole,
+        )
         else global_role
     )
 
@@ -83,18 +141,34 @@ def create_user(
         anonymised_at = utc_now()
 
     user = User(
-        username=username or f"test-user-{number}",
-        display_name=display_name or f"Test User {number}",
-        password_hash=password_hash or hash_password(password),
+        username=(
+            username
+            or f"test-user-{number}"
+        ),
+        display_name=(
+            display_name
+            or f"Test User {number}"
+        ),
+        password_hash=(
+            password_hash
+            or hash_password(
+                password,
+            )
+        ),
         global_role=resolved_role,
         is_active=is_active,
         is_anonymised=is_anonymised,
         anonymised_at=anonymised_at,
     )
 
-    db.add(user)
+    db.add(
+        user,
+    )
     db.flush()
-    db.refresh(user)
+    db.refresh(
+        user,
+    )
+
     return user
 
 
@@ -239,8 +313,8 @@ def create_section_membership(
     Create and flush an explicit section membership.
 
     This factory does not create or require a company membership. That
-    integrity rule will be enforced by the service layer; model-level tests
-    may deliberately construct lower-level database states.
+    integrity rule is enforced by the service layer; model-level tests may
+    deliberately construct lower-level database states.
     """
     membership = SectionMembership(
         section=section,
@@ -253,6 +327,207 @@ def create_section_membership(
     db.flush()
 
     return membership
+
+
+def create_section_list(
+    db: Session,
+    *,
+    section: Section,
+    name: str | None = None,
+    description: str | None = None,
+    sort_position: int = 1000,
+    is_archived: bool = False,
+) -> SectionList:
+    """
+    Create and flush a section list.
+    """
+    list_number = _next_section_list_number()
+
+    resolved_name = (
+        name
+        if name is not None
+        else f"Test List {list_number}"
+    )
+
+    section_list = SectionList(
+        section=section,
+        name=resolved_name,
+        description=description,
+        sort_position=sort_position,
+        is_archived=is_archived,
+    )
+
+    db.add(
+        section_list,
+    )
+    db.flush()
+
+    return section_list
+
+
+def create_task(
+    db: Session,
+    *,
+    section_list: SectionList,
+    created_by: User,
+    title: str | None = None,
+    description: str | None = None,
+    due_at: datetime | None = None,
+    completed_at: datetime | None = None,
+    completed_by: User | None = None,
+    sort_position: int = 1000,
+    deleted_at: datetime | None = None,
+    deleted_by: User | None = None,
+) -> Task:
+    """
+    Create and flush a task.
+
+    Completion and deletion timestamps are supplied automatically when their
+    corresponding user relationships are provided without timestamps.
+    """
+    task_number = _next_task_number()
+
+    resolved_title = (
+        title
+        if title is not None
+        else f"Test Task {task_number}"
+    )
+
+    if completed_by is not None and completed_at is None:
+        completed_at = utc_now()
+
+    if deleted_by is not None and deleted_at is None:
+        deleted_at = utc_now()
+
+    task = Task(
+        section_list=section_list,
+        created_by=created_by,
+        title=resolved_title,
+        description=description,
+        due_at=due_at,
+        completed_at=completed_at,
+        completed_by=completed_by,
+        sort_position=sort_position,
+        deleted_at=deleted_at,
+        deleted_by=deleted_by,
+    )
+
+    db.add(
+        task,
+    )
+    db.flush()
+
+    return task
+
+
+def create_task_assignee(
+    db: Session,
+    *,
+    task: Task,
+    user: User,
+) -> TaskAssignee:
+    """
+    Create and flush a task assignment.
+    """
+    assignment = TaskAssignee(
+        task=task,
+        user=user,
+    )
+
+    db.add(
+        assignment,
+    )
+    db.flush()
+
+    return assignment
+
+
+def create_task_comment(
+    db: Session,
+    *,
+    task: Task,
+    user: User | None = None,
+    body: str | None = None,
+    deleted_at: datetime | None = None,
+    deleted_by: User | None = None,
+) -> TaskComment:
+    """
+    Create and flush a task comment.
+    """
+    comment_number = _next_task_comment_number()
+
+    resolved_body = (
+        body
+        if body is not None
+        else f"Test comment {comment_number}."
+    )
+
+    if deleted_by is not None and deleted_at is None:
+        deleted_at = utc_now()
+
+    comment = TaskComment(
+        task=task,
+        user=user,
+        body=resolved_body,
+        deleted_at=deleted_at,
+        deleted_by=deleted_by,
+    )
+
+    db.add(
+        comment,
+    )
+    db.flush()
+
+    return comment
+
+
+def create_task_history_event(
+    db: Session,
+    *,
+    task: Task,
+    user: User | None = None,
+    event_type: str | TaskHistoryEventType = (
+        TaskHistoryEventType.CREATED
+    ),
+    summary: str = "Test task history event.",
+    metadata_json: Mapping[str, Any] | None = None,
+    created_at: datetime | None = None,
+) -> TaskHistoryEvent:
+    """
+    Create and flush a task-history event.
+    """
+    resolved_event_type = (
+        event_type.value
+        if isinstance(
+            event_type,
+            TaskHistoryEventType,
+        )
+        else event_type
+    )
+
+    history_event = TaskHistoryEvent(
+        task=task,
+        user=user,
+        event_type=resolved_event_type,
+        summary=summary,
+        metadata_json=(
+            dict(
+                metadata_json,
+            )
+            if metadata_json is not None
+            else {}
+        ),
+    )
+
+    if created_at is not None:
+        history_event.created_at = created_at
+
+    db.add(
+        history_event,
+    )
+    db.flush()
+
+    return history_event
 
 
 def create_auth_session(
@@ -270,10 +545,29 @@ def create_auth_session(
     user_agent: str | None = "Billsons Tasks pytest",
 ) -> tuple[AuthSession, str, str]:
     now = utc_now()
-    raw_session_token = session_token or generate_session_token()
-    raw_csrf_token = csrf_token or generate_csrf_token()
-    resolved_last_seen = last_seen_at or now
-    resolved_expiry = expires_at or now + timedelta(hours=12)
+
+    raw_session_token = (
+        session_token
+        or generate_session_token()
+    )
+
+    raw_csrf_token = (
+        csrf_token
+        or generate_csrf_token()
+    )
+
+    resolved_last_seen = (
+        last_seen_at
+        or now
+    )
+
+    resolved_expiry = (
+        expires_at
+        or now + timedelta(
+            hours=12,
+        )
+    )
+
     resolved_revoked_at = revoked_at
 
     if is_revoked and resolved_revoked_at is None:
@@ -281,8 +575,12 @@ def create_auth_session(
 
     auth_session = AuthSession(
         user_id=user.id,
-        token_hash=hash_token(raw_session_token),
-        csrf_token_hash=hash_token(raw_csrf_token),
+        token_hash=hash_token(
+            raw_session_token,
+        ),
+        csrf_token_hash=hash_token(
+            raw_csrf_token,
+        ),
         expires_at=resolved_expiry,
         last_seen_at=resolved_last_seen,
         remember_me=remember_me,
@@ -292,10 +590,19 @@ def create_auth_session(
         user_agent=user_agent,
     )
 
-    db.add(auth_session)
+    db.add(
+        auth_session,
+    )
     db.flush()
-    db.refresh(auth_session)
-    return auth_session, raw_session_token, raw_csrf_token
+    db.refresh(
+        auth_session,
+    )
+
+    return (
+        auth_session,
+        raw_session_token,
+        raw_csrf_token,
+    )
 
 
 def create_expired_auth_session(
@@ -309,7 +616,12 @@ def create_expired_auth_session(
     ip_address: str | None = "127.0.0.1",
     user_agent: str | None = "Billsons Tasks pytest",
 ) -> tuple[AuthSession, str, str]:
-    resolved_expiry = expired_at or utc_now() - timedelta(minutes=1)
+    resolved_expiry = (
+        expired_at
+        or utc_now() - timedelta(
+            minutes=1,
+        )
+    )
 
     return create_auth_session(
         db,
@@ -317,7 +629,12 @@ def create_expired_auth_session(
         session_token=session_token,
         csrf_token=csrf_token,
         expires_at=resolved_expiry,
-        last_seen_at=resolved_expiry - timedelta(minutes=5),
+        last_seen_at=(
+            resolved_expiry
+            - timedelta(
+                minutes=5,
+            )
+        ),
         remember_me=remember_me,
         ip_address=ip_address,
         user_agent=user_agent,
@@ -371,12 +688,21 @@ def create_audit_log(
         user_id=user_id,
         entity_type=entity_type,
         entity_id=entity_id,
-        metadata_json=dict(metadata_json) if metadata_json is not None else None,
+        metadata_json=(
+            dict(
+                metadata_json,
+            )
+            if metadata_json is not None
+            else None
+        ),
         ip_address=ip_address,
         user_agent=user_agent,
         commit=False,
     )
 
     db.flush()
-    db.refresh(audit_log)
+    db.refresh(
+        audit_log,
+    )
+
     return audit_log

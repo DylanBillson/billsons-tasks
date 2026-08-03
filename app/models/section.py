@@ -14,6 +14,7 @@ from app.db.base import Base, IntegerPrimaryKeyMixin, TimestampMixin
 
 if TYPE_CHECKING:
     from app.models.company import Company
+    from app.models.section_list import SectionList
     from app.models.section_membership import SectionMembership
     from app.models.user import User
 
@@ -86,7 +87,18 @@ class Section(
         back_populates="section",
         cascade="all, delete-orphan",
         passive_deletes=True,
-        lazy="selectin",
+        lazy="select",
+    )
+
+    lists: Mapped[list["SectionList"]] = relationship(
+        back_populates="section",
+        cascade="all, delete-orphan",
+        passive_deletes=True,
+        order_by=(
+            "SectionList.sort_position.asc(), "
+            "SectionList.id.asc()"
+        ),
+        lazy="select",
     )
 
     def __repr__(self) -> str:

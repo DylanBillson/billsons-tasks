@@ -1,0 +1,353 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create List
+{% endblock %}
+
+{% block content %}
+
+<div class="app-page section-list-form-page">
+
+    <div class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                {{ section.company.name }}
+                &middot;
+                {{ section.name }}
+            </p>
+
+            <h1>
+                Create List
+            </h1>
+
+            <p class="page-subtitle">
+                Add a new list to organise tasks within this section.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('section_detail', section_id=section.id) }}"
+                class="btn btn-secondary"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </div>
+
+    <div class="form-page-layout">
+
+        <section
+            class="content-card form-card"
+            aria-labelledby="create-list-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="create-list-heading">
+                        List Details
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Choose a clear name that describes the tasks this
+                        list will contain.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-error-summary"
+                role="alert"
+                aria-labelledby="list-form-errors-heading"
+            >
+
+                <h3 id="list-form-errors-heading">
+                    Please correct the following
+                </h3>
+
+                <ul>
+
+                    {% for message in form.errors.form_errors %}
+
+                    <li>
+                        {{ message }}
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('section_list_create_submit', section_id=section.id) }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="name">
+                        List Name
+                    </label>
+
+                    <input
+                        id="name"
+                        name="name"
+                        type="text"
+                        maxlength="150"
+                        autocomplete="off"
+                        required
+                        autofocus
+                        value="{{ form.name }}"
+                        {% if form.errors.for_field("name") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="name-errors"
+                        {% endif %}
+                    >
+
+                    <p class="form-help">
+                        For example: To Do, In Progress, Waiting, or
+                        Completed.
+                    </p>
+
+                    {% if form.errors.for_field("name") %}
+
+                    <div
+                        id="name-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("name") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="description">
+                        Description
+                        <span class="form-label-optional">
+                            Optional
+                        </span>
+                    </label>
+
+                    <textarea
+                        id="description"
+                        name="description"
+                        rows="5"
+                        maxlength="2000"
+                        {% if form.errors.for_field("description") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="description-errors"
+                        {% endif %}
+                    >{{ form.description }}</textarea>
+
+                    <p class="form-help">
+                        Explain what kind of work should be placed in this
+                        list.
+                    </p>
+
+                    {% if form.errors.for_field("description") %}
+
+                    <div
+                        id="description-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("description") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                    >
+                        Create List
+                    </button>
+
+                    <a
+                        href="{{ url_for('section_detail', section_id=section.id) }}"
+                        class="btn btn-secondary"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <aside
+            class="content-card form-context-card"
+            aria-labelledby="list-context-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="list-context-heading">
+                        Section
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Company
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('company_detail', company_id=section.company_id) }}"
+                        >
+                            {{ section.company.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Section
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('section_detail', section_id=section.id) }}"
+                        >
+                            {{ section.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Status
+                    </dt>
+
+                    <dd>
+
+                        {% if section.is_archived %}
+
+                        <span class="status-badge status-badge-muted">
+                            Archived
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-success">
+                            Active
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created By
+                    </dt>
+
+                    <dd>
+                        {{ section.created_by.display_name }}
+                    </dd>
+
+                </div>
+
+            </dl>
+
+            {% if section.description %}
+
+            <div class="form-context-description">
+
+                <h3>
+                    Section Description
+                </h3>
+
+                <p>
+                    {{ section.description }}
+                </p>
+
+            </div>
+
+            {% endif %}
+
+        </aside>
+
+    </div>
+
+    <div class="page-footer-actions">
+
+        <a
+            href="{{ url_for('section_detail', section_id=section.id) }}"
+            class="btn btn-secondary"
+        >
+            Back to Section
+        </a>
+
+    </div>
+
+</div>
+
+{% endblock %}

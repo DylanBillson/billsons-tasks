@@ -1,0 +1,165 @@
+<section
+    class="content-card"
+    aria-labelledby="task-assignees-heading"
+>
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 id="task-assignees-heading">
+                Assignees
+            </h2>
+
+            <p class="card-subtitle">
+                People responsible for this task.
+            </p>
+
+        </div>
+
+        <div class="card-actions">
+
+            <span class="status-badge status-badge-muted">
+                {{ assignments | length }}
+            </span>
+
+        </div>
+
+    </div>
+
+    {% if assignments %}
+
+    <div class="task-assignee-list">
+
+        {% for assignment in assignments %}
+
+        <div class="task-assignee-row">
+
+            <div class="task-assignee-user">
+
+                <span class="task-assignee-name">
+                    {{ assignment.user.display_name }}
+                </span>
+
+                <span class="task-assignee-username">
+                    {{ assignment.user.username }}
+                </span>
+
+            </div>
+
+            {% if can_manage_assignees and not task.is_deleted %}
+
+            <form
+                method="post"
+                action="{{ url_for(
+                    'task_assignee_remove',
+                    task_id=task.id,
+                    user_id=assignment.user_id
+                ) }}"
+                class="inline-form"
+                data-confirm="Remove this assignee from the task?"
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <button
+                    type="submit"
+                    class="btn btn-danger btn-small"
+                >
+                    Remove
+                </button>
+
+            </form>
+
+            {% endif %}
+
+        </div>
+
+        {% endfor %}
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-state empty-state-compact">
+
+        <p>
+            No users are currently assigned to this task.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+    {% if can_manage_assignees and not task.is_deleted %}
+
+    <form
+        method="post"
+        action="{{ url_for('task_assignee_add', task_id=task.id) }}"
+        class="task-assignee-form"
+    >
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
+
+        <div class="form-group">
+
+            <label for="task-assignee-user-id">
+                Add Assignee
+            </label>
+
+            <select
+                id="task-assignee-user-id"
+                name="user_id"
+                required
+            >
+
+                <option value="">
+                    Select a user
+                </option>
+
+                {% for user in available_assignees %}
+
+                    {% set existing_assignment = assignments
+                        | selectattr(
+                            "user_id",
+                            "equalto",
+                            user.id
+                        )
+                        | list
+                    %}
+
+                    {% if not existing_assignment %}
+
+                    <option value="{{ user.id }}">
+                        {{ user.display_name }}
+                        ({{ user.username }})
+                    </option>
+
+                    {% endif %}
+
+                {% endfor %}
+
+            </select>
+
+        </div>
+
+        <button
+            type="submit"
+            class="btn btn-primary btn-small"
+        >
+            Add Assignee
+        </button>
+
+    </form>
+
+    {% endif %}
+
+</section>

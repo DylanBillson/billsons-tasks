@@ -1,0 +1,78 @@
+.task-card {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    padding: 1rem;
+    background: var(--colour-background);
+    border: 1px solid var(--colour-border);
+    border-radius: var(--border-radius-medium);
+    transition:
+        box-shadow 0.2s ease,
+        transform 0.2s ease;
+    cursor: pointer;
+}
+
+.task-card:hover {
+    transform: translateY(-2px);
+    box-shadow: var(--shadow-medium);
+}
+
+.task-card.dragging {
+    opacity: 0.5;
+}
+
+.task-card-title {
+    font-weight: 600;
+    line-height: 1.35;
+}
+
+.task-card-description {
+    color: var(--colour-text-muted);
+    font-size: 0.95rem;
+}
+
+.task-card-footer {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-top: auto;
+}
+
+.task-card-meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    font-size: 0.85rem;
+    color: var(--colour-text-muted);
+}
+
+.task-card-assignees {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.task-avatar {
+    width: 1.9rem;
+    height: 1.9rem;
+    border-radius: 50%;
+    background: var(--colour-primary);
+    color: white;
+    display: grid;
+    place-items: center;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.task-card-overdue {
+    border-left: 4px solid var(--colour-danger);
+}
+
+.task-card-completed {
+    opacity: 0.75;
+}
+
+.task-card-deleted {
+    opacity: 0.55;
+}

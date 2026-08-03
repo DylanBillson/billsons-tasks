@@ -1,0 +1,56 @@
+.task-comments {
+    display: flex;
+    flex-direction: column;
+    gap: 1.25rem;
+}
+
+.comment-list {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.comment {
+    padding: 1rem;
+    border: 1px solid var(--colour-border);
+    border-radius: var(--border-radius-medium);
+}
+
+.comment-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 0.75rem;
+}
+
+.comment-author {
+    font-weight: 600;
+}
+
+.comment-date {
+    color: var(--colour-text-muted);
+    font-size: 0.85rem;
+}
+
+.comment-body {
+    white-space: pre-wrap;
+    line-height: 1.6;
+}
+
+.comment-actions {
+    display: flex;
+    justify-content: flex-end;
+    margin-top: 1rem;
+}
+
+.comment-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.comment-form textarea {
+    min-height: 8rem;
+    resize: vertical;
+}

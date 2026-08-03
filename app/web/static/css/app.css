@@ -17,3 +17,10 @@
 @import "pages/auth.css";
 @import "pages/companies.css";
 @import "pages/sections.css";
+
+@import "components/task-board.css";
+@import "components/task-cards.css";
+@import "components/comments.css";
+@import "components/history.css";
+
+@import "pages/tasks.css";

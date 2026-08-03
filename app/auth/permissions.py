@@ -3,6 +3,8 @@ from sqlalchemy.orm import Session
 from app.core.constants import CompanyRole
 from app.models.company import Company
 from app.models.section import Section
+from app.models.section_list import SectionList
+from app.models.task import Task
 from app.models.user import User
 from app.repositories.company_membership_repository import (
     CompanyMembershipRepository,
@@ -233,6 +235,270 @@ class PermissionService:
         )
 
     @staticmethod
+    def can_view_section_list(
+        db: Session,
+        *,
+        actor: User,
+        section_list: SectionList,
+    ) -> bool:
+        return PermissionService.can_view_section(
+            db,
+            actor=actor,
+            section=section_list.section,
+        )
+
+    @staticmethod
+    def can_manage_section_list(
+        db: Session,
+        *,
+        actor: User,
+        section_list: SectionList,
+    ) -> bool:
+        if (
+            section_list.section.company.is_archived
+            or section_list.section.is_archived
+        ):
+            return False
+
+        return PermissionService.can_manage_section(
+            db,
+            actor=actor,
+            section=section_list.section,
+        )
+
+    @staticmethod
+    def can_create_section_list(
+        db: Session,
+        *,
+        actor: User,
+        section: Section,
+    ) -> bool:
+        if (
+            section.company.is_archived
+            or section.is_archived
+        ):
+            return False
+
+        return PermissionService.can_manage_section(
+            db,
+            actor=actor,
+            section=section,
+        )
+
+    @staticmethod
+    def can_reorder_section_lists(
+        db: Session,
+        *,
+        actor: User,
+        section: Section,
+    ) -> bool:
+        return PermissionService.can_create_section_list(
+            db,
+            actor=actor,
+            section=section,
+        )
+
+    @staticmethod
+    def can_view_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        if task.is_deleted:
+            return PermissionService.can_restore_task(
+                db,
+                actor=actor,
+                task=task,
+            )
+
+        return PermissionService.can_view_section_list(
+            db,
+            actor=actor,
+            section_list=task.section_list,
+        )
+
+    @staticmethod
+    def can_create_task(
+        db: Session,
+        *,
+        actor: User,
+        section_list: SectionList,
+    ) -> bool:
+        if (
+            section_list.section.company.is_archived
+            or section_list.section.is_archived
+            or section_list.is_archived
+        ):
+            return False
+
+        return PermissionService.can_view_section_list(
+            db,
+            actor=actor,
+            section_list=section_list,
+        )
+
+    @staticmethod
+    def can_update_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        if (
+            task.is_deleted
+            or task.section_list.section.company.is_archived
+            or task.section_list.section.is_archived
+            or task.section_list.is_archived
+        ):
+            return False
+
+        return PermissionService.can_view_section_list(
+            db,
+            actor=actor,
+            section_list=task.section_list,
+        )
+
+    @staticmethod
+    def can_move_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+        destination_list: SectionList,
+    ) -> bool:
+        if not PermissionService.can_update_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            return False
+
+        if destination_list.section_id != task.section_id:
+            return False
+
+        return PermissionService.can_create_task(
+            db,
+            actor=actor,
+            section_list=destination_list,
+        )
+
+    @staticmethod
+    def can_reorder_tasks(
+        db: Session,
+        *,
+        actor: User,
+        section: Section,
+    ) -> bool:
+        if (
+            section.company.is_archived
+            or section.is_archived
+        ):
+            return False
+
+        return PermissionService.can_view_section(
+            db,
+            actor=actor,
+            section=section,
+        )
+
+    @staticmethod
+    def can_complete_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        return PermissionService.can_update_task(
+            db,
+            actor=actor,
+            task=task,
+        )
+
+    @staticmethod
+    def can_comment_on_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        return PermissionService.can_update_task(
+            db,
+            actor=actor,
+            task=task,
+        )
+
+    @staticmethod
+    def can_manage_task_assignees(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        if (
+            task.is_deleted
+            or task.section_list.section.company.is_archived
+            or task.section_list.section.is_archived
+            or task.section_list.is_archived
+        ):
+            return False
+
+        return PermissionService.can_manage_section(
+            db,
+            actor=actor,
+            section=task.section_list.section,
+        )
+
+    @staticmethod
+    def can_delete_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        if (
+            task.is_deleted
+            or task.section_list.section.company.is_archived
+            or task.section_list.section.is_archived
+        ):
+            return False
+
+        return PermissionService.can_manage_section(
+            db,
+            actor=actor,
+            section=task.section_list.section,
+        )
+
+    @staticmethod
+    def can_restore_task(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        if not task.is_deleted:
+            return False
+
+        return PermissionService.can_manage_section(
+            db,
+            actor=actor,
+            section=task.section_list.section,
+        )
+
+    @staticmethod
+    def can_permanently_delete_task(
+        *,
+        actor: User,
+        task: Task,
+    ) -> bool:
+        return (
+            task.is_deleted
+            and PermissionService.is_administrator(
+                actor,
+            )
+        )
+
+    @staticmethod
     def require_company_access(
         db: Session,
         *,
@@ -352,4 +618,244 @@ class PermissionService:
         ):
             raise PermissionDeniedError(
                 "You do not have permission to manage this section's members.",
+            )
+
+    @staticmethod
+    def require_section_list_access(
+        db: Session,
+        *,
+        actor: User,
+        section_list: SectionList,
+    ) -> None:
+        if not PermissionService.can_view_section_list(
+            db,
+            actor=actor,
+            section_list=section_list,
+        ):
+            raise PermissionDeniedError(
+                "You do not have access to this list.",
+            )
+
+    @staticmethod
+    def require_section_list_creation(
+        db: Session,
+        *,
+        actor: User,
+        section: Section,
+    ) -> None:
+        if not PermissionService.can_create_section_list(
+            db,
+            actor=actor,
+            section=section,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to create lists in this section.",
+            )
+
+    @staticmethod
+    def require_section_list_management(
+        db: Session,
+        *,
+        actor: User,
+        section_list: SectionList,
+    ) -> None:
+        if not PermissionService.can_manage_section_list(
+            db,
+            actor=actor,
+            section_list=section_list,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to manage this list.",
+            )
+
+    @staticmethod
+    def require_section_list_reordering(
+        db: Session,
+        *,
+        actor: User,
+        section: Section,
+    ) -> None:
+        if not PermissionService.can_reorder_section_lists(
+            db,
+            actor=actor,
+            section=section,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to reorder lists in this section.",
+            )
+
+    @staticmethod
+    def require_task_access(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_view_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have access to this task.",
+            )
+
+    @staticmethod
+    def require_task_creation(
+        db: Session,
+        *,
+        actor: User,
+        section_list: SectionList,
+    ) -> None:
+        if not PermissionService.can_create_task(
+            db,
+            actor=actor,
+            section_list=section_list,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to create tasks in this list.",
+            )
+
+    @staticmethod
+    def require_task_update(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_update_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to update this task.",
+            )
+
+    @staticmethod
+    def require_task_movement(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+        destination_list: SectionList,
+    ) -> None:
+        if not PermissionService.can_move_task(
+            db,
+            actor=actor,
+            task=task,
+            destination_list=destination_list,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to move this task.",
+            )
+
+    @staticmethod
+    def require_task_reordering(
+        db: Session,
+        *,
+        actor: User,
+        section: Section,
+    ) -> None:
+        if not PermissionService.can_reorder_tasks(
+            db,
+            actor=actor,
+            section=section,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to reorder tasks in this section.",
+            )
+
+    @staticmethod
+    def require_task_completion(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_complete_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to change this task's completion state.",
+            )
+
+    @staticmethod
+    def require_task_commenting(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_comment_on_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to comment on this task.",
+            )
+
+    @staticmethod
+    def require_task_assignee_management(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_manage_task_assignees(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to manage this task's assignees.",
+            )
+
+    @staticmethod
+    def require_task_deletion(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_delete_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to delete this task.",
+            )
+
+    @staticmethod
+    def require_task_restoration(
+        db: Session,
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_restore_task(
+            db,
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "You do not have permission to restore this task.",
+            )
+
+    @staticmethod
+    def require_task_permanent_deletion(
+        *,
+        actor: User,
+        task: Task,
+    ) -> None:
+        if not PermissionService.can_permanently_delete_task(
+            actor=actor,
+            task=task,
+        ):
+            raise PermissionDeniedError(
+                "Only administrators can permanently delete a deleted task.",
             )

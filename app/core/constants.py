@@ -11,6 +11,30 @@ class CompanyRole(StrEnum):
     EMPLOYEE = "employee"
 
 
+class TaskHistoryEventType(StrEnum):
+    CREATED = "created"
+    UPDATED = "updated"
+
+    ASSIGNEE_ADDED = "assignee_added"
+    ASSIGNEE_REMOVED = "assignee_removed"
+
+    COMMENT_ADDED = "comment_added"
+    COMMENT_UPDATED = "comment_updated"
+    COMMENT_DELETED = "comment_deleted"
+
+    COMPLETED = "completed"
+    REOPENED = "reopened"
+
+    MOVED = "moved"
+
+    DUE_DATE_SET = "due_date_set"
+    DUE_DATE_CHANGED = "due_date_changed"
+    DUE_DATE_REMOVED = "due_date_removed"
+
+    DELETED = "deleted"
+    RESTORED = "restored"
+
+
 class AuditAction(StrEnum):
     LOGIN = "login"
     LOGIN_FAILED = "login_failed"
@@ -44,7 +68,24 @@ class AuditAction(StrEnum):
 
     LIST_CREATED = "list_created"
     LIST_UPDATED = "list_updated"
+    LIST_ARCHIVED = "list_archived"
+    LIST_RESTORED = "list_restored"
     LIST_DELETED = "list_deleted"
+
+    TASK_CREATED = "task_created"
+    TASK_UPDATED = "task_updated"
+
+    TASK_ASSIGNEE_ADDED = "task_assignee_added"
+    TASK_ASSIGNEE_REMOVED = "task_assignee_removed"
+
+    TASK_COMMENT_ADDED = "task_comment_added"
+    TASK_COMMENT_UPDATED = "task_comment_updated"
+    TASK_COMMENT_DELETED = "task_comment_deleted"
+
+    TASK_COMPLETED = "task_completed"
+    TASK_REOPENED = "task_reopened"
+
+    TASK_MOVED = "task_moved"
 
     TASK_DELETED = "task_deleted"
     TASK_RESTORED = "task_restored"
