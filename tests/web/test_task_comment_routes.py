@@ -334,3 +334,93 @@ def test_task_detail_renders_comment_as_compact_bubble(
     assert "Rendered inside a compact comment bubble." in response.text
     assert "19:55 03/08/26" in response.text
     assert "task-comment-delete" in response.text
+
+def test_task_detail_displays_newest_comment_first(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime
+
+    _, member, task = _create_context(
+        db,
+    )
+
+    oldest_comment = create_task_comment(
+        db,
+        task=task,
+        user=member,
+        body="Oldest comment.",
+    )
+
+    middle_comment = create_task_comment(
+        db,
+        task=task,
+        user=member,
+        body="Middle comment.",
+    )
+
+    newest_comment = create_task_comment(
+        db,
+        task=task,
+        user=member,
+        body="Newest comment.",
+    )
+
+    oldest_comment.created_at = datetime(
+        2026,
+        8,
+        1,
+        10,
+        0,
+        tzinfo=UTC,
+    )
+
+    middle_comment.created_at = datetime(
+        2026,
+        8,
+        2,
+        10,
+        0,
+        tzinfo=UTC,
+    )
+
+    newest_comment.created_at = datetime(
+        2026,
+        8,
+        3,
+        10,
+        0,
+        tzinfo=UTC,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=member,
+    )
+
+    response = client.get(
+        f"/tasks/{task.id}",
+    )
+
+    assert response.status_code == 200
+
+    newest_position = response.text.index(
+        newest_comment.body,
+    )
+
+    middle_position = response.text.index(
+        middle_comment.body,
+    )
+
+    oldest_position = response.text.index(
+        oldest_comment.body,
+    )
+
+    assert (
+        newest_position
+        < middle_position
+        < oldest_position
+    )

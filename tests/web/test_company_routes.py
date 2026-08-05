@@ -392,3 +392,90 @@ def test_company_detail_links_to_dashboard(
         f"/companies/{company.id}/dashboard"
         in response.text
     )
+
+def test_company_manager_sees_one_membership_management_link(
+    client: TestClient,
+    db: Session,
+) -> None:
+    manager = create_user(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=company,
+        user=manager,
+        role=CompanyRole.MANAGER,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=manager,
+    )
+
+    response = client.get(
+        f"/companies/{company.id}",
+    )
+
+    assert response.status_code == 200
+
+    membership_url = (
+        f"http://testserver/companies/"
+        f"{company.id}/members"
+    )
+
+    assert response.text.count(
+        f'href="{membership_url}"',
+    ) == 1
+
+    assert "Manage Members" in response.text
+    assert "Manage Company Members" not in response.text
+
+
+def test_company_employee_sees_no_membership_management_link(
+    client: TestClient,
+    db: Session,
+) -> None:
+    employee = create_user(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=company,
+        user=employee,
+        role=CompanyRole.EMPLOYEE,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=employee,
+    )
+
+    response = client.get(
+        f"/companies/{company.id}",
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        f"/companies/{company.id}/members"
+        not in response.text
+    )
+
+    assert "Manage Members" not in response.text
+    assert "Manage Company Members" not in response.text

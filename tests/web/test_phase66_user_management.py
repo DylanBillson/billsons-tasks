@@ -173,6 +173,17 @@ def test_phase66_create_and_edit_pages_render_expected_controls(
     )
 
     assert create_response.status_code == 200
+    assert "Account is active" in create_response.text
+
+    assert (
+        "Active users may sign in immediately."
+        in create_response.text
+    )
+
+    assert (
+        'class="checkbox-list-item"'
+        in create_response.text
+)
 
     for field_name in (
         "username",

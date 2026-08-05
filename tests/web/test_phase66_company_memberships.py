@@ -122,13 +122,17 @@ def test_phase66_company_detail_links_manager_to_members_page(
 
     assert response.status_code == 200
 
-    assert (
-        f'href="http://testserver/companies/'
-        f'{company.id}/members"'
-        in response.text
+    membership_url = (
+        f"http://testserver/companies/"
+        f"{company.id}/members"
     )
 
+    assert response.text.count(
+        f'href="{membership_url}"',
+    ) == 1
+
     assert "Manage Members" in response.text
+    assert "Manage Company Members" not in response.text
 
 
 def test_phase66_employee_company_detail_has_no_membership_link(

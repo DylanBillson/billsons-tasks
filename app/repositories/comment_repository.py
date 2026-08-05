@@ -64,8 +64,8 @@ class CommentRepository:
             )
 
         query = query.order_by(
-            TaskComment.created_at.asc(),
-            TaskComment.id.asc(),
+            TaskComment.created_at.desc(),
+            TaskComment.id.desc(),
         )
 
         return list(

@@ -129,6 +129,7 @@ def test_administrator_can_render_create_user_page(
 
     assert response.status_code == 200
     assert "Create User" in response.text
+    assert 'class="checkbox-list-item"' in response.text
     assert 'name="username"' in response.text
     assert 'name="display_name"' in response.text
     assert 'name="password"' in response.text

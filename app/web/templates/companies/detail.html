@@ -264,24 +264,6 @@
 
             </div>
 
-            {% if can_manage_company_memberships %}
-
-            <div class="card-actions">
-
-                <a
-                    href="{{ url_for(
-                        'company_members',
-                        company_id=company.id
-                    ) }}"
-                    class="btn btn-secondary"
-                >
-                    Manage Company Members
-                </a>
-
-            </div>
-
-            {% endif %}
-
         </section>
 
     </div>
