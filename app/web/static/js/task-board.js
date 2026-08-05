@@ -7,6 +7,13 @@ document.addEventListener(
 );
 
 
+/*
+ * -------------------------------------------------------------------------
+ * Task boards
+ * -------------------------------------------------------------------------
+ */
+
+
 function initialiseTaskBoards() {
     document
         .querySelectorAll(
@@ -22,26 +29,16 @@ function initialiseTaskBoards() {
 }
 
 
-function initialiseTaskBoard(board) {
-    if (!(board instanceof HTMLElement)) {
-        return;
-    }
-
-    if (board.dataset.dragEnabled !== "true") {
-        return;
-    }
-
-    initialiseTaskDragging(
-        board,
-    );
-
+function initialiseTaskBoard(
+    board,
+) {
     if (
-        board.dataset.listDragEnabled
-        === "true"
+        !(
+            board
+            instanceof HTMLElement
+        )
     ) {
-        initialiseListDragging(
-            board,
-        );
+        return;
     }
 
     synchroniseTaskListEmptyStates(
@@ -51,687 +48,721 @@ function initialiseTaskBoard(board) {
     updateTaskListCounts(
         board,
     );
-}
-
-
-function initialiseTaskDragging(board) {
-    let draggedCard = null;
-    let originalState = null;
-    let requestInProgress = false;
-
-    board
-        .querySelectorAll(
-            "[data-task-card][draggable='true']",
-        )
-        .forEach(
-            (card) => {
-                card.addEventListener(
-                    "dragstart",
-                    (event) => {
-                        event.stopPropagation();
-
-                        if (
-                            requestInProgress
-                            || !isTaskDragStartAllowed(
-                                event,
-                                card,
-                            )
-                        ) {
-                            event.preventDefault();
-                            return;
-                        }
-
-                        const taskList = card.closest(
-                            "[data-task-list-items]",
-                        );
-
-                        if (!(taskList instanceof HTMLElement)) {
-                            event.preventDefault();
-                            return;
-                        }
-
-                        draggedCard = card;
-
-                        originalState = {
-                            taskList,
-                            nextSibling:
-                                card.nextElementSibling,
-                            listId:
-                                card.dataset.listId,
-                            sortPosition:
-                                card.dataset.sortPosition,
-                        };
-
-                        card.classList.add(
-                            "is-dragging",
-                        );
-
-                        board.classList.add(
-                            "is-dragging-task",
-                        );
-
-                        if (event.dataTransfer) {
-                            event.dataTransfer.effectAllowed =
-                                "move";
-
-                            event.dataTransfer.setData(
-                                "text/plain",
-                                card.dataset.taskId || "",
-                            );
-                        }
-                    },
-                );
-
-                card.addEventListener(
-                    "dragend",
-                    (event) => {
-                        event.stopPropagation();
-
-                        card.classList.remove(
-                            "is-dragging",
-                        );
-
-                        board.classList.remove(
-                            "is-dragging-task",
-                        );
-
-                        clearTaskDropIndicators(
-                            board,
-                        );
-
-                        synchroniseTaskListEmptyStates(
-                            board,
-                        );
-
-                        updateTaskListCounts(
-                            board,
-                        );
-
-                        draggedCard = null;
-                        originalState = null;
-                    },
-                );
-            },
-        );
-
-    board
-        .querySelectorAll(
-            "[data-task-list-items]",
-        )
-        .forEach(
-            (taskList) => {
-                taskList.addEventListener(
-                    "dragenter",
-                    (event) => {
-                        if (!draggedCard) {
-                            return;
-                        }
-
-                        event.preventDefault();
-
-                        taskList.classList.add(
-                            "is-task-drop-target",
-                        );
-                    },
-                );
-
-                taskList.addEventListener(
-                    "dragover",
-                    (event) => {
-                        if (!draggedCard) {
-                            return;
-                        }
-
-                        event.preventDefault();
-
-                        if (event.dataTransfer) {
-                            event.dataTransfer.dropEffect =
-                                "move";
-                        }
-
-                        taskList.classList.add(
-                            "is-task-drop-target",
-                        );
-
-                        removeEmptyState(
-                            taskList,
-                        );
-
-                        const insertBefore =
-                            getTaskInsertionPoint(
-                                taskList,
-                                event.clientY,
-                                draggedCard,
-                            );
-
-                        if (insertBefore) {
-                            taskList.insertBefore(
-                                draggedCard,
-                                insertBefore,
-                            );
-                        } else {
-                            taskList.appendChild(
-                                draggedCard,
-                            );
-                        }
-
-                        updateTaskCardListData(
-                            draggedCard,
-                            taskList,
-                        );
-
-                        updateTaskListCounts(
-                            board,
-                        );
-
-                        synchroniseTaskListEmptyStates(
-                            board,
-                            {
-                                excludeTaskList:
-                                    taskList,
-                            },
-                        );
-                    },
-                );
-
-                taskList.addEventListener(
-                    "dragleave",
-                    (event) => {
-                        if (
-                            event.relatedTarget instanceof Node
-                            && taskList.contains(
-                                event.relatedTarget,
-                            )
-                        ) {
-                            return;
-                        }
-
-                        taskList.classList.remove(
-                            "is-task-drop-target",
-                        );
-                    },
-                );
-
-                taskList.addEventListener(
-                    "drop",
-                    async (event) => {
-                        if (
-                            !draggedCard
-                            || requestInProgress
-                        ) {
-                            return;
-                        }
-
-                        event.preventDefault();
-                        event.stopPropagation();
-
-                        requestInProgress = true;
-
-                        clearTaskDropIndicators(
-                            board,
-                        );
-
-                        updateTaskCardListData(
-                            draggedCard,
-                            taskList,
-                        );
-
-                        updateTaskListCounts(
-                            board,
-                        );
-
-                        synchroniseTaskListEmptyStates(
-                            board,
-                        );
-
-                        try {
-                            await persistTaskOrder(
-                                board,
-                            );
-
-                            updateTaskSortPositionData(
-                                board,
-                            );
-
-                            board.dispatchEvent(
-                                new CustomEvent(
-                                    "taskboard:tasks-reordered",
-                                ),
-                            );
-
-                        } catch (error) {
-                            console.error(
-                                "Unable to save task order.",
-                                error,
-                            );
-
-                            restoreTaskPosition(
-                                draggedCard,
-                                originalState,
-                            );
-
-                            updateTaskSortPositionData(
-                                board,
-                            );
-
-                            synchroniseTaskListEmptyStates(
-                                board,
-                            );
-
-                            updateTaskListCounts(
-                                board,
-                            );
-
-                            window.alert(
-                                error.message
-                                || (
-                                    "The task could not be moved. "
-                                    + "Its previous position has "
-                                    + "been restored."
-                                ),
-                            );
-
-                        } finally {
-                            requestInProgress = false;
-                        }
-                    },
-                );
-            },
-        );
-}
-
-
-function isTaskDragStartAllowed(
-    event,
-    card,
-) {
-    const target = event.target;
-
-    if (!(target instanceof Element)) {
-        return true;
-    }
 
     if (
-        target.closest(
-            "a, button, input, select, textarea",
-        )
+        board.dataset.dragEnabled
+        !== "true"
     ) {
-        return false;
+        return;
     }
 
-    const handle = card.querySelector(
-        "[data-task-drag-handle]",
+    if (
+        typeof window.Sortable
+        !== "function"
+    ) {
+        console.error(
+            "SortableJS is not available. "
+            + "Task-board dragging has not been initialised.",
+        );
+
+        board.dataset.sortableUnavailable =
+            "true";
+
+        return;
+    }
+
+    const boardState = {
+        requestInProgress: false,
+        taskSortables: [],
+        listSortable: null,
+    };
+
+    initialiseTaskSortables(
+        board,
+        boardState,
     );
 
-    if (!handle) {
-        return true;
+    if (
+        board.dataset.listDragEnabled
+        === "true"
+    ) {
+        initialiseListSortable(
+            board,
+            boardState,
+        );
     }
 
-    return (
-        target === handle
-        || handle.contains(
-            target,
-        )
+    board.dataset.sortableInitialised =
+        "true";
+}
+
+
+/*
+ * -------------------------------------------------------------------------
+ * Task dragging
+ * -------------------------------------------------------------------------
+ */
+
+
+function initialiseTaskSortables(
+    board,
+    boardState,
+) {
+    getTaskListContainers(
+        board,
+    ).forEach(
+        (taskList) => {
+            const sortable = new window.Sortable(
+                taskList,
+                {
+                    group: {
+                        name: (
+                            "section-task-board-"
+                            + (
+                                board.dataset.sectionId
+                                || "default"
+                            )
+                        ),
+                        pull: true,
+                        put: true,
+                    },
+
+                    animation: 180,
+
+                    easing: (
+                        "cubic-bezier("
+                        + "0.2, 0, 0, 1"
+                        + ")"
+                    ),
+
+                    handle: (
+                        "[data-task-drag-handle]"
+                    ),
+
+                    draggable: (
+                        "[data-task-card]"
+                    ),
+
+                    direction: "vertical",
+
+                    ghostClass: (
+                        "task-card-sortable-ghost"
+                    ),
+
+                    chosenClass: (
+                        "task-card-sortable-chosen"
+                    ),
+
+                    dragClass: (
+                        "task-card-sortable-drag"
+                    ),
+
+                    fallbackClass: (
+                        "task-card-sortable-fallback"
+                    ),
+
+                    fallbackOnBody: true,
+
+                    fallbackTolerance: 3,
+
+                    forceFallback: false,
+
+                    swapThreshold: 0.65,
+
+                    invertSwap: false,
+
+                    emptyInsertThreshold: 36,
+
+                    scroll: true,
+
+                    bubbleScroll: true,
+
+                    scrollSensitivity: 100,
+
+                    scrollSpeed: 14,
+
+                    delay: 0,
+
+                    delayOnTouchOnly: true,
+
+                    touchStartThreshold: 4,
+
+                    disabled: false,
+
+                    onChoose: (
+                        event,
+                    ) => {
+                        handleTaskChoose(
+                            board,
+                            event,
+                        );
+                    },
+
+                    onStart: (
+                        event,
+                    ) => {
+                        handleTaskDragStart(
+                            board,
+                            event,
+                        );
+                    },
+
+                    onMove: (
+                        event,
+                    ) => {
+                        return handleTaskDragMove(
+                            board,
+                            event,
+                        );
+                    },
+
+                    onEnd: async (
+                        event,
+                    ) => {
+                        await handleTaskDragEnd(
+                            board,
+                            boardState,
+                            event,
+                        );
+                    },
+                },
+            );
+
+            boardState.taskSortables.push(
+                sortable,
+            );
+        },
     );
 }
 
 
-function restoreTaskPosition(
-    card,
-    originalState,
+function handleTaskChoose(
+    board,
+    event,
 ) {
     if (
-        !(card instanceof HTMLElement)
-        || !originalState
-        || !(
-            originalState.taskList
+        !(
+            event.item
             instanceof HTMLElement
         )
     ) {
         return;
     }
 
-    removeEmptyState(
-        originalState.taskList,
+    event.item.classList.add(
+        "is-sortable-chosen",
     );
 
-    if (
-        originalState.nextSibling
-        && originalState.nextSibling.parentElement
-            === originalState.taskList
-    ) {
-        originalState.taskList.insertBefore(
-            card,
-            originalState.nextSibling,
+    board.classList.add(
+        "is-preparing-task-drag",
+    );
+}
+
+
+function handleTaskDragStart(
+    board,
+    event,
+) {
+    board.classList.remove(
+        "is-preparing-task-drag",
+    );
+
+    board.classList.add(
+        "is-dragging-task",
+    );
+
+    removeTaskListEmptyStates(
+        board,
+    );
+
+    const sourceList =
+        getTaskListContainer(
+            event.from,
         );
-    } else {
-        originalState.taskList.appendChild(
-            card,
+
+    if (sourceList) {
+        sourceList.classList.add(
+            "is-task-drag-source",
         );
     }
 
-    card.dataset.listId = (
-        originalState.listId || ""
-    );
-
-    card.dataset.sortPosition = (
-        originalState.sortPosition || ""
-    );
+    if (
+        event.item
+        instanceof HTMLElement
+    ) {
+        event.item.classList.add(
+            "is-dragging",
+        );
+    }
 }
 
 
-function initialiseListDragging(board) {
-    let draggedList = null;
-    let originalState = null;
-    let requestInProgress = false;
+function handleTaskDragMove(
+    board,
+    event,
+) {
+    clearTaskDropTargets(
+        board,
+    );
 
-    board
-        .querySelectorAll(
-            ":scope > [data-task-list][draggable='true']",
-        )
-        .forEach(
-            (list) => {
-                list.addEventListener(
-                    "dragstart",
-                    (event) => {
-                        const target = event.target;
-
-                        if (
-                            target instanceof Element
-                            && target.closest(
-                                "[data-task-card]",
-                            )
-                        ) {
-                            return;
-                        }
-
-                        const handle = (
-                            target instanceof Element
-                                ? target.closest(
-                                    "[data-list-drag-handle]",
-                                )
-                                : null
-                        );
-
-                        if (
-                            !handle
-                            || requestInProgress
-                        ) {
-                            event.preventDefault();
-                            return;
-                        }
-
-                        draggedList = list;
-
-                        originalState = {
-                            nextSibling:
-                                list.nextElementSibling,
-                            sortPosition:
-                                list.dataset.sortPosition,
-                        };
-
-                        list.classList.add(
-                            "is-dragging",
-                        );
-
-                        board.classList.add(
-                            "is-dragging-list",
-                        );
-
-                        if (event.dataTransfer) {
-                            event.dataTransfer.effectAllowed =
-                                "move";
-
-                            event.dataTransfer.setData(
-                                "text/plain",
-                                list.dataset.listId || "",
-                            );
-                        }
-                    },
-                );
-
-                list.addEventListener(
-                    "dragend",
-                    () => {
-                        list.classList.remove(
-                            "is-dragging",
-                        );
-
-                        board.classList.remove(
-                            "is-dragging-list",
-                        );
-
-                        draggedList = null;
-                        originalState = null;
-                    },
-                );
-            },
+    const destinationList =
+        getTaskListContainer(
+            event.to,
         );
 
-    board.addEventListener(
-        "dragover",
-        (event) => {
-            if (!draggedList) {
-                return;
-            }
+    if (destinationList) {
+        destinationList.classList.add(
+            "is-task-drop-target",
+        );
+    }
 
-            event.preventDefault();
+    if (
+        event.related
+        instanceof HTMLElement
+        && event.related.matches(
+            "[data-task-card]",
+        )
+    ) {
+        event.related.classList.add(
+            event.willInsertAfter
+                ? "is-insertion-after"
+                : "is-insertion-before",
+        );
+    }
 
-            if (event.dataTransfer) {
-                event.dataTransfer.dropEffect =
-                    "move";
-            }
-
-            const insertBefore =
-                getListInsertionPoint(
-                    board,
-                    event.clientX,
-                    draggedList,
-                );
-
-            if (insertBefore) {
-                board.insertBefore(
-                    draggedList,
-                    insertBefore,
-                );
-            } else {
-                board.appendChild(
-                    draggedList,
-                );
-            }
-        },
-    );
-
-    board.addEventListener(
-        "drop",
-        async (event) => {
-            if (
-                !draggedList
-                || requestInProgress
-            ) {
-                return;
-            }
-
-            event.preventDefault();
-            event.stopPropagation();
-
-            requestInProgress = true;
-
-            try {
-                await persistListOrder(
-                    board,
-                );
-
-                updateListSortPositionData(
-                    board,
-                );
-
-                board.dispatchEvent(
-                    new CustomEvent(
-                        "taskboard:lists-reordered",
-                    ),
-                );
-
-            } catch (error) {
-                console.error(
-                    "Unable to save list order.",
-                    error,
-                );
-
-                restoreListPosition(
-                    board,
-                    draggedList,
-                    originalState,
-                );
-
-                updateListSortPositionData(
-                    board,
-                );
-
-                window.alert(
-                    error.message
-                    || (
-                        "The list order could not be saved. "
-                        + "Its previous position has been restored."
-                    ),
-                );
-
-            } finally {
-                requestInProgress = false;
-            }
-        },
-    );
+    return true;
 }
 
 
-function restoreListPosition(
+async function handleTaskDragEnd(
     board,
-    list,
-    originalState,
+    boardState,
+    event,
 ) {
+    clearTaskDragClasses(
+        board,
+    );
+
     if (
-        !(list instanceof HTMLElement)
-        || !originalState
+        event.item
+        instanceof HTMLElement
     ) {
+        event.item.classList.remove(
+            "is-sortable-chosen",
+            "is-dragging",
+        );
+    }
+
+    const destinationList =
+        getTaskListContainer(
+            event.to,
+        );
+
+    if (
+        destinationList
+        && event.item
+        instanceof HTMLElement
+    ) {
+        updateTaskCardListData(
+            event.item,
+            destinationList,
+        );
+    }
+
+    updateTaskSortPositionData(
+        board,
+    );
+
+    synchroniseTaskListEmptyStates(
+        board,
+    );
+
+    updateTaskListCounts(
+        board,
+    );
+
+    const orderChanged = (
+        event.from !== event.to
+        || event.oldIndex !== event.newIndex
+    );
+
+    if (!orderChanged) {
         return;
     }
 
     if (
-        originalState.nextSibling
-        && originalState.nextSibling.parentElement
-            === board
+        boardState.requestInProgress
     ) {
-        board.insertBefore(
-            list,
-            originalState.nextSibling,
+        window.location.reload();
+        return;
+    }
+
+    boardState.requestInProgress =
+        true;
+
+    setBoardSavingState(
+        board,
+        boardState,
+        true,
+    );
+
+    try {
+        await persistTaskOrder(
+            board,
         );
-    } else {
-        board.appendChild(
-            list,
+
+        board.dispatchEvent(
+            new CustomEvent(
+                "taskboard:tasks-reordered",
+                {
+                    detail: {
+                        taskId: getNumericDataValue(
+                            event.item,
+                            "taskId",
+                        ),
+                        oldIndex: event.oldIndex,
+                        newIndex: event.newIndex,
+                        oldListId: getNumericDataValue(
+                            event.from,
+                            "listId",
+                        ),
+                        newListId: getNumericDataValue(
+                            event.to,
+                            "listId",
+                        ),
+                    },
+                },
+            ),
+        );
+
+    } catch (error) {
+        console.error(
+            "Unable to save task order.",
+            error,
+        );
+
+        window.alert(
+            getErrorMessage(
+                error,
+                (
+                    "The task could not be moved. "
+                    + "The board will be reloaded."
+                ),
+            ),
+        );
+
+        window.location.reload();
+
+    } finally {
+        boardState.requestInProgress =
+            false;
+
+        setBoardSavingState(
+            board,
+            boardState,
+            false,
+        );
+    }
+}
+
+
+/*
+ * -------------------------------------------------------------------------
+ * List dragging
+ * -------------------------------------------------------------------------
+ */
+
+
+function initialiseListSortable(
+    board,
+    boardState,
+) {
+    boardState.listSortable =
+        new window.Sortable(
+            board,
+            {
+                animation: 200,
+
+                easing: (
+                    "cubic-bezier("
+                    + "0.2, 0, 0, 1"
+                    + ")"
+                ),
+
+                handle: (
+                    "[data-list-drag-handle]"
+                ),
+
+                draggable: (
+                    "[data-task-list]"
+                ),
+
+                direction: "horizontal",
+
+                ghostClass: (
+                    "task-list-sortable-ghost"
+                ),
+
+                chosenClass: (
+                    "task-list-sortable-chosen"
+                ),
+
+                dragClass: (
+                    "task-list-sortable-drag"
+                ),
+
+                fallbackClass: (
+                    "task-list-sortable-fallback"
+                ),
+
+                fallbackOnBody: true,
+
+                fallbackTolerance: 3,
+
+                forceFallback: false,
+
+                swapThreshold: 0.55,
+
+                invertSwap: false,
+
+                scroll: true,
+
+                bubbleScroll: true,
+
+                scrollSensitivity: 120,
+
+                scrollSpeed: 16,
+
+                delay: 0,
+
+                delayOnTouchOnly: true,
+
+                touchStartThreshold: 4,
+
+                disabled: false,
+
+                onChoose: (
+                    event,
+                ) => {
+                    handleListChoose(
+                        board,
+                        event,
+                    );
+                },
+
+                onStart: (
+                    event,
+                ) => {
+                    handleListDragStart(
+                        board,
+                        event,
+                    );
+                },
+
+                onMove: (
+                    event,
+                ) => {
+                    return handleListDragMove(
+                        board,
+                        event,
+                    );
+                },
+
+                onEnd: async (
+                    event,
+                ) => {
+                    await handleListDragEnd(
+                        board,
+                        boardState,
+                        event,
+                    );
+                },
+            },
+        );
+}
+
+
+function handleListChoose(
+    board,
+    event,
+) {
+    if (
+        event.item
+        instanceof HTMLElement
+    ) {
+        event.item.classList.add(
+            "is-sortable-chosen",
         );
     }
 
-    list.dataset.sortPosition = (
-        originalState.sortPosition || ""
+    board.classList.add(
+        "is-preparing-list-drag",
     );
 }
 
 
-function getTaskInsertionPoint(
-    taskList,
-    pointerY,
-    draggedCard,
-) {
-    const cards = [
-        ...taskList.querySelectorAll(
-            ":scope > [data-task-card]:not(.is-dragging)",
-        ),
-    ];
-
-    let closest = {
-        offset: Number.NEGATIVE_INFINITY,
-        element: null,
-    };
-
-    cards.forEach(
-        (card) => {
-            if (card === draggedCard) {
-                return;
-            }
-
-            const rectangle =
-                card.getBoundingClientRect();
-
-            const offset = (
-                pointerY
-                - rectangle.top
-                - rectangle.height / 2
-            );
-
-            if (
-                offset < 0
-                && offset > closest.offset
-            ) {
-                closest = {
-                    offset,
-                    element: card,
-                };
-            }
-        },
-    );
-
-    return closest.element;
-}
-
-
-function getListInsertionPoint(
+function handleListDragStart(
     board,
-    pointerX,
-    draggedList,
+    event,
 ) {
-    const lists = [
-        ...board.querySelectorAll(
-            ":scope > [data-task-list]:not(.is-dragging)",
-        ),
-    ];
-
-    let closest = {
-        offset: Number.NEGATIVE_INFINITY,
-        element: null,
-    };
-
-    lists.forEach(
-        (list) => {
-            if (list === draggedList) {
-                return;
-            }
-
-            const rectangle =
-                list.getBoundingClientRect();
-
-            const offset = (
-                pointerX
-                - rectangle.left
-                - rectangle.width / 2
-            );
-
-            if (
-                offset < 0
-                && offset > closest.offset
-            ) {
-                closest = {
-                    offset,
-                    element: list,
-                };
-            }
-        },
+    board.classList.remove(
+        "is-preparing-list-drag",
     );
 
-    return closest.element;
+    board.classList.add(
+        "is-dragging-list",
+    );
+
+    if (
+        event.item
+        instanceof HTMLElement
+    ) {
+        event.item.classList.add(
+            "is-dragging",
+        );
+    }
 }
 
 
-async function persistTaskOrder(board) {
+function handleListDragMove(
+    board,
+    event,
+) {
+    clearListDropTargets(
+        board,
+    );
+
+    if (
+        event.related
+        instanceof HTMLElement
+        && event.related.matches(
+            "[data-task-list]",
+        )
+    ) {
+        event.related.classList.add(
+            "is-list-drop-target",
+        );
+
+        event.related.classList.add(
+            event.willInsertAfter
+                ? "is-insertion-after"
+                : "is-insertion-before",
+        );
+    }
+
+    return true;
+}
+
+
+async function handleListDragEnd(
+    board,
+    boardState,
+    event,
+) {
+    clearListDragClasses(
+        board,
+    );
+
+    if (
+        event.item
+        instanceof HTMLElement
+    ) {
+        event.item.classList.remove(
+            "is-sortable-chosen",
+            "is-dragging",
+        );
+    }
+
+    updateListSortPositionData(
+        board,
+    );
+
+    const orderChanged = (
+        event.oldIndex !== event.newIndex
+    );
+
+    if (!orderChanged) {
+        return;
+    }
+
+    if (
+        boardState.requestInProgress
+    ) {
+        window.location.reload();
+        return;
+    }
+
+    boardState.requestInProgress =
+        true;
+
+    setBoardSavingState(
+        board,
+        boardState,
+        true,
+    );
+
+    try {
+        await persistListOrder(
+            board,
+        );
+
+        board.dispatchEvent(
+            new CustomEvent(
+                "taskboard:lists-reordered",
+                {
+                    detail: {
+                        listId: getNumericDataValue(
+                            event.item,
+                            "listId",
+                        ),
+                        oldIndex: event.oldIndex,
+                        newIndex: event.newIndex,
+                    },
+                },
+            ),
+        );
+
+    } catch (error) {
+        console.error(
+            "Unable to save list order.",
+            error,
+        );
+
+        window.alert(
+            getErrorMessage(
+                error,
+                (
+                    "The list order could not be saved. "
+                    + "The board will be reloaded."
+                ),
+            ),
+        );
+
+        window.location.reload();
+
+    } finally {
+        boardState.requestInProgress =
+            false;
+
+        setBoardSavingState(
+            board,
+            boardState,
+            false,
+        );
+    }
+}
+
+
+/*
+ * -------------------------------------------------------------------------
+ * Persistence
+ * -------------------------------------------------------------------------
+ */
+
+
+async function persistTaskOrder(
+    board,
+) {
     const reorderUrl =
         board.dataset.reorderUrl;
 
@@ -749,49 +780,79 @@ async function persistTaskOrder(board) {
 
     const items = [];
 
-    board
-        .querySelectorAll(
-            ":scope > [data-task-list]",
-        )
-        .forEach(
-            (list) => {
-                const listId = Number(
-                    list.dataset.listId,
+    getTaskLists(
+        board,
+    ).forEach(
+        (list) => {
+            const listId =
+                getNumericDataValue(
+                    list,
+                    "listId",
                 );
 
-                list
-                    .querySelectorAll(
-                        "[data-task-list-items] "
-                        + "> [data-task-card]",
-                    )
-                    .forEach(
-                        (card, index) => {
-                            items.push(
-                                {
-                                    task_id: Number(
-                                        card.dataset.taskId,
-                                    ),
-                                    section_list_id:
-                                        listId,
-                                    sort_position:
-                                        (index + 1) * 1000,
-                                },
-                            );
+            if (listId === null) {
+                throw new Error(
+                    "A task list has an invalid identifier.",
+                );
+            }
+
+            const taskList =
+                getTaskListContainer(
+                    list,
+                );
+
+            if (!taskList) {
+                throw new Error(
+                    "A task list container is missing.",
+                );
+            }
+
+            getTaskCards(
+                taskList,
+            ).forEach(
+                (
+                    card,
+                    index,
+                ) => {
+                    const taskId =
+                        getNumericDataValue(
+                            card,
+                            "taskId",
+                        );
+
+                    if (taskId === null) {
+                        throw new Error(
+                            "A task has an invalid identifier.",
+                        );
+                    }
+
+                    items.push(
+                        {
+                            task_id: taskId,
+                            section_list_id:
+                                listId,
+                            sort_position:
+                                (index + 1) * 1000,
                         },
                     );
-            },
-        );
+                },
+            );
+        },
+    );
 
     const response = await fetch(
         reorderUrl,
         {
             method: "POST",
+
             credentials: "same-origin",
+
             headers: {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
                 "X-CSRF-Token": csrfToken,
             },
+
             body: JSON.stringify(
                 {
                     items,
@@ -806,7 +867,9 @@ async function persistTaskOrder(board) {
 }
 
 
-async function persistListOrder(board) {
+async function persistListOrder(
+    board,
+) {
     const reorderUrl =
         board.dataset.listReorderUrl;
 
@@ -822,30 +885,46 @@ async function persistListOrder(board) {
         );
     }
 
-    const items = [
-        ...board.querySelectorAll(
-            ":scope > [data-task-list]",
-        ),
-    ].map(
-        (list, index) => ({
-            list_id: Number(
-                list.dataset.listId,
-            ),
-            sort_position:
-                (index + 1) * 1000,
-        }),
+    const items = getTaskLists(
+        board,
+    ).map(
+        (
+            list,
+            index,
+        ) => {
+            const listId =
+                getNumericDataValue(
+                    list,
+                    "listId",
+                );
+
+            if (listId === null) {
+                throw new Error(
+                    "A task list has an invalid identifier.",
+                );
+            }
+
+            return {
+                list_id: listId,
+                sort_position:
+                    (index + 1) * 1000,
+            };
+        },
     );
 
     const response = await fetch(
         reorderUrl,
         {
             method: "POST",
+
             credentials: "same-origin",
+
             headers: {
                 "Accept": "application/json",
                 "Content-Type": "application/json",
                 "X-CSRF-Token": csrfToken,
             },
+
             body: JSON.stringify(
                 {
                     items,
@@ -860,143 +939,236 @@ async function persistListOrder(board) {
 }
 
 
+/*
+ * -------------------------------------------------------------------------
+ * Board state
+ * -------------------------------------------------------------------------
+ */
+
+
+function setBoardSavingState(
+    board,
+    boardState,
+    isSaving,
+) {
+    board.classList.toggle(
+        "is-saving-order",
+        isSaving,
+    );
+
+    board.setAttribute(
+        "aria-busy",
+        isSaving
+            ? "true"
+            : "false",
+    );
+
+    boardState.taskSortables.forEach(
+        (sortable) => {
+            sortable.option(
+                "disabled",
+                isSaving,
+            );
+        },
+    );
+
+    if (boardState.listSortable) {
+        boardState.listSortable.option(
+            "disabled",
+            isSaving,
+        );
+    }
+}
+
+
 function updateTaskCardListData(
     card,
     taskList,
 ) {
-    card.dataset.listId = (
-        taskList.dataset.listId || ""
+    const listId =
+        getNumericDataValue(
+            taskList,
+            "listId",
+        );
+
+    if (listId === null) {
+        return;
+    }
+
+    card.dataset.listId =
+        String(
+            listId,
+        );
+}
+
+
+function updateTaskSortPositionData(
+    board,
+) {
+    getTaskLists(
+        board,
+    ).forEach(
+        (list) => {
+            const listId =
+                getNumericDataValue(
+                    list,
+                    "listId",
+                );
+
+            const taskList =
+                getTaskListContainer(
+                    list,
+                );
+
+            if (
+                listId === null
+                || !taskList
+            ) {
+                return;
+            }
+
+            getTaskCards(
+                taskList,
+            ).forEach(
+                (
+                    card,
+                    index,
+                ) => {
+                    card.dataset.sortPosition =
+                        String(
+                            (index + 1)
+                            * 1000,
+                        );
+
+                    card.dataset.listId =
+                        String(
+                            listId,
+                        );
+                },
+            );
+        },
     );
 }
 
 
-function updateTaskSortPositionData(board) {
-    board
-        .querySelectorAll(
-            ":scope > [data-task-list]",
-        )
-        .forEach(
-            (list) => {
-                list
-                    .querySelectorAll(
-                        "[data-task-list-items] "
-                        + "> [data-task-card]",
-                    )
-                    .forEach(
-                        (card, index) => {
-                            card.dataset.sortPosition =
-                                String(
-                                    (index + 1)
-                                    * 1000,
-                                );
-
-                            card.dataset.listId = (
-                                list.dataset.listId || ""
-                            );
-                        },
-                    );
-            },
-        );
+function updateListSortPositionData(
+    board,
+) {
+    getTaskLists(
+        board,
+    ).forEach(
+        (
+            list,
+            index,
+        ) => {
+            list.dataset.sortPosition =
+                String(
+                    (index + 1)
+                    * 1000,
+                );
+        },
+    );
 }
 
 
-function updateListSortPositionData(board) {
-    board
-        .querySelectorAll(
-            ":scope > [data-task-list]",
-        )
-        .forEach(
-            (list, index) => {
-                list.dataset.sortPosition =
-                    String(
-                        (index + 1) * 1000,
-                    );
-            },
-        );
-}
-
-
-function updateTaskListCounts(board) {
-    board
-        .querySelectorAll(
-            ":scope > [data-task-list]",
-        )
-        .forEach(
-            (list) => {
-                const count = (
-                    list.querySelectorAll(
-                        "[data-task-list-items] "
-                        + "> [data-task-card]",
-                    ).length
+function updateTaskListCounts(
+    board,
+) {
+    getTaskLists(
+        board,
+    ).forEach(
+        (list) => {
+            const taskList =
+                getTaskListContainer(
+                    list,
                 );
 
-                const countElement =
-                    list.querySelector(
-                        "[data-task-list-count]",
-                    );
+            if (!taskList) {
+                return;
+            }
 
-                if (!countElement) {
-                    return;
-                }
+            const count =
+                getTaskCards(
+                    taskList,
+                ).length;
 
-                countElement.textContent =
-                    String(
-                        count,
-                    );
-
-                countElement.setAttribute(
-                    "aria-label",
-                    `${count} tasks`,
+            const countElement =
+                list.querySelector(
+                    "[data-task-list-count]",
                 );
-            },
-        );
+
+            if (!countElement) {
+                return;
+            }
+
+            countElement.textContent =
+                String(
+                    count,
+                );
+
+            countElement.setAttribute(
+                "aria-label",
+                `${count} tasks`,
+            );
+        },
+    );
 }
+
+
+/*
+ * -------------------------------------------------------------------------
+ * Empty-list states
+ * -------------------------------------------------------------------------
+ */
 
 
 function synchroniseTaskListEmptyStates(
     board,
-    {
-        excludeTaskList = null,
-    } = {},
+) {
+    getTaskListContainers(
+        board,
+    ).forEach(
+        (taskList) => {
+            const taskCount =
+                getTaskCards(
+                    taskList,
+                ).length;
+
+            const emptyState =
+                taskList.querySelector(
+                    ":scope > [data-task-list-empty]",
+                );
+
+            if (taskCount > 0) {
+                if (emptyState) {
+                    emptyState.remove();
+                }
+
+                return;
+            }
+
+            if (emptyState) {
+                return;
+            }
+
+            taskList.appendChild(
+                createTaskListEmptyState(),
+            );
+        },
+    );
+}
+
+
+function removeTaskListEmptyStates(
+    board,
 ) {
     board
         .querySelectorAll(
-            "[data-task-list-items]",
+            "[data-task-list-empty]",
         )
         .forEach(
-            (taskList) => {
-                if (
-                    taskList === excludeTaskList
-                ) {
-                    return;
-                }
-
-                const taskCount = (
-                    taskList.querySelectorAll(
-                        ":scope > [data-task-card]",
-                    ).length
-                );
-
-                const emptyState =
-                    taskList.querySelector(
-                        ":scope > [data-task-list-empty]",
-                    );
-
-                if (taskCount > 0) {
-                    if (emptyState) {
-                        emptyState.remove();
-                    }
-
-                    return;
-                }
-
-                if (emptyState) {
-                    return;
-                }
-
-                taskList.appendChild(
-                    createTaskListEmptyState(),
-                );
+            (emptyState) => {
+                emptyState.remove();
             },
         );
 }
@@ -1032,31 +1204,217 @@ function createTaskListEmptyState() {
 }
 
 
-function removeEmptyState(taskList) {
-    const emptyState =
-        taskList.querySelector(
-            ":scope > [data-task-list-empty]",
-        );
+/*
+ * -------------------------------------------------------------------------
+ * Drag classes and insertion indicators
+ * -------------------------------------------------------------------------
+ */
 
-    if (emptyState) {
-        emptyState.remove();
-    }
+
+function clearTaskDragClasses(
+    board,
+) {
+    board.classList.remove(
+        "is-preparing-task-drag",
+        "is-dragging-task",
+    );
+
+    clearTaskDropTargets(
+        board,
+    );
+
+    board
+        .querySelectorAll(
+            ".is-task-drag-source",
+        )
+        .forEach(
+            (element) => {
+                element.classList.remove(
+                    "is-task-drag-source",
+                );
+            },
+        );
 }
 
 
-function clearTaskDropIndicators(board) {
+function clearTaskDropTargets(
+    board,
+) {
     board
         .querySelectorAll(
-            ".is-task-drop-target",
+            (
+                ".is-task-drop-target, "
+                + ".is-insertion-before, "
+                + ".is-insertion-after"
+            ),
         )
         .forEach(
             (element) => {
                 element.classList.remove(
                     "is-task-drop-target",
+                    "is-insertion-before",
+                    "is-insertion-after",
                 );
             },
         );
 }
+
+
+function clearListDragClasses(
+    board,
+) {
+    board.classList.remove(
+        "is-preparing-list-drag",
+        "is-dragging-list",
+    );
+
+    clearListDropTargets(
+        board,
+    );
+}
+
+
+function clearListDropTargets(
+    board,
+) {
+    board
+        .querySelectorAll(
+            (
+                ".is-list-drop-target, "
+                + ".is-insertion-before, "
+                + ".is-insertion-after"
+            ),
+        )
+        .forEach(
+            (element) => {
+                element.classList.remove(
+                    "is-list-drop-target",
+                    "is-insertion-before",
+                    "is-insertion-after",
+                );
+            },
+        );
+}
+
+
+/*
+ * -------------------------------------------------------------------------
+ * DOM helpers
+ * -------------------------------------------------------------------------
+ */
+
+
+function getTaskLists(
+    board,
+) {
+    return Array.from(
+        board.querySelectorAll(
+            ":scope > [data-task-list]",
+        ),
+    );
+}
+
+
+function getTaskListContainers(
+    board,
+) {
+    return Array.from(
+        board.querySelectorAll(
+            (
+                "[data-task-list-container], "
+                + "[data-task-list-items]"
+            ),
+        ),
+    );
+}
+
+
+function getTaskListContainer(
+    element,
+) {
+    if (
+        !(
+            element
+            instanceof Element
+        )
+    ) {
+        return null;
+    }
+
+    if (
+        element.matches(
+            (
+                "[data-task-list-container], "
+                + "[data-task-list-items]"
+            ),
+        )
+    ) {
+        return element;
+    }
+
+    return element.querySelector(
+        (
+            "[data-task-list-container], "
+            + "[data-task-list-items]"
+        ),
+    );
+}
+
+
+function getTaskCards(
+    taskList,
+) {
+    return Array.from(
+        taskList.querySelectorAll(
+            ":scope > [data-task-card]",
+        ),
+    );
+}
+
+
+function getNumericDataValue(
+    element,
+    key,
+) {
+    if (
+        !(
+            element
+            instanceof HTMLElement
+        )
+    ) {
+        return null;
+    }
+
+    const value =
+        element.dataset[key];
+
+    if (!value) {
+        return null;
+    }
+
+    const numericValue =
+        Number(
+            value,
+        );
+
+    if (
+        !Number.isInteger(
+            numericValue,
+        )
+        || numericValue < 1
+    ) {
+        return null;
+    }
+
+    return numericValue;
+}
+
+
+/*
+ * -------------------------------------------------------------------------
+ * Response handling
+ * -------------------------------------------------------------------------
+ */
 
 
 async function requireSuccessfulResponse(
@@ -1067,7 +1425,7 @@ async function requireSuccessfulResponse(
     }
 
     let detail = (
-        `Request failed with status `
+        "Request failed with status "
         + `${response.status}.`
     );
 
@@ -1075,17 +1433,47 @@ async function requireSuccessfulResponse(
         const payload =
             await response.json();
 
-        if (payload.detail) {
-            detail = payload.detail;
+        if (
+            payload
+            && typeof payload.detail
+            === "string"
+        ) {
+            detail =
+                payload.detail;
         }
+
     } catch {
-        // Preserve the generic response message.
+        /*
+         * Preserve the generic HTTP error when the response is not JSON.
+         */
     }
 
     throw new Error(
         detail,
     );
 }
+
+
+function getErrorMessage(
+    error,
+    fallback,
+) {
+    if (
+        error instanceof Error
+        && error.message
+    ) {
+        return error.message;
+    }
+
+    return fallback;
+}
+
+
+/*
+ * -------------------------------------------------------------------------
+ * Task-detail move control
+ * -------------------------------------------------------------------------
+ */
 
 
 function initialiseTaskMoveButtons() {
@@ -1108,12 +1496,20 @@ function initialiseTaskMoveButtons() {
 }
 
 
-async function moveTaskFromDetailPage(button) {
-    const select = document.querySelector(
-        "[data-task-move-list]",
-    );
+async function moveTaskFromDetailPage(
+    button,
+) {
+    const select =
+        document.querySelector(
+            "[data-task-move-list]",
+        );
 
-    if (!(select instanceof HTMLSelectElement)) {
+    if (
+        !(
+            select
+            instanceof HTMLSelectElement
+        )
+    ) {
         return;
     }
 
@@ -1133,24 +1529,34 @@ async function moveTaskFromDetailPage(button) {
 
     button.disabled = true;
 
+    button.setAttribute(
+        "aria-disabled",
+        "true",
+    );
+
     try {
         const response = await fetch(
             moveUrl,
             {
                 method: "POST",
+
                 credentials: "same-origin",
+
                 headers: {
                     "Accept": "application/json",
                     "Content-Type": "application/json",
                     "X-CSRF-Token": csrfToken,
                 },
+
                 body: JSON.stringify(
                     {
                         destination_list_id:
                             Number(
                                 select.value,
                             ),
-                        sort_position: 1000,
+
+                        sort_position:
+                            1000,
                     },
                 ),
             },
@@ -1169,11 +1575,17 @@ async function moveTaskFromDetailPage(button) {
         );
 
         window.alert(
-            error.message
-            || "The task could not be moved.",
+            getErrorMessage(
+                error,
+                "The task could not be moved.",
+            ),
         );
 
     } finally {
         button.disabled = false;
+
+        button.removeAttribute(
+            "aria-disabled",
+        );
     }
 }

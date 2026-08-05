@@ -1,6 +1,6 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-
+from html import unescape
 from app.core.config import APP_VERSION, settings
 from tests.factories import (
     create_administrator,
@@ -15,11 +15,9 @@ def _authenticate(
     *,
     user,
 ) -> None:
-    _, session_token, csrf_token = (
-        create_auth_session(
-            db,
-            user=user,
-        )
+    _, session_token, csrf_token = create_auth_session(
+        db,
+        user=user,
     )
 
     db.commit()
@@ -77,6 +75,7 @@ def test_standard_user_navigation(
     assert "My Tasks" in html
 
     assert "app-admin-menu" not in html
+    assert "data-admin-menu" not in html
 
     for path in (
         "/admin",
@@ -116,7 +115,31 @@ def test_administrator_navigation_uses_dropdown(
     html = response.text
 
     assert (
-        '<details class="app-admin-menu">'
+        'class="app-admin-menu"'
+        in html
+    )
+
+    assert "data-admin-menu" in html
+    assert "data-admin-menu-toggle" in html
+    assert "data-admin-menu-panel" in html
+
+    assert (
+        'aria-haspopup="menu"'
+        in html
+    )
+
+    assert (
+        'aria-expanded="false"'
+        in html
+    )
+
+    assert (
+        'class="app-admin-menu-chevron"'
+        in html
+    )
+
+    assert (
+        'class="app-admin-menu-panel"'
         in html
     )
 
@@ -139,6 +162,7 @@ def test_administrator_navigation_uses_dropdown(
     for label in (
         "Overview",
         "Users",
+        "Companies",
         "Archived Companies",
         "Archived Sections",
         "Deleted Tasks",
@@ -210,8 +234,79 @@ def test_brand_links_to_dashboard_when_authenticated(
     )
 
     assert response.status_code == 200
-    assert 'class="app-brand"' in response.text
-    assert 'href="http://testserver/"' in response.text
+
+    assert (
+        'class="app-brand"'
+        in response.text
+    )
+
+    assert (
+        'href="http://testserver/"'
+        in response.text
+    )
+
+
+def test_header_displays_single_visible_application_name(
+    client: TestClient,
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+    )
+
+    _authenticate(
+        client,
+        db,
+        user=user,
+    )
+
+    response = client.get(
+        "/",
+    )
+
+    assert response.status_code == 200
+
+    header_start = response.text.index(
+        '<header class="app-header">',
+    )
+
+    header_end = response.text.index(
+        "</header>",
+        header_start,
+    )
+
+    header_html = response.text[
+        header_start:
+        header_end
+    ]
+
+    assert (
+        'class="app-brand-mark"'
+        in header_html
+    )
+
+    assert (
+        'class="app-brand-text"'
+        not in header_html
+    )
+
+    brand_start = header_html.index(
+        'class="app-brand-mark"',
+    )
+
+    brand_end = header_html.index(
+        "</span>",
+        brand_start,
+    )
+
+    brand_html = header_html[
+        brand_start:
+        brand_end
+    ]
+
+    assert settings.app_name in unescape(
+        brand_html,
+    )
 
 
 def test_header_displays_application_version(
@@ -233,7 +328,12 @@ def test_header_displays_application_version(
     )
 
     assert response.status_code == 200
-    assert f"v{APP_VERSION}" in response.text
+
+    assert (
+        f"v{APP_VERSION}"
+        in response.text
+    )
+
     assert (
         f"Application version {APP_VERSION}"
         in response.text
@@ -261,7 +361,11 @@ def test_header_displays_logged_in_user_and_actions(
 
     assert response.status_code == 200
 
-    assert "Navigation Administrator" in response.text
+    assert (
+        "Navigation Administrator"
+        in response.text
+    )
+
     assert "Administrator" in response.text
     assert "Feedback" in response.text
     assert "Sign Out" in response.text
@@ -286,8 +390,21 @@ def test_standard_user_sees_feedback_but_not_admin_dropdown(
     )
 
     assert response.status_code == 200
-    assert "data-feedback-open" in response.text
-    assert "app-admin-menu" not in response.text
+
+    assert (
+        "data-feedback-open"
+        in response.text
+    )
+
+    assert (
+        "data-admin-menu"
+        not in response.text
+    )
+
+    assert (
+        "app-admin-menu-chevron"
+        not in response.text
+    )
 
 
 def test_login_page_has_no_authenticated_navigation_or_feedback(
@@ -305,4 +422,5 @@ def test_login_page_has_no_authenticated_navigation_or_feedback(
     assert "Audit Log" not in html
     assert "data-feedback-open" not in html
     assert "data-feedback-modal" not in html
-    assert "app-admin-menu" not in html
+    assert "data-admin-menu" not in html
+    assert "app-admin-menu-chevron" not in html

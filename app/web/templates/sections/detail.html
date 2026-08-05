@@ -555,6 +555,11 @@
 {% block scripts %}
 
 <script
+    src="{{ url_for('static', path='vendor/sortablejs/Sortable.min.js') }}"
+    defer
+></script>
+
+<script
     src="{{ url_for('static', path='js/task-board.js') }}"
     defer
 ></script>

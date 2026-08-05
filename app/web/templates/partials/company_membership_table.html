@@ -1,0 +1,230 @@
+<section
+    class="content-card company-membership-card"
+    aria-labelledby="current-members-heading"
+>
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 id="current-members-heading">
+                Current Members
+            </h2>
+
+            <p class="card-subtitle">
+                {{ memberships | length }}
+                {% if memberships | length == 1 %}
+                member currently belongs
+                {% else %}
+                members currently belong
+                {% endif %}
+                to this company.
+            </p>
+
+        </div>
+
+    </div>
+
+    {% if memberships %}
+
+    <div class="table-container">
+
+        <table class="data-table company-membership-table">
+
+            <thead>
+
+                <tr>
+
+                    <th scope="col">
+                        User
+                    </th>
+
+                    <th scope="col">
+                        Company Role
+                    </th>
+
+                    <th
+                        scope="col"
+                        class="table-actions-column"
+                    >
+                        Actions
+                    </th>
+
+                </tr>
+
+            </thead>
+
+            <tbody>
+
+                {% for membership in memberships %}
+
+                <tr>
+
+                    <td>
+
+                        <div class="table-primary">
+
+                            <span class="table-primary-text">
+                                {{ membership.user.display_name }}
+                            </span>
+
+                            <span class="table-secondary">
+                                {{ membership.user.username }}
+                            </span>
+
+                            {% if membership.user.is_anonymised %}
+
+                            <span class="status-badge status-badge-muted">
+                                Anonymised
+                            </span>
+
+                            {% elif not membership.user.is_active %}
+
+                            <span class="status-badge status-badge-danger">
+                                Inactive
+                            </span>
+
+                            {% endif %}
+
+                        </div>
+
+                    </td>
+
+                    <td>
+
+                        {% if membership.user.is_anonymised %}
+
+                        <span class="status-badge status-badge-muted">
+
+                            {% if membership.role == "manager" %}
+                            Manager
+                            {% else %}
+                            Employee
+                            {% endif %}
+
+                        </span>
+
+                        {% else %}
+
+                        <form
+                            method="post"
+                            action="{{ url_for(
+                                membership_role_update_route_name,
+                                company_id=company.id,
+                                user_id=membership.user_id
+                            ) }}"
+                            class="inline-edit-form company-membership-role-form"
+                        >
+
+                            <input
+                                type="hidden"
+                                name="csrf_token"
+                                value="{{ csrf_token }}"
+                            >
+
+                            <label
+                                for="membership-role-{{ membership.id }}"
+                                class="visually-hidden"
+                            >
+                                Company role for
+                                {{ membership.user.display_name }}
+                            </label>
+
+                            <select
+                                id="membership-role-{{ membership.id }}"
+                                name="role"
+                                aria-label="Company role for {{ membership.user.display_name }}"
+                            >
+
+                                <option
+                                    value="employee"
+                                    {% if membership.role == "employee" %}selected{% endif %}
+                                >
+                                    Employee
+                                </option>
+
+                                <option
+                                    value="manager"
+                                    {% if membership.role == "manager" %}selected{% endif %}
+                                >
+                                    Manager
+                                </option>
+
+                            </select>
+
+                            <button
+                                type="submit"
+                                class="btn btn-secondary btn-small"
+                                data-loading-text="Updating..."
+                            >
+                                Update
+                            </button>
+
+                        </form>
+
+                        {% endif %}
+
+                    </td>
+
+                    <td>
+
+                        <div class="table-actions">
+
+                            <form
+                                method="post"
+                                action="{{ url_for(
+                                    membership_remove_route_name,
+                                    company_id=company.id,
+                                    user_id=membership.user_id
+                                ) }}"
+                                class="inline-form"
+                                data-confirm="Remove {{ membership.user.display_name }} from {{ company.name }}? This may also remove section memberships and task assignments within this company."
+                            >
+
+                                <input
+                                    type="hidden"
+                                    name="csrf_token"
+                                    value="{{ csrf_token }}"
+                                >
+
+                                <button
+                                    type="submit"
+                                    class="btn btn-danger btn-small"
+                                    data-loading-text="Removing..."
+                                >
+                                    Remove
+                                </button>
+
+                            </form>
+
+                        </div>
+
+                    </td>
+
+                </tr>
+
+                {% endfor %}
+
+            </tbody>
+
+        </table>
+
+    </div>
+
+    {% else %}
+
+    <div class="empty-state empty-state-compact">
+
+        <h3>
+            No company members
+        </h3>
+
+        <p>
+            This company does not currently have any members.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</section>

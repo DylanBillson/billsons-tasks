@@ -381,42 +381,82 @@ class SectionListService:
             section=section,
         )
 
-        submitted_ids = {
+        active_lists = (
+            SectionListRepository.list_for_section(
+                db,
+                section_id=section.id,
+                include_archived=False,
+            )
+        )
+
+        active_list_by_id = {
+            section_list.id: section_list
+            for section_list in active_lists
+        }
+
+        active_list_ids = set(
+            active_list_by_id,
+        )
+
+        submitted_list_ids = {
             item.list_id
             for item in reorder_request.items
         }
 
-        section_lists = (
-            SectionListRepository.list_for_section(
-                db,
-                section_id=section.id,
-                include_archived=True,
-            )
+        unexpected_list_ids = (
+            submitted_list_ids
+            - active_list_ids
         )
 
-        list_by_id = {
-            section_list.id: section_list
-            for section_list in section_lists
-        }
-
-        missing_ids = submitted_ids - set(
-            list_by_id,
-        )
-
-        if missing_ids:
+        if unexpected_list_ids:
             raise SectionListReorderError(
                 "The reorder request contains a list "
-                "that does not belong to this section.",
+                "that is archived or does not belong "
+                "to this section.",
             )
 
-        positions = {
+        missing_list_ids = (
+            active_list_ids
+            - submitted_list_ids
+        )
+
+        if missing_list_ids:
+            raise SectionListReorderError(
+                "The reorder request must include every "
+                "active list in the section.",
+            )
+
+        requested_positions = {
             item.list_id: item.sort_position
             for item in reorder_request.items
         }
 
+        previous_positions = {
+            section_list.id: section_list.sort_position
+            for section_list in active_lists
+        }
+
+        changed_positions = {
+            list_id: {
+                "previous_sort_position": (
+                    previous_positions[list_id]
+                ),
+                "sort_position": sort_position,
+            }
+            for list_id, sort_position
+            in requested_positions.items()
+            if (
+                previous_positions[list_id]
+                != sort_position
+            )
+        }
+
+        if not changed_positions:
+            return active_lists
+
         SectionListRepository.update_sort_positions(
             db,
-            positions=positions,
+            positions=requested_positions,
         )
 
         AuditService.record(
@@ -430,7 +470,13 @@ class SectionListService:
             entity_type="section",
             entity_id=section.id,
             metadata_json={
-                "list_positions": positions,
+                "company_id": section.company_id,
+                "section_id": section.id,
+                "list_positions": {
+                    str(list_id): values
+                    for list_id, values
+                    in changed_positions.items()
+                },
             },
             ip_address=ip_address,
             user_agent=user_agent,
@@ -442,7 +488,7 @@ class SectionListService:
         return SectionListRepository.list_for_section(
             db,
             section_id=section.id,
-            include_archived=True,
+            include_archived=False,
         )
 
     @staticmethod

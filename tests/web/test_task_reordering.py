@@ -320,3 +320,211 @@ def test_reordering_requires_csrf(
     )
 
     assert response.status_code == 403
+
+def test_task_reorder_rejects_partial_board_snapshot(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        first_list,
+        _,
+        first_task,
+        second_task,
+    ) = _create_context(
+        db,
+    )
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/tasks/reorder",
+        json={
+            "items": [
+                {
+                    "task_id": first_task.id,
+                    "section_list_id": first_list.id,
+                    "sort_position": 2000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+
+    assert (
+        "include every active task"
+        in response.json()["detail"]
+    )
+
+    db.refresh(first_task)
+    db.refresh(second_task)
+
+    assert first_task.sort_position == 1000
+    assert second_task.sort_position == 1000
+
+
+def test_task_reorder_rejects_archived_destination(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        first_list,
+        second_list,
+        first_task,
+        second_task,
+    ) = _create_context(
+        db,
+    )
+
+    second_list.is_archived = True
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/tasks/reorder",
+        json={
+            "items": [
+                {
+                    "task_id": first_task.id,
+                    "section_list_id": second_list.id,
+                    "sort_position": 1000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+
+    assert (
+        "archived or does not belong"
+        in response.json()["detail"]
+    )
+
+    db.refresh(first_task)
+    db.refresh(second_task)
+
+    assert first_task.section_list_id == first_list.id
+
+
+def test_task_reorder_rejects_malformed_json(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        _,
+        _,
+        _,
+        _,
+    ) = _create_context(
+        db,
+    )
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/tasks/reorder",
+        content="{invalid-json",
+        headers={
+            "accept": "application/json",
+            "content-type": "application/json",
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+
+    assert response.json() == {
+        "detail": (
+            "The task order request "
+            "was not valid JSON."
+        ),
+    }
+
+
+def test_task_reorder_response_excludes_deleted_tasks(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        first_list,
+        second_list,
+        first_task,
+        second_task,
+    ) = _create_context(
+        db,
+    )
+
+    deleted_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        deleted_by=creator,
+        sort_position=2000,
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/tasks/reorder",
+        json={
+            "items": [
+                {
+                    "task_id": first_task.id,
+                    "section_list_id": second_list.id,
+                    "sort_position": 2000,
+                },
+                {
+                    "task_id": second_task.id,
+                    "section_list_id": first_list.id,
+                    "sort_position": 1000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 200
+
+    returned_ids = {
+        item["task_id"]
+        for item in response.json()["items"]
+    }
+
+    assert first_task.id in returned_ids
+    assert second_task.id in returned_ids
+    assert deleted_task.id not in returned_ids

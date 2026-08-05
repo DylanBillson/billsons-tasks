@@ -46,7 +46,13 @@ from tests.factories import (
     create_task_comment,
     create_user,
 )
-
+from app.schemas.company import (
+    CompanyMembershipCreateRequest,
+    CompanyMembershipUpdateRequest,
+)
+from app.services.company_membership_service import (
+    CompanyMembershipService,
+)
 
 def _create_isolated_context(
     db: Session,
@@ -655,7 +661,7 @@ def test_task_reorder_rejects_task_from_other_section(
 
     with pytest.raises(
         TaskReorderError,
-        match="task that does not belong",
+        match="deleted or does not belong",
     ):
         TaskService.reorder_tasks(
             db,
@@ -701,7 +707,7 @@ def test_task_reorder_rejects_destination_list_from_other_section(
 
     with pytest.raises(
         TaskReorderError,
-        match="list that does not belong",
+        match="archived or does not belong",
     ):
         TaskService.reorder_tasks(
             db,
@@ -747,7 +753,7 @@ def test_list_reorder_rejects_list_from_other_section(
 
     with pytest.raises(
         SectionListReorderError,
-        match="does not belong to this section",
+        match="archived or does not belong",
     ):
         SectionListService.reorder_lists(
             db,
@@ -950,3 +956,343 @@ def test_failed_cross_company_operations_leave_task_state_unchanged(
         context["second_task"].deleted_by_user_id
         is None
     )
+
+def test_task_reorder_cannot_hide_existing_task_by_omission(
+    db: Session,
+) -> None:
+    context = _create_isolated_context(
+        db,
+    )
+
+    extra_task = create_task(
+        db,
+        section_list=context["first_list"],
+        created_by=context["first_creator"],
+        title="Extra First Task",
+        sort_position=2000,
+    )
+
+    original_first_position = (
+        context["first_task"].sort_position
+    )
+
+    original_extra_position = (
+        extra_task.sort_position
+    )
+
+    with pytest.raises(
+        TaskReorderError,
+        match="include every active task",
+    ):
+        TaskService.reorder_tasks(
+            db,
+            actor=context["first_creator"],
+            section=context["first_section"],
+            reorder_request=TaskReorderRequest(
+                items=[
+                    TaskPositionUpdate(
+                        task_id=context["first_task"].id,
+                        section_list_id=context["first_list"].id,
+                        sort_position=3000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert (
+        context["first_task"].sort_position
+        == original_first_position
+    )
+
+    assert (
+        extra_task.sort_position
+        == original_extra_position
+    )
+
+
+def test_list_reorder_cannot_hide_existing_list_by_omission(
+    db: Session,
+) -> None:
+    context = _create_isolated_context(
+        db,
+    )
+
+    extra_list = create_section_list(
+        db,
+        section=context["first_section"],
+        name="Extra First List",
+        sort_position=2000,
+    )
+
+    original_first_position = (
+        context["first_list"].sort_position
+    )
+
+    original_extra_position = (
+        extra_list.sort_position
+    )
+
+    with pytest.raises(
+        SectionListReorderError,
+        match="include every active list",
+    ):
+        SectionListService.reorder_lists(
+            db,
+            actor=context["first_creator"],
+            section=context["first_section"],
+            reorder_request=SectionListReorderRequest(
+                items=[
+                    SectionListPositionUpdate(
+                        list_id=context["first_list"].id,
+                        sort_position=3000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert (
+        context["first_list"].sort_position
+        == original_first_position
+    )
+
+    assert (
+        extra_list.sort_position
+        == original_extra_position
+    )
+
+
+def test_task_reorder_rejects_archived_cross_board_destination(
+    db: Session,
+) -> None:
+    context = _create_isolated_context(
+        db,
+    )
+
+    archived_list = create_section_list(
+        db,
+        section=context["first_section"],
+        name="Archived First List",
+        sort_position=2000,
+        is_archived=True,
+    )
+
+    original_list_id = (
+        context["first_task"].section_list_id
+    )
+
+    original_position = (
+        context["first_task"].sort_position
+    )
+
+    with pytest.raises(
+        TaskReorderError,
+        match="archived or does not belong",
+    ):
+        TaskService.reorder_tasks(
+            db,
+            actor=context["first_creator"],
+            section=context["first_section"],
+            reorder_request=TaskReorderRequest(
+                items=[
+                    TaskPositionUpdate(
+                        task_id=context["first_task"].id,
+                        section_list_id=archived_list.id,
+                        sort_position=1000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert (
+        context["first_task"].section_list_id
+        == original_list_id
+    )
+
+    assert (
+        context["first_task"].sort_position
+        == original_position
+    )
+
+def test_manager_cannot_add_member_to_other_company(
+    db: Session,
+) -> None:
+    own_company = create_company(
+        db,
+    )
+
+    other_company = create_company(
+        db,
+    )
+
+    manager = create_user(
+        db,
+    )
+
+    target = create_user(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=own_company,
+        user=manager,
+        role=CompanyRole.MANAGER,
+    )
+
+    with pytest.raises(
+        PermissionDeniedError,
+    ):
+        CompanyMembershipService.add_member(
+            db,
+            actor=manager,
+            company=other_company,
+            membership_create=(
+                CompanyMembershipCreateRequest(
+                    user_id=target.id,
+                )
+            ),
+        )
+
+
+def test_manager_cannot_change_role_in_other_company(
+    db: Session,
+) -> None:
+    own_company = create_company(
+        db,
+    )
+
+    other_company = create_company(
+        db,
+    )
+
+    manager = create_user(
+        db,
+    )
+
+    target = create_user(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=own_company,
+        user=manager,
+        role=CompanyRole.MANAGER,
+    )
+
+    target_membership = create_company_membership(
+        db,
+        company=other_company,
+        user=target,
+        role=CompanyRole.EMPLOYEE,
+    )
+
+    with pytest.raises(
+        PermissionDeniedError,
+    ):
+        CompanyMembershipService.update_role(
+            db,
+            actor=manager,
+            membership=target_membership,
+            membership_update=(
+                CompanyMembershipUpdateRequest(
+                    role=CompanyRole.MANAGER,
+                )
+            ),
+        )
+
+    assert (
+        target_membership.role
+        == CompanyRole.EMPLOYEE.value
+    )
+
+
+def test_manager_cannot_remove_member_from_other_company(
+    db: Session,
+) -> None:
+    own_company = create_company(
+        db,
+    )
+
+    other_company = create_company(
+        db,
+    )
+
+    manager = create_user(
+        db,
+    )
+
+    target = create_user(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=own_company,
+        user=manager,
+        role=CompanyRole.MANAGER,
+    )
+
+    target_membership = create_company_membership(
+        db,
+        company=other_company,
+        user=target,
+    )
+
+    with pytest.raises(
+        PermissionDeniedError,
+    ):
+        CompanyMembershipService.remove_member(
+            db,
+            actor=manager,
+            membership=target_membership,
+        )
+
+    assert (
+        CompanyMembershipService.get_membership(
+            db,
+            company_id=other_company.id,
+            user_id=target.id,
+        )
+        is target_membership
+    )
+
+
+def test_employee_cannot_mutate_own_company_memberships(
+    db: Session,
+) -> None:
+    company = create_company(
+        db,
+    )
+
+    employee = create_user(
+        db,
+    )
+
+    target = create_user(
+        db,
+    )
+
+    create_company_membership(
+        db,
+        company=company,
+        user=employee,
+        role=CompanyRole.EMPLOYEE,
+    )
+
+    with pytest.raises(
+        PermissionDeniedError,
+    ):
+        CompanyMembershipService.add_member(
+            db,
+            actor=employee,
+            company=company,
+            membership_create=(
+                CompanyMembershipCreateRequest(
+                    user_id=target.id,
+                )
+            ),
+        )

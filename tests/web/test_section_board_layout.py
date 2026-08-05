@@ -145,7 +145,7 @@ def test_section_board_renders_expected_layout_hooks(
     html = response.text
 
     assert 'class="task-board"' in html
-    assert 'data-task-board' in html
+    assert "data-task-board" in html
     assert 'data-drag-enabled="true"' in html
     assert 'data-list-drag-enabled="true"' in html
 
@@ -153,10 +153,12 @@ def test_section_board_renders_expected_layout_hooks(
         f'data-list-id="{first_list.id}"'
         in html
     )
+
     assert (
         f'data-list-id="{second_list.id}"'
         in html
     )
+
     assert (
         f'data-task-id="{task.id}"'
         in html
@@ -166,15 +168,15 @@ def test_section_board_renders_expected_layout_hooks(
     assert "task-card" in html
 
 
-def test_manageable_lists_are_rendered_as_draggable(
+def test_sortable_board_uses_handles_without_native_draggable_attributes(
     client: TestClient,
     db: Session,
 ) -> None:
     (
         creator,
         section,
-        first_list,
-        second_list,
+        _,
+        _,
         _,
     ) = _create_board_context(
         db,
@@ -192,29 +194,57 @@ def test_manageable_lists_are_rendered_as_draggable(
 
     assert response.status_code == 200
 
-    for section_list in (
-        first_list,
-        second_list,
-    ):
-        marker = (
-            f'data-list-id="{section_list.id}"'
-        )
-        marker_position = response.text.index(
-            marker,
-        )
-        opening_tag_end = response.text.index(
-            ">",
-            marker_position,
-        )
-        opening_tag = response.text[
-            marker_position:opening_tag_end
-        ]
-
-        assert 'draggable="true"' in opening_tag
-
     assert response.text.count(
         "data-list-drag-handle",
     ) == 2
+
+    assert response.text.count(
+        "data-task-drag-handle",
+    ) == 1
+
+    assert (
+        "data-task-list-container"
+        in response.text
+    )
+
+    assert 'draggable="true"' not in response.text
+
+
+def test_section_page_loads_sortable_before_task_board_script(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        _,
+        _,
+        _,
+    ) = _create_board_context(
+        db,
+    )
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+
+    sortable_position = response.text.index(
+        "vendor/sortablejs/Sortable.min.js",
+    )
+
+    task_board_position = response.text.index(
+        "js/task-board.js",
+    )
+
+    assert sortable_position < task_board_position
 
 
 def test_task_card_renders_compact_local_due_datetime(
@@ -244,6 +274,7 @@ def test_task_card_renders_compact_local_due_datetime(
     assert response.status_code == 200
     assert task.title in response.text
     assert "Due 12:00 07/08/26" in response.text
+
     assert (
         'datetime="2026-08-07T11:00:00+00:00"'
         in response.text
@@ -279,13 +310,16 @@ def test_task_content_remains_inside_task_card_markup(
     card_marker = (
         f'data-task-id="{task.id}"'
     )
+
     card_start = response.text.index(
         card_marker,
     )
+
     card_end = response.text.index(
         "</article>",
         card_start,
     )
+
     card_html = response.text[
         card_start:card_end
     ]
@@ -323,17 +357,22 @@ def test_section_summary_is_full_width_and_below_board(
     assert response.status_code == 200
 
     board_position = response.text.index(
-        'data-task-board',
+        "data-task-board",
     )
+
     summary_position = response.text.index(
         'class="content-card section-summary-card"',
     )
 
     assert board_position < summary_position
-    assert 'id="section-members-heading"' not in response.text
+
+    assert (
+        'id="section-members-heading"'
+        not in response.text
+    )
 
 
-def test_active_filter_opens_panel_and_disables_dragging(
+def test_active_filter_disables_sortable_handles(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -365,3 +404,5 @@ def test_active_filter_opens_panel_and_disables_dragging(
     assert 'data-drag-enabled="false"' in response.text
     assert 'data-list-drag-enabled="false"' in response.text
     assert "Filters are currently applied." in response.text
+    assert "data-list-drag-handle" not in response.text
+    assert "data-task-drag-handle" not in response.text

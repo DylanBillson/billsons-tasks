@@ -411,3 +411,212 @@ def test_admin_company_create_records_audit_event(
     )
     assert audit_log is not None
     assert audit_log.user_id == administrator.id
+def test_admin_company_members_page_uses_shared_membership_ui(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    company = create_company(
+        db,
+        name="Shared Admin Membership Company",
+    )
+
+    member = create_user(
+        db,
+        display_name="Shared Existing Member",
+    )
+
+    available = create_user(
+        db,
+        display_name="Shared Available User",
+    )
+
+    create_company_membership(
+        db,
+        company=company,
+        user=member,
+        role=CompanyRole.EMPLOYEE,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        f"/admin/companies/{company.id}/members",
+    )
+
+    assert response.status_code == 200
+
+    assert "Current Members" in response.text
+    assert "Add Member" in response.text
+    assert "Shared Existing Member" in response.text
+    assert "Shared Available User" in response.text
+
+    assert (
+        f"/admin/companies/{company.id}/members"
+        in response.text
+    )
+
+    assert (
+        f"/admin/companies/{company.id}/members/"
+        f"{member.id}/role"
+        in response.text
+    )
+
+    assert (
+        f"/admin/companies/{company.id}/members/"
+        f"{member.id}/remove"
+        in response.text
+    )
+
+    assert str(available.id) in response.text
+
+
+def test_admin_company_members_excludes_inactive_and_anonymised_users(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    active_user = create_user(
+        db,
+        display_name="Eligible Membership User",
+    )
+
+    create_user(
+        db,
+        display_name="Inactive Membership User",
+        is_active=False,
+    )
+
+    create_user(
+        db,
+        display_name="Anonymised Membership User",
+        is_active=False,
+        is_anonymised=True,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        f"/admin/companies/{company.id}/members",
+    )
+
+    assert response.status_code == 200
+
+    assert active_user.display_name in response.text
+    assert "Inactive Membership User" not in response.text
+    assert "Anonymised Membership User" not in response.text
+
+
+def test_admin_company_members_excludes_existing_members_from_selector(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    member = create_user(
+        db,
+        display_name="Already Assigned Member",
+    )
+
+    create_company_membership(
+        db,
+        company=company,
+        user=member,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        f"/admin/companies/{company.id}/members",
+    )
+
+    assert response.status_code == 200
+
+    marker = (
+        f'<option value="{member.id}"'
+    )
+
+    assert marker not in response.text
+
+
+def test_admin_company_members_page_requires_csrf_for_mutations(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    company = create_company(
+        db,
+    )
+
+    target = create_user(
+        db,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.post(
+        f"/admin/companies/{company.id}/members",
+        data={
+            "user_id": str(
+                target.id,
+            ),
+            "role": CompanyRole.EMPLOYEE.value,
+        },
+        follow_redirects=False,
+    )
+
+    assert response.status_code == 403
+
+    membership = db.scalar(
+        select(CompanyMembership).where(
+            CompanyMembership.company_id
+            == company.id,
+            CompanyMembership.user_id
+            == target.id,
+        )
+    )
+
+    assert membership is None

@@ -1,6 +1,10 @@
 from urllib.parse import urlencode
 
-from fastapi import APIRouter, Request, status
+from fastapi import (
+    APIRouter,
+    Request,
+    status,
+)
 from fastapi.responses import (
     HTMLResponse,
     RedirectResponse,
@@ -8,11 +12,21 @@ from fastapi.responses import (
 )
 
 from app.core.config import settings
+from app.services.anonymisation_service import (
+    AnonymisationConfirmationError,
+    AnonymisationPermissionError,
+    AnonymisationService,
+    AnonymisationServiceError,
+    AnonymisationUserNotFoundError,
+)
 from app.services.user_service import (
+    AnonymisedUserProfileError,
     AnonymisedUserStatusError,
     UserNotFoundError,
     UserPermissionError,
     UserSelfDeactivationError,
+    UserSelfRoleChangeError,
+    UsernameAlreadyExistsError,
     UserService,
     UserServiceError,
 )
@@ -22,20 +36,18 @@ from app.web.dependencies.auth import (
     get_client_ip_address,
     get_user_agent,
 )
-from app.web.dependencies.csrf import ValidatedCSRFSession
+from app.web.dependencies.csrf import (
+    ValidatedCSRFSession,
+)
 from app.web.forms.admin_user import (
     UserAnonymisationForm,
+    UserCreateForm,
     UserDeactivationForm,
+    UserUpdateForm,
 )
 from app.web.forms.auth import PasswordResetForm
 from app.web.templating import templates
-from app.services.anonymisation_service import (
-    AnonymisationConfirmationError,
-    AnonymisationPermissionError,
-    AnonymisationService,
-    AnonymisationServiceError,
-    AnonymisationUserNotFoundError,
-)
+
 
 router = APIRouter(
     prefix="/admin/users",
@@ -69,16 +81,393 @@ def list_users(
         context={
             "current_user": administrator,
             "users": users,
-            "csrf_token": _get_authenticated_csrf_token(
-                request,
+            "csrf_token": (
+                _get_authenticated_csrf_token(
+                    request,
+                )
             ),
-            "flash_messages": _build_flash_messages(
-                success=success,
-                error=error,
+            "flash_messages": (
+                _build_flash_messages(
+                    success=success,
+                    error=error,
+                )
             ),
         },
         status_code=status.HTTP_200_OK,
     )
+
+
+# -------------------------------------------------------------------------
+# User creation
+# -------------------------------------------------------------------------
+
+
+@router.get(
+    "/create",
+    response_class=HTMLResponse,
+    name="admin_user_create",
+)
+def create_user_page(
+    request: Request,
+    administrator: AdministratorUser,
+) -> HTMLResponse:
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/users/create.html",
+        context={
+            "current_user": administrator,
+            "form": UserCreateForm(),
+            "csrf_token": (
+                _get_authenticated_csrf_token(
+                    request,
+                )
+            ),
+            "flash_messages": [],
+        },
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@router.post(
+    "/create",
+    response_class=HTMLResponse,
+    name="admin_user_create_submit",
+)
+async def create_user_submit(
+    request: Request,
+    db: DatabaseSession,
+    administrator: AdministratorUser,
+    auth_session: ValidatedCSRFSession,
+) -> Response:
+    del auth_session
+
+    form_data = await request.form()
+
+    form = UserCreateForm.from_form_data(
+        form_data,
+    )
+
+    user_create = form.validate()
+
+    csrf_token = (
+        _get_form_value(
+            form_data,
+            "csrf_token",
+        )
+        or ""
+    )
+
+    if user_create is None:
+        form.clear_passwords()
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/create.html",
+            context={
+                "current_user": administrator,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    try:
+        user = UserService.create_user(
+            db,
+            acting_user=administrator,
+            user_create=user_create,
+            ip_address=get_client_ip_address(
+                request,
+            ),
+            user_agent=get_user_agent(
+                request,
+            ),
+        )
+
+    except UsernameAlreadyExistsError as exc:
+        form.errors.add_field_error(
+            "username",
+            str(exc),
+        )
+
+        form.clear_passwords()
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/create.html",
+            context={
+                "current_user": administrator,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    except UserPermissionError:
+        return _redirect_to_user_list(
+            error=(
+                "You do not have permission "
+                "to create users."
+            ),
+        )
+
+    except UserServiceError as exc:
+        form.errors.add_form_error(
+            str(exc),
+        )
+
+        form.clear_passwords()
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/create.html",
+            context={
+                "current_user": administrator,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    return _redirect_to_user_list(
+        success=(
+            f"{user.display_name} was created."
+        ),
+    )
+
+
+# -------------------------------------------------------------------------
+# User editing
+# -------------------------------------------------------------------------
+
+
+@router.get(
+    "/{user_id}/edit",
+    response_class=HTMLResponse,
+    name="admin_user_edit",
+)
+def edit_user_page(
+    user_id: int,
+    request: Request,
+    db: DatabaseSession,
+    administrator: AdministratorUser,
+) -> Response:
+    try:
+        user = UserService.require_user(
+            db,
+            user_id=user_id,
+        )
+
+    except UserNotFoundError:
+        return _redirect_to_user_list(
+            error=(
+                "The requested user could not be found."
+            ),
+        )
+
+    if user.is_anonymised:
+        return _redirect_to_user_list(
+            error=(
+                "An anonymised user cannot be edited."
+            ),
+        )
+
+    return templates.TemplateResponse(
+        request=request,
+        name="admin/users/edit.html",
+        context={
+            "current_user": administrator,
+            "user": user,
+            "form": UserUpdateForm.from_user(
+                user,
+            ),
+            "csrf_token": (
+                _get_authenticated_csrf_token(
+                    request,
+                )
+            ),
+            "flash_messages": [],
+        },
+        status_code=status.HTTP_200_OK,
+    )
+
+
+@router.post(
+    "/{user_id}/edit",
+    response_class=HTMLResponse,
+    name="admin_user_edit_submit",
+)
+async def edit_user_submit(
+    user_id: int,
+    request: Request,
+    db: DatabaseSession,
+    administrator: AdministratorUser,
+    auth_session: ValidatedCSRFSession,
+) -> Response:
+    del auth_session
+
+    try:
+        user = UserService.require_user(
+            db,
+            user_id=user_id,
+        )
+
+    except UserNotFoundError:
+        return _redirect_to_user_list(
+            error=(
+                "The requested user could not be found."
+            ),
+        )
+
+    if user.is_anonymised:
+        return _redirect_to_user_list(
+            error=(
+                "An anonymised user cannot be edited."
+            ),
+        )
+
+    form_data = await request.form()
+
+    form = UserUpdateForm.from_form_data(
+        form_data,
+    )
+
+    user_update = form.validate()
+
+    csrf_token = (
+        _get_form_value(
+            form_data,
+            "csrf_token",
+        )
+        or ""
+    )
+
+    if user_update is None:
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/edit.html",
+            context={
+                "current_user": administrator,
+                "user": user,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    try:
+        UserService.update_user(
+            db,
+            acting_user=administrator,
+            target_user=user,
+            user_update=user_update,
+            ip_address=get_client_ip_address(
+                request,
+            ),
+            user_agent=get_user_agent(
+                request,
+            ),
+        )
+
+    except UsernameAlreadyExistsError as exc:
+        form.errors.add_field_error(
+            "username",
+            str(exc),
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/edit.html",
+            context={
+                "current_user": administrator,
+                "user": user,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    except UserSelfRoleChangeError as exc:
+        form.errors.add_field_error(
+            "global_role",
+            str(exc),
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/edit.html",
+            context={
+                "current_user": administrator,
+                "user": user,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    except AnonymisedUserProfileError:
+        return _redirect_to_user_list(
+            error=(
+                "An anonymised user cannot be edited."
+            ),
+        )
+
+    except UserPermissionError:
+        return _redirect_to_user_list(
+            error=(
+                "You do not have permission "
+                "to edit this user."
+            ),
+        )
+
+    except UserServiceError as exc:
+        form.errors.add_form_error(
+            str(exc),
+        )
+
+        return templates.TemplateResponse(
+            request=request,
+            name="admin/users/edit.html",
+            context={
+                "current_user": administrator,
+                "user": user,
+                "form": form,
+                "csrf_token": csrf_token,
+                "flash_messages": [],
+            },
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
+        )
+
+    return _redirect_to_user_list(
+        success=(
+            f"{user.display_name} was updated."
+        ),
+    )
+
+
+# -------------------------------------------------------------------------
+# Password reset
+# -------------------------------------------------------------------------
 
 
 @router.get(
@@ -112,8 +501,10 @@ def reset_password_page(
             "current_user": administrator,
             "user": user,
             "form": PasswordResetForm(),
-            "csrf_token": _get_authenticated_csrf_token(
-                request,
+            "csrf_token": (
+                _get_authenticated_csrf_token(
+                    request,
+                )
             ),
             "flash_messages": [],
         },
@@ -206,16 +597,14 @@ async def reset_password_submit(
     except UserPermissionError:
         return _redirect_to_user_list(
             error=(
-                "You do not have permission to reset "
-                "this password."
+                "You do not have permission "
+                "to reset this password."
             ),
         )
 
     except UserServiceError as exc:
         form.errors.add_form_error(
-            str(
-                exc,
-            ),
+            str(exc),
         )
 
         form.clear_passwords()
@@ -243,9 +632,15 @@ async def reset_password_submit(
 
     return _redirect_to_user_list(
         success=(
-            f"The password for {user.username} was reset."
+            f"The password for {user.username} "
+            "was reset."
         ),
     )
+
+
+# -------------------------------------------------------------------------
+# Activation and deactivation
+# -------------------------------------------------------------------------
 
 
 @router.post(
@@ -290,16 +685,14 @@ def activate_user(
     except UserPermissionError:
         return _redirect_to_user_list(
             error=(
-                "You do not have permission to activate "
-                "this user."
+                "You do not have permission "
+                "to activate this user."
             ),
         )
 
     except UserServiceError as exc:
         return _redirect_to_user_list(
-            error=str(
-                exc,
-            ),
+            error=str(exc),
         )
 
     return _redirect_to_user_list(
@@ -361,8 +754,10 @@ def deactivate_user_page(
             "current_user": administrator,
             "user": user,
             "form": UserDeactivationForm(),
-            "csrf_token": _get_authenticated_csrf_token(
-                request,
+            "csrf_token": (
+                _get_authenticated_csrf_token(
+                    request,
+                )
             ),
             "flash_messages": [],
         },
@@ -441,23 +836,19 @@ async def deactivate_user_submit(
 
     except UserSelfDeactivationError as exc:
         return _redirect_to_user_list(
-            error=str(
-                exc,
-            ),
+            error=str(exc),
         )
 
     except AnonymisedUserStatusError as exc:
         return _redirect_to_user_list(
-            error=str(
-                exc,
-            ),
+            error=str(exc),
         )
 
     except UserPermissionError:
         return _redirect_to_user_list(
             error=(
-                "You do not have permission to deactivate "
-                "this user."
+                "You do not have permission "
+                "to deactivate this user."
             ),
         )
 
@@ -470,6 +861,12 @@ async def deactivate_user_submit(
             "were revoked."
         ),
     )
+
+
+# -------------------------------------------------------------------------
+# Anonymisation
+# -------------------------------------------------------------------------
+
 
 @router.get(
     "/{user_id}/anonymise",
@@ -506,9 +903,7 @@ def anonymise_user_page(
 
     except AnonymisationServiceError as exc:
         return _redirect_to_user_list(
-            error=str(
-                exc,
-            ),
+            error=str(exc),
         )
 
     return templates.TemplateResponse(
@@ -568,9 +963,7 @@ async def anonymise_user_submit(
 
     except AnonymisationServiceError as exc:
         return _redirect_to_user_list(
-            error=str(
-                exc,
-            ),
+            error=str(exc),
         )
 
     form_data = await request.form()
@@ -611,10 +1004,8 @@ async def anonymise_user_submit(
                 confirmation_phrase=(
                     form.confirmation_phrase
                 ),
-                ip_address=(
-                    get_client_ip_address(
-                        request,
-                    )
+                ip_address=get_client_ip_address(
+                    request,
                 ),
                 user_agent=get_user_agent(
                     request,
@@ -628,9 +1019,7 @@ async def anonymise_user_submit(
         AnonymisationServiceError,
     ) as exc:
         return _redirect_to_user_list(
-            error=str(
-                exc,
-            ),
+            error=str(exc),
         )
 
     return _redirect_to_user_list(
@@ -639,6 +1028,12 @@ async def anonymise_user_submit(
             "was anonymised permanently."
         ),
     )
+
+
+# -------------------------------------------------------------------------
+# Helpers
+# -------------------------------------------------------------------------
+
 
 def _redirect_to_user_list(
     *,
@@ -651,14 +1046,10 @@ def _redirect_to_user_list(
     ] = {}
 
     if success:
-        query_parameters[
-            "success"
-        ] = success
+        query_parameters["success"] = success
 
     if error:
-        query_parameters[
-            "error"
-        ] = error
+        query_parameters["error"] = error
 
     url = "/admin/users"
 

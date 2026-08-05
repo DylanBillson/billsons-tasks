@@ -10,14 +10,7 @@
                 aria-label="{{ settings.app_name }} home"
             >
 
-                <span
-                    class="app-brand-mark"
-                    aria-hidden="true"
-                >
-                    Billson's Tasks
-                </span>
-
-                <span class="app-brand-text">
+                <span class="app-brand-mark">
                     {{ settings.app_name }}
                 </span>
 
@@ -80,22 +73,41 @@
 
                 {% if current_user.is_administrator %}
 
-                <details class="app-admin-menu">
+                <details
+                    class="app-admin-menu"
+                    data-admin-menu
+                >
 
                     <summary
                         class="btn btn-secondary btn-small app-admin-menu-toggle"
+                        data-admin-menu-toggle
+                        aria-haspopup="menu"
+                        aria-expanded="false"
                     >
-                        Administration
+
+                        <span>
+                            Administration
+                        </span>
+
+                        <span
+                            class="app-admin-menu-chevron"
+                            aria-hidden="true"
+                        ></span>
+
                     </summary>
 
                     <nav
                         class="app-admin-menu-panel"
                         aria-label="Administration"
+                        data-admin-menu-panel
                     >
 
                         <a
                             href="{{ url_for('admin_dashboard') }}"
                             class="app-admin-menu-link{% if request.url.path == '/admin' %} is-active{% endif %}"
+                            {% if request.url.path == "/admin" %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Overview
                         </a>
@@ -103,6 +115,9 @@
                         <a
                             href="{{ url_for('admin_users') }}"
                             class="app-admin-menu-link{% if request.url.path.startswith('/admin/users') %} is-active{% endif %}"
+                            {% if request.url.path.startswith("/admin/users") %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Users
                         </a>
@@ -110,6 +125,9 @@
                         <a
                             href="{{ url_for('admin_companies') }}"
                             class="app-admin-menu-link{% if request.url.path.startswith('/admin/companies') %} is-active{% endif %}"
+                            {% if request.url.path.startswith("/admin/companies") %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Companies
                         </a>
@@ -117,6 +135,9 @@
                         <a
                             href="{{ url_for('admin_archived_companies') }}"
                             class="app-admin-menu-link{% if request.url.path.startswith('/admin/archived-companies') %} is-active{% endif %}"
+                            {% if request.url.path.startswith("/admin/archived-companies") %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Archived Companies
                         </a>
@@ -124,6 +145,9 @@
                         <a
                             href="{{ url_for('admin_archived_sections') }}"
                             class="app-admin-menu-link{% if request.url.path.startswith('/admin/archived-sections') %} is-active{% endif %}"
+                            {% if request.url.path.startswith("/admin/archived-sections") %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Archived Sections
                         </a>
@@ -131,6 +155,9 @@
                         <a
                             href="{{ url_for('admin_deleted_tasks') }}"
                             class="app-admin-menu-link{% if request.url.path.startswith('/admin/deleted-tasks') %} is-active{% endif %}"
+                            {% if request.url.path.startswith("/admin/deleted-tasks") %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Deleted Tasks
                         </a>
@@ -138,6 +165,9 @@
                         <a
                             href="{{ url_for('admin_audit') }}"
                             class="app-admin-menu-link{% if request.url.path.startswith('/admin/audit') %} is-active{% endif %}"
+                            {% if request.url.path.startswith("/admin/audit") %}
+                            aria-current="page"
+                            {% endif %}
                         >
                             Audit Log
                         </a>

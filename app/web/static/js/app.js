@@ -10,6 +10,7 @@ document.addEventListener(
     },
 );
 
+
 function initialiseConfirmDialogs() {
     document
         .querySelectorAll("[data-confirm]")
@@ -59,6 +60,7 @@ function initialiseConfirmDialogs() {
         );
 }
 
+
 function initialiseAutoDismissFlashMessages() {
     document
         .querySelectorAll(".flash-message")
@@ -88,6 +90,7 @@ function initialiseAutoDismissFlashMessages() {
         );
 }
 
+
 function initialiseFlashMessageDismissButtons() {
     document
         .querySelectorAll(
@@ -116,6 +119,7 @@ function initialiseFlashMessageDismissButtons() {
         );
 }
 
+
 function dismissFlashMessage(message) {
     if (
         message.classList.contains(
@@ -143,15 +147,12 @@ function dismissFlashMessage(message) {
         },
     );
 
-    /*
-     * Ensure the hidden message is eventually removed even when its CSS does
-     * not define a transition.
-     */
     window.setTimeout(
         removeMessage,
         500,
     );
 }
+
 
 function initialiseFormSubmissionProtection() {
     document
@@ -168,12 +169,6 @@ function initialiseFormSubmissionProtection() {
                 form.addEventListener(
                     "submit",
                     (event) => {
-                        /*
-                         * Wait until every submit handler has run. This avoids
-                         * disabling controls when another handler cancels the
-                         * submission, such as a confirmation dialog or custom
-                         * validation routine.
-                         */
                         window.queueMicrotask(
                             () => {
                                 if (
@@ -193,6 +188,7 @@ function initialiseFormSubmissionProtection() {
             },
         );
 }
+
 
 function protectSubmittedForm(form) {
     if (
@@ -233,6 +229,7 @@ function protectSubmittedForm(form) {
         );
 }
 
+
 function initialiseFilterFormPageReset() {
     document
         .querySelectorAll(
@@ -244,7 +241,12 @@ function initialiseFilterFormPageReset() {
                     "[name='page']",
                 );
 
-                if (!(pageInput instanceof HTMLInputElement)) {
+                if (
+                    !(
+                        pageInput
+                        instanceof HTMLInputElement
+                    )
+                ) {
                     return;
                 }
 
@@ -273,16 +275,41 @@ function initialiseFilterFormPageReset() {
         );
 }
 
+
 function initialiseAdministrationMenus() {
     const menus = Array.from(
         document.querySelectorAll(
-            "details.app-admin-menu",
+            "details[data-admin-menu]",
         ),
     );
 
     if (menus.length === 0) {
         return;
     }
+
+    const updateMenuState = (
+        menu,
+    ) => {
+        const toggle = menu.querySelector(
+            "[data-admin-menu-toggle]",
+        );
+
+        if (
+            !(
+                toggle
+                instanceof HTMLElement
+            )
+        ) {
+            return;
+        }
+
+        toggle.setAttribute(
+            "aria-expanded",
+            menu.open
+                ? "true"
+                : "false",
+        );
+    };
 
     const closeMenu = (
         menu,
@@ -291,26 +318,42 @@ function initialiseAdministrationMenus() {
         } = {},
     ) => {
         if (!menu.open) {
+            updateMenuState(
+                menu,
+            );
+
             return;
         }
 
         menu.open = false;
 
+        updateMenuState(
+            menu,
+        );
+
         if (restoreFocus) {
-            const summary = menu.querySelector(
-                "summary",
+            const toggle = menu.querySelector(
+                "[data-admin-menu-toggle]",
             );
 
-            if (summary instanceof HTMLElement) {
-                summary.focus();
+            if (
+                toggle
+                instanceof HTMLElement
+            ) {
+                toggle.focus();
             }
         }
     };
 
-    const closeOtherMenus = (currentMenu) => {
+    const closeOtherMenus = (
+        currentMenu,
+    ) => {
         menus.forEach(
             (menu) => {
-                if (menu !== currentMenu) {
+                if (
+                    menu
+                    !== currentMenu
+                ) {
                     closeMenu(
                         menu,
                     );
@@ -321,8 +364,8 @@ function initialiseAdministrationMenus() {
 
     menus.forEach(
         (menu) => {
-            const summary = menu.querySelector(
-                "summary",
+            const toggle = menu.querySelector(
+                "[data-admin-menu-toggle]",
             );
 
             const links = Array.from(
@@ -331,9 +374,17 @@ function initialiseAdministrationMenus() {
                 ),
             );
 
+            updateMenuState(
+                menu,
+            );
+
             menu.addEventListener(
                 "toggle",
                 () => {
+                    updateMenuState(
+                        menu,
+                    );
+
                     if (menu.open) {
                         closeOtherMenus(
                             menu,
@@ -342,37 +393,62 @@ function initialiseAdministrationMenus() {
                 },
             );
 
-            if (summary instanceof HTMLElement) {
-                summary.addEventListener(
+            if (
+                toggle
+                instanceof HTMLElement
+            ) {
+                toggle.addEventListener(
                     "keydown",
                     (event) => {
                         if (
-                            event.key !== "ArrowDown"
-                            || !menu.open
+                            event.key
+                            === "ArrowDown"
+                            && menu.open
                         ) {
+                            const firstLink =
+                                links[0];
+
+                            if (
+                                firstLink
+                                instanceof HTMLElement
+                            ) {
+                                event.preventDefault();
+
+                                firstLink.focus();
+                            }
+
                             return;
                         }
 
-                        const firstLink = links[0];
-
                         if (
-                            firstLink
-                            instanceof HTMLElement
+                            event.key
+                            === "Escape"
+                            && menu.open
                         ) {
                             event.preventDefault();
-                            firstLink.focus();
+
+                            closeMenu(
+                                menu,
+                                {
+                                    restoreFocus: true,
+                                },
+                            );
                         }
                     },
                 );
             }
 
             links.forEach(
-                (link, index) => {
+                (
+                    link,
+                    index,
+                ) => {
                     link.addEventListener(
                         "keydown",
                         (event) => {
                             if (
-                                event.key === "Escape"
+                                event.key
+                                === "Escape"
                             ) {
                                 event.preventDefault();
 
@@ -387,8 +463,10 @@ function initialiseAdministrationMenus() {
                             }
 
                             if (
-                                event.key !== "ArrowDown"
-                                && event.key !== "ArrowUp"
+                                event.key
+                                !== "ArrowDown"
+                                && event.key
+                                !== "ArrowUp"
                             ) {
                                 return;
                             }
@@ -396,7 +474,8 @@ function initialiseAdministrationMenus() {
                             event.preventDefault();
 
                             const direction = (
-                                event.key === "ArrowDown"
+                                event.key
+                                === "ArrowDown"
                                     ? 1
                                     : -1
                             );
@@ -407,9 +486,10 @@ function initialiseAdministrationMenus() {
                                 + links.length
                             ) % links.length;
 
-                            const targetLink = (
-                                links[targetIndex]
-                            );
+                            const targetLink =
+                                links[
+                                    targetIndex
+                                ];
 
                             if (
                                 targetLink
@@ -427,11 +507,19 @@ function initialiseAdministrationMenus() {
     document.addEventListener(
         "click",
         (event) => {
+            if (
+                !(
+                    event.target
+                    instanceof Node
+                )
+            ) {
+                return;
+            }
+
             menus.forEach(
                 (menu) => {
                     if (
-                        event.target instanceof Node
-                        && !menu.contains(
+                        !menu.contains(
                             event.target,
                         )
                     ) {
@@ -447,34 +535,43 @@ function initialiseAdministrationMenus() {
     document.addEventListener(
         "keydown",
         (event) => {
-            if (event.key !== "Escape") {
+            if (
+                event.key
+                !== "Escape"
+            ) {
                 return;
             }
 
-            menus.forEach(
-                (menu) => {
-                    if (menu.open) {
-                        closeMenu(
-                            menu,
-                            {
-                                restoreFocus: true,
-                            },
-                        );
-                    }
+            const openMenu = menus.find(
+                (menu) => menu.open,
+            );
+
+            if (!openMenu) {
+                return;
+            }
+
+            event.preventDefault();
+
+            closeMenu(
+                openMenu,
+                {
+                    restoreFocus: true,
                 },
             );
         },
     );
 }
 
+
 function parsePositiveInteger(
     value,
     fallback,
 ) {
-    const parsedValue = Number.parseInt(
-        value,
-        10,
-    );
+    const parsedValue =
+        Number.parseInt(
+            value,
+            10,
+        );
 
     if (
         Number.isNaN(

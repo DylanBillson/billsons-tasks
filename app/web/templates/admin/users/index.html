@@ -21,9 +21,20 @@ Manage Users
             </h1>
 
             <p class="page-subtitle">
-                Review user accounts, reset passwords, control sign-in access,
-                and permanently anonymise inactive users.
+                Create and edit user accounts, reset passwords, control
+                sign-in access and permanently anonymise inactive users.
             </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_user_create') }}"
+                class="btn btn-primary"
+            >
+                Create User
+            </a>
 
         </div>
 
@@ -99,6 +110,14 @@ Manage Users
                                     {{ user.username }}
                                 </span>
 
+                                {% if user.id == current_user.id %}
+
+                                <span class="table-secondary">
+                                    Current account
+                                </span>
+
+                                {% endif %}
+
                             </div>
 
                         </td>
@@ -159,6 +178,16 @@ Manage Users
 
                                 <a
                                     href="{{ url_for(
+                                        'admin_user_edit',
+                                        user_id=user.id
+                                    ) }}"
+                                    class="btn btn-secondary btn-small"
+                                >
+                                    Edit
+                                </a>
+
+                                <a
+                                    href="{{ url_for(
                                         'admin_user_reset_password',
                                         user_id=user.id
                                     ) }}"
@@ -180,12 +209,6 @@ Manage Users
                                     >
                                         Deactivate
                                     </a>
-
-                                    {% else %}
-
-                                    <span class="text-muted">
-                                        Current account
-                                    </span>
 
                                     {% endif %}
 
@@ -209,6 +232,7 @@ Manage Users
                                     <button
                                         type="submit"
                                         class="btn btn-success btn-small"
+                                        data-loading-text="Activating..."
                                     >
                                         Activate
                                     </button>
@@ -254,6 +278,13 @@ Manage Users
             <p>
                 No user accounts currently exist.
             </p>
+
+            <a
+                href="{{ url_for('admin_user_create') }}"
+                class="btn btn-primary"
+            >
+                Create User
+            </a>
 
         </div>
 

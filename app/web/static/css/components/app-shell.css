@@ -20,6 +20,7 @@
     top: 0;
     z-index: 100;
     min-height: var(--header-height);
+    overflow: visible;
     border-bottom: 1px solid var(--color-border-subtle);
     background: rgb(17 24 39 / 0.94);
     backdrop-filter: blur(0.9rem);
@@ -35,6 +36,7 @@
     );
     min-height: var(--header-height);
     margin-inline: auto;
+    overflow: visible;
     gap: var(--space-6);
 }
 
@@ -55,7 +57,6 @@
     display: inline-flex;
     align-items: center;
     min-width: 0;
-    gap: var(--space-3);
     color: var(--color-text);
     font-weight: var(--font-weight-bold);
     text-decoration: none;
@@ -71,12 +72,13 @@
 
 .app-brand-mark {
     display: inline-flex;
-    flex: 0 0 auto;
+    flex: 0 1 auto;
     align-items: center;
     justify-content: center;
-    width: 9.25rem;
-    height: 2.25rem;
-    white-space: nowrap;
+    min-width: 0;
+    min-height: 2.25rem;
+    padding-inline: var(--space-4);
+    overflow: hidden;
     border: 1px solid var(--color-primary-border);
     border-radius: var(--radius-md);
     background: var(--color-primary-muted);
@@ -84,17 +86,9 @@
     font-size: var(--font-size-lg);
     font-weight: var(--font-weight-bold);
     line-height: 1;
-    box-shadow: var(--shadow-sm);
-}
-
-.app-brand-text {
-    min-width: 0;
-    overflow: hidden;
-    color: var(--color-text);
-    font-size: var(--font-size-lg);
-    line-height: 1.2;
     text-overflow: ellipsis;
     white-space: nowrap;
+    box-shadow: var(--shadow-sm);
 }
 
 .app-version {
@@ -124,6 +118,7 @@
     flex: 0 0 auto;
     align-items: center;
     min-width: 0;
+    overflow: visible;
     gap: var(--space-4);
 }
 
@@ -153,6 +148,7 @@
 .app-header-actions {
     display: flex;
     align-items: center;
+    overflow: visible;
     gap: var(--space-2);
 }
 
@@ -301,14 +297,10 @@ body:has(.auth-page) .app-footer-inner {
     }
 
     .app-brand-mark {
-        width: auto;
-        min-width: 8rem;
+        max-width: calc(100vw - 8rem);
+        min-height: 2.15rem;
         padding-inline: var(--space-3);
         font-size: var(--font-size-base);
-    }
-
-    .app-brand-text {
-        display: none;
     }
 
     .app-header-user {

@@ -879,10 +879,19 @@ async def reorder_tasks(
             section_id=section_id,
         )
 
-        payload = await request.json()
+        try:
+            payload = await request.json()
 
-        reorder_request = TaskReorderRequest.model_validate(
-            payload,
+        except ValueError:
+            return _json_error(
+                "The task order request was not valid JSON.",
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+            )
+
+        reorder_request = (
+            TaskReorderRequest.model_validate(
+                payload,
+            )
         )
 
         tasks = TaskService.reorder_tasks(
@@ -912,10 +921,15 @@ async def reorder_tasks(
                     include_url=False,
                 ),
             },
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
         )
 
-    except TaskReorderError as exc:
+    except (
+        TaskReorderError,
+        TaskServiceError,
+    ) as exc:
         return _json_error(
             str(exc),
             status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -923,7 +937,10 @@ async def reorder_tasks(
 
     except PermissionDeniedError:
         return _json_error(
-            "You do not have permission to reorder these tasks.",
+            (
+                "You do not have permission "
+                "to reorder these tasks."
+            ),
             status.HTTP_403_FORBIDDEN,
         )
 
@@ -933,10 +950,15 @@ async def reorder_tasks(
             "items": [
                 {
                     "task_id": task.id,
-                    "section_list_id": task.section_list_id,
-                    "sort_position": task.sort_position,
+                    "section_list_id": (
+                        task.section_list_id
+                    ),
+                    "sort_position": (
+                        task.sort_position
+                    ),
                 }
                 for task in tasks
+                if not task.is_deleted
             ],
         },
         status_code=status.HTTP_200_OK,

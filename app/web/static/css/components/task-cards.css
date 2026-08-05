@@ -251,3 +251,22 @@
         flex-direction: column;
     }
 }
+
+/* -------------------------------------------------------------------------
+ * Sortable interaction
+ * ------------------------------------------------------------------------- */
+
+.task-card-drag-handle {
+    touch-action: none;
+}
+
+.task-card.is-sortable-chosen {
+    border-color: var(--color-primary);
+}
+
+.task-board.is-dragging-task
+.task-card:not(.is-dragging) {
+    transition:
+        transform 180ms ease,
+        box-shadow 180ms ease;
+}

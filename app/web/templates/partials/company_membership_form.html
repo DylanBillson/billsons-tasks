@@ -1,0 +1,251 @@
+<aside
+    class="content-card membership-form-card"
+    aria-labelledby="add-member-heading"
+>
+
+    <div class="card-header">
+
+        <div>
+
+            <h2 id="add-member-heading">
+                Add Member
+            </h2>
+
+            <p class="card-subtitle">
+                Select an active user and assign their role within
+                {{ company.name }}.
+            </p>
+
+        </div>
+
+    </div>
+
+    {% if form.errors.has_errors %}
+
+    <div
+        class="form-error-summary"
+        role="alert"
+        aria-labelledby="membership-form-errors-heading"
+    >
+
+        <h3 id="membership-form-errors-heading">
+            Please correct the following
+        </h3>
+
+        {% if form.errors.form_errors %}
+
+        <ul>
+
+            {% for error in form.errors.form_errors %}
+
+            <li>
+                {{ error }}
+            </li>
+
+            {% endfor %}
+
+        </ul>
+
+        {% else %}
+
+        <p>
+            Check the highlighted fields and try again.
+        </p>
+
+        {% endif %}
+
+    </div>
+
+    {% endif %}
+
+    {% if available_users %}
+
+    <form
+        method="post"
+        action="{{ url_for(
+            membership_add_route_name,
+            company_id=company.id
+        ) }}"
+        novalidate
+    >
+
+        <input
+            type="hidden"
+            name="csrf_token"
+            value="{{ csrf_token }}"
+        >
+
+        <div class="form-group">
+
+            <label for="company-membership-user-id">
+                User
+            </label>
+
+            <select
+                id="company-membership-user-id"
+                name="user_id"
+                required
+                {% if form.errors.for_field("user_id") %}
+                class="is-invalid"
+                aria-invalid="true"
+                aria-describedby="
+                    company-membership-user-help
+                    company-membership-user-errors
+                "
+                {% else %}
+                aria-describedby="company-membership-user-help"
+                {% endif %}
+            >
+
+                <option value="">
+                    Select a user
+                </option>
+
+                {% for available_user in available_users %}
+
+                <option
+                    value="{{ available_user.id }}"
+                    {% if form.user_id == available_user.id %}
+                    selected
+                    {% endif %}
+                >
+                    {{ available_user.display_name }}
+                    — {{ available_user.username }}
+                </option>
+
+                {% endfor %}
+
+            </select>
+
+            <p
+                id="company-membership-user-help"
+                class="form-help"
+            >
+                Only active, non-anonymised users who are not already
+                members are available.
+            </p>
+
+            {% if form.errors.for_field("user_id") %}
+
+            <div
+                id="company-membership-user-errors"
+                class="form-field-errors"
+            >
+
+                {% for error in form.errors.for_field("user_id") %}
+
+                <p class="form-error">
+                    {{ error }}
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+        <div class="form-group">
+
+            <label for="company-membership-role">
+                Company Role
+            </label>
+
+            <select
+                id="company-membership-role"
+                name="role"
+                required
+                {% if form.errors.for_field("role") %}
+                class="is-invalid"
+                aria-invalid="true"
+                aria-describedby="
+                    company-membership-role-help
+                    company-membership-role-errors
+                "
+                {% else %}
+                aria-describedby="company-membership-role-help"
+                {% endif %}
+            >
+
+                <option
+                    value="employee"
+                    {% if form.role == "employee" %}
+                    selected
+                    {% endif %}
+                >
+                    Employee
+                </option>
+
+                <option
+                    value="manager"
+                    {% if form.role == "manager" %}
+                    selected
+                    {% endif %}
+                >
+                    Manager
+                </option>
+
+            </select>
+
+            <p
+                id="company-membership-role-help"
+                class="form-help"
+            >
+                Managers may create sections within this company and manage
+                its company membership. Section access remains limited to
+                sections they created or have been assigned to.
+            </p>
+
+            {% if form.errors.for_field("role") %}
+
+            <div
+                id="company-membership-role-errors"
+                class="form-field-errors"
+            >
+
+                {% for error in form.errors.for_field("role") %}
+
+                <p class="form-error">
+                    {{ error }}
+                </p>
+
+                {% endfor %}
+
+            </div>
+
+            {% endif %}
+
+        </div>
+
+        <div class="form-actions">
+
+            <button
+                type="submit"
+                class="btn btn-primary"
+                data-loading-text="Adding Member..."
+            >
+                Add Member
+            </button>
+
+        </div>
+
+    </form>
+
+    {% else %}
+
+    <div class="empty-state empty-state-compact">
+
+        <h3>
+            No available users
+        </h3>
+
+        <p>
+            Every eligible user is already a member of this company.
+        </p>
+
+    </div>
+
+    {% endif %}
+
+</aside>

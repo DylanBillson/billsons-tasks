@@ -618,6 +618,47 @@ Server-side permission checks prevent this.
 
 ---
 
+## Company Roles
+
+Company membership defines a user's responsibilities within an individual
+company.
+
+Two company roles currently exist.
+
+### Employee
+
+Employees may:
+
+- view the company dashboard
+- access sections they have been assigned to
+- work with tasks inside those sections
+
+Employees cannot:
+
+- manage company membership
+- create new sections
+
+---
+
+### Manager
+
+Managers inherit all Employee permissions.
+
+In addition, managers may:
+
+- create sections within their company
+- manage company membership
+    - add members
+    - remove members
+    - change company roles
+
+Managers do not gain unrestricted access to every section.
+
+Creating or managing company membership does not bypass section membership
+requirements.
+
+Managers remain bound by organisational isolation.
+
 # 14. Section Permissions
 
 Sections provide the primary working area for most users.

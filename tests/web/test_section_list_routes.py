@@ -402,3 +402,213 @@ def test_section_list_mutation_requires_csrf(
     )
 
     assert response.status_code == 403
+
+def test_section_creator_reorders_complete_active_list_snapshot(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    first = create_section_list(
+        db,
+        section=section,
+        name="First",
+        sort_position=1000,
+    )
+
+    second = create_section_list(
+        db,
+        section=section,
+        name="Second",
+        sort_position=2000,
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/lists/reorder",
+        json={
+            "items": [
+                {
+                    "list_id": second.id,
+                    "sort_position": 1000,
+                },
+                {
+                    "list_id": first.id,
+                    "sort_position": 2000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 200
+
+    assert response.json() == {
+        "section_id": section.id,
+        "items": [
+            {
+                "list_id": second.id,
+                "sort_position": 1000,
+            },
+            {
+                "list_id": first.id,
+                "sort_position": 2000,
+            },
+        ],
+    }
+
+
+def test_list_reorder_rejects_partial_snapshot(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    first = create_section_list(
+        db,
+        section=section,
+        sort_position=1000,
+    )
+
+    second = create_section_list(
+        db,
+        section=section,
+        sort_position=2000,
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/lists/reorder",
+        json={
+            "items": [
+                {
+                    "list_id": first.id,
+                    "sort_position": 2000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+    assert (
+        "include every active list"
+        in response.json()["detail"]
+    )
+
+    db.refresh(first)
+    db.refresh(second)
+
+    assert first.sort_position == 1000
+    assert second.sort_position == 2000
+
+
+def test_list_reorder_rejects_archived_list(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    active = create_section_list(
+        db,
+        section=section,
+        sort_position=1000,
+    )
+
+    archived = create_section_list(
+        db,
+        section=section,
+        sort_position=2000,
+        is_archived=True,
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/lists/reorder",
+        json={
+            "items": [
+                {
+                    "list_id": active.id,
+                    "sort_position": 2000,
+                },
+                {
+                    "list_id": archived.id,
+                    "sort_position": 1000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+    assert (
+        "archived or does not belong"
+        in response.json()["detail"]
+    )
+
+
+def test_list_reorder_rejects_malformed_json(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/lists/reorder",
+        content="{invalid-json",
+        headers={
+            "accept": "application/json",
+            "content-type": "application/json",
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 422
+
+    assert response.json() == {
+        "detail": (
+            "The list order request "
+            "was not valid JSON."
+        ),
+    }

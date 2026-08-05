@@ -11,9 +11,16 @@ from app.core.timezone import utc_now
 from app.models.audit_log import AuditLog
 from app.models.session import AuthSession
 from app.schemas.auth import PasswordResetRequest
+from app.schemas.user import (
+    UserCreateRequest,
+    UserUpdateRequest,
+)
 from app.services.user_service import (
+    AnonymisedUserProfileError,
     UserNotFoundError,
     UserPermissionError,
+    UserSelfRoleChangeError,
+    UsernameAlreadyExistsError,
     UserService,
     UserServiceError,
 )
@@ -855,3 +862,664 @@ def test_require_administrator_rejects_unavailable_users(
         UserService._require_administrator(
             user,
         )
+def test_create_user_creates_active_standard_user(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+        display_name="Creating Administrator",
+    )
+
+    password = "Created-User-Password-123!"
+
+    user = UserService.create_user(
+        db,
+        acting_user=administrator,
+        user_create=UserCreateRequest(
+            username="  CREATED-USER  ",
+            display_name="  Created User  ",
+            password=password,
+            confirm_password=password,
+            global_role=GlobalRole.USER.value,
+            is_active=True,
+        ),
+    )
+
+    assert user.id is not None
+    assert user.username == "created-user"
+    assert user.display_name == "Created User"
+    assert user.global_role == GlobalRole.USER.value
+    assert user.is_active is True
+    assert user.is_anonymised is False
+
+    assert verify_password(
+        password,
+        user.password_hash,
+    )
+
+
+def test_create_user_can_create_inactive_administrator(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    password = "Inactive-Admin-Password-123!"
+
+    user = UserService.create_user(
+        db,
+        acting_user=administrator,
+        user_create=UserCreateRequest(
+            username="inactive-new-admin",
+            display_name="Inactive New Administrator",
+            password=password,
+            confirm_password=password,
+            global_role=(
+                GlobalRole.ADMINISTRATOR.value
+            ),
+            is_active=False,
+        ),
+    )
+
+    assert user.global_role == (
+        GlobalRole.ADMINISTRATOR.value
+    )
+
+    assert user.is_active is False
+
+
+def test_create_user_records_audit_log_without_password(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+        display_name="Audit Administrator",
+    )
+
+    password = "Never-Audit-This-Password-123!"
+
+    user = UserService.create_user(
+        db,
+        acting_user=administrator,
+        user_create=UserCreateRequest(
+            username="audited-created-user",
+            display_name="Audited Created User",
+            password=password,
+            confirm_password=password,
+            global_role=GlobalRole.USER.value,
+            is_active=True,
+        ),
+        ip_address="192.0.2.60",
+        user_agent="User creation test",
+    )
+
+    audit_log = db.scalar(
+        select(AuditLog).where(
+            AuditLog.action
+            == AuditAction.USER_CREATED.value,
+            AuditLog.entity_type == "user",
+            AuditLog.entity_id == user.id,
+        )
+    )
+
+    assert audit_log is not None
+    assert audit_log.user_id == administrator.id
+    assert audit_log.summary == (
+        "Audit Administrator created the user "
+        "Audited Created User."
+    )
+
+    assert audit_log.metadata_json == {
+        "username": "audited-created-user",
+        "display_name": "Audited Created User",
+        "global_role": GlobalRole.USER.value,
+        "is_active": True,
+    }
+
+    assert audit_log.ip_address == "192.0.2.60"
+    assert audit_log.user_agent == "User creation test"
+
+    audit_serialised = str(
+        audit_log.metadata_json,
+    )
+
+    assert password not in audit_serialised
+    assert "password" not in audit_serialised.lower()
+
+
+def test_create_user_rejects_duplicate_username_case_insensitively(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    existing_user = create_user(
+        db,
+        username="duplicate-user",
+    )
+
+    password = "Duplicate-User-Password-123!"
+
+    with pytest.raises(
+        UsernameAlreadyExistsError,
+        match="username already exists",
+    ):
+        UserService.create_user(
+            db,
+            acting_user=administrator,
+            user_create=UserCreateRequest(
+                username="DUPLICATE-USER",
+                display_name="Duplicate User",
+                password=password,
+                confirm_password=password,
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+    assert (
+        UserService.get_by_username(
+            db,
+            username="duplicate-user",
+        )
+        is existing_user
+    )
+
+
+def test_create_user_rejects_non_administrator(
+    db: Session,
+) -> None:
+    acting_user = create_user(
+        db,
+    )
+
+    password = "Unauthorised-Create-Password-123!"
+
+    with pytest.raises(
+        UserPermissionError,
+        match="Administrator access is required",
+    ):
+        UserService.create_user(
+            db,
+            acting_user=acting_user,
+            user_create=UserCreateRequest(
+                username="unauthorised-created-user",
+                display_name="Unauthorised Created User",
+                password=password,
+                confirm_password=password,
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+    assert UserService.get_by_username(
+        db,
+        username="unauthorised-created-user",
+    ) is None
+
+
+def test_create_user_rejects_inactive_administrator(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+        is_active=False,
+    )
+
+    password = "Inactive-Actor-Password-123!"
+
+    with pytest.raises(
+        UserPermissionError,
+        match="administrator account is not available",
+    ):
+        UserService.create_user(
+            db,
+            acting_user=administrator,
+            user_create=UserCreateRequest(
+                username="inactive-actor-created-user",
+                display_name="Inactive Actor Created User",
+                password=password,
+                confirm_password=password,
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+
+def test_create_user_validates_password_strength(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    with pytest.raises(ValueError):
+        UserService.create_user(
+            db,
+            acting_user=administrator,
+            user_create=UserCreateRequest(
+                username="weak-password-user",
+                display_name="Weak Password User",
+                password="weak",
+                confirm_password="weak",
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+    assert UserService.get_by_username(
+        db,
+        username="weak-password-user",
+    ) is None
+
+
+def test_create_user_does_not_commit_when_commit_is_false(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    password = "No-Commit-User-Password-123!"
+
+    with patch.object(
+        db,
+        "commit",
+        wraps=db.commit,
+    ) as commit_mock:
+        user = UserService.create_user(
+            db,
+            acting_user=administrator,
+            user_create=UserCreateRequest(
+                username="no-commit-created-user",
+                display_name="No Commit Created User",
+                password=password,
+                confirm_password=password,
+                global_role=GlobalRole.USER.value,
+            ),
+            commit=False,
+        )
+
+    commit_mock.assert_not_called()
+
+    assert user.id is not None
+    assert user.username == "no-commit-created-user"
+    assert verify_password(
+        password,
+        user.password_hash,
+    )
+
+
+def test_update_user_updates_profile_and_role(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="old-profile-user",
+        display_name="Old Profile User",
+        global_role=GlobalRole.USER.value,
+    )
+
+    result = UserService.update_user(
+        db,
+        acting_user=administrator,
+        target_user=target_user,
+        user_update=UserUpdateRequest(
+            username="NEW-PROFILE-USER",
+            display_name="New Profile User",
+            global_role=(
+                GlobalRole.ADMINISTRATOR.value
+            ),
+        ),
+    )
+
+    assert result is target_user
+    assert target_user.username == "new-profile-user"
+    assert target_user.display_name == "New Profile User"
+    assert target_user.global_role == (
+        GlobalRole.ADMINISTRATOR.value
+    )
+
+
+def test_update_user_records_changed_fields_in_audit_log(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+        display_name="Editing Administrator",
+    )
+
+    target_user = create_user(
+        db,
+        username="before-edit",
+        display_name="Before Edit",
+        global_role=GlobalRole.USER.value,
+    )
+
+    UserService.update_user(
+        db,
+        acting_user=administrator,
+        target_user=target_user,
+        user_update=UserUpdateRequest(
+            username="after-edit",
+            display_name="After Edit",
+            global_role=(
+                GlobalRole.ADMINISTRATOR.value
+            ),
+        ),
+        ip_address="198.51.100.61",
+        user_agent="User editing test",
+    )
+
+    audit_log = db.scalar(
+        select(AuditLog).where(
+            AuditLog.action
+            == AuditAction.USER_UPDATED.value,
+            AuditLog.entity_type == "user",
+            AuditLog.entity_id == target_user.id,
+        )
+    )
+
+    assert audit_log is not None
+    assert audit_log.user_id == administrator.id
+
+    assert audit_log.metadata_json["changes"] == {
+        "username": {
+            "previous": "before-edit",
+            "current": "after-edit",
+        },
+        "display_name": {
+            "previous": "Before Edit",
+            "current": "After Edit",
+        },
+        "global_role": {
+            "previous": GlobalRole.USER.value,
+            "current": (
+                GlobalRole.ADMINISTRATOR.value
+            ),
+        },
+    }
+
+    assert audit_log.ip_address == "198.51.100.61"
+    assert audit_log.user_agent == "User editing test"
+
+
+def test_update_user_rejects_duplicate_username(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="editable-target",
+        display_name="Editable Target",
+    )
+
+    create_user(
+        db,
+        username="already-used",
+    )
+
+    with pytest.raises(
+        UsernameAlreadyExistsError,
+        match="username already exists",
+    ):
+        UserService.update_user(
+            db,
+            acting_user=administrator,
+            target_user=target_user,
+            user_update=UserUpdateRequest(
+                username="ALREADY-USED",
+                display_name="Editable Target",
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+    assert target_user.username == "editable-target"
+
+
+def test_update_user_allows_existing_username_for_same_user(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="same-username",
+        display_name="Old Display Name",
+    )
+
+    result = UserService.update_user(
+        db,
+        acting_user=administrator,
+        target_user=target_user,
+        user_update=UserUpdateRequest(
+            username="SAME-USERNAME",
+            display_name="New Display Name",
+            global_role=GlobalRole.USER.value,
+        ),
+    )
+
+    assert result is target_user
+    assert target_user.username == "same-username"
+    assert target_user.display_name == "New Display Name"
+
+
+def test_update_user_rejects_anonymised_target(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        is_anonymised=True,
+    )
+
+    with pytest.raises(
+        AnonymisedUserProfileError,
+        match="anonymised user cannot be edited",
+    ):
+        UserService.update_user(
+            db,
+            acting_user=administrator,
+            target_user=target_user,
+            user_update=UserUpdateRequest(
+                username=target_user.username,
+                display_name=target_user.display_name,
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+
+def test_update_user_rejects_removing_own_administrator_role(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+        username="self-edit-admin",
+        display_name="Self Edit Administrator",
+    )
+
+    with pytest.raises(
+        UserSelfRoleChangeError,
+        match="remove your own administrator role",
+    ):
+        UserService.update_user(
+            db,
+            acting_user=administrator,
+            target_user=administrator,
+            user_update=UserUpdateRequest(
+                username=administrator.username,
+                display_name=administrator.display_name,
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+    assert administrator.global_role == (
+        GlobalRole.ADMINISTRATOR.value
+    )
+
+
+def test_update_user_allows_administrator_to_edit_own_name(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+        username="self-name-admin",
+        display_name="Old Administrator Name",
+    )
+
+    result = UserService.update_user(
+        db,
+        acting_user=administrator,
+        target_user=administrator,
+        user_update=UserUpdateRequest(
+            username="self-name-admin",
+            display_name="New Administrator Name",
+            global_role=(
+                GlobalRole.ADMINISTRATOR.value
+            ),
+        ),
+    )
+
+    assert result is administrator
+    assert (
+        administrator.display_name
+        == "New Administrator Name"
+    )
+
+
+def test_update_user_with_no_changes_returns_without_audit(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="unchanged-profile",
+        display_name="Unchanged Profile",
+        global_role=GlobalRole.USER.value,
+    )
+
+    audit_count_before = len(
+        db.scalars(
+            select(AuditLog).where(
+                AuditLog.action
+                == AuditAction.USER_UPDATED.value,
+                AuditLog.entity_type == "user",
+                AuditLog.entity_id == target_user.id,
+            )
+        ).all()
+    )
+
+    result = UserService.update_user(
+        db,
+        acting_user=administrator,
+        target_user=target_user,
+        user_update=UserUpdateRequest(
+            username="UNCHANGED-PROFILE",
+            display_name="Unchanged Profile",
+            global_role=GlobalRole.USER.value,
+        ),
+    )
+
+    audit_count_after = len(
+        db.scalars(
+            select(AuditLog).where(
+                AuditLog.action
+                == AuditAction.USER_UPDATED.value,
+                AuditLog.entity_type == "user",
+                AuditLog.entity_id == target_user.id,
+            )
+        ).all()
+    )
+
+    assert result is target_user
+    assert audit_count_after == audit_count_before
+
+
+def test_update_user_rejects_non_administrator(
+    db: Session,
+) -> None:
+    acting_user = create_user(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="protected-profile",
+        display_name="Protected Profile",
+    )
+
+    with pytest.raises(
+        UserPermissionError,
+        match="Administrator access is required",
+    ):
+        UserService.update_user(
+            db,
+            acting_user=acting_user,
+            target_user=target_user,
+            user_update=UserUpdateRequest(
+                username="changed-profile",
+                display_name="Changed Profile",
+                global_role=GlobalRole.USER.value,
+            ),
+        )
+
+    assert target_user.username == "protected-profile"
+    assert target_user.display_name == "Protected Profile"
+
+
+def test_update_user_does_not_commit_when_commit_is_false(
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="no-commit-profile",
+        display_name="No Commit Profile",
+    )
+
+    with patch.object(
+        db,
+        "commit",
+        wraps=db.commit,
+    ) as commit_mock:
+        result = UserService.update_user(
+            db,
+            acting_user=administrator,
+            target_user=target_user,
+            user_update=UserUpdateRequest(
+                username="updated-no-commit-profile",
+                display_name="Updated No Commit Profile",
+                global_role=GlobalRole.USER.value,
+            ),
+            commit=False,
+        )
+
+    commit_mock.assert_not_called()
+
+    assert result is target_user
+
+    assert (
+        target_user.username
+        == "updated-no-commit-profile"
+    )
+
+    assert (
+        target_user.display_name
+        == "Updated No Commit Profile"
+    )

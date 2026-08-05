@@ -811,87 +811,155 @@ class TaskService:
             section=section,
         )
 
-        list_ids = {
+        active_lists = (
+            SectionListRepository.list_for_section(
+                db,
+                section_id=section.id,
+                include_archived=False,
+            )
+        )
+
+        active_list_by_id = {
+            section_list.id: section_list
+            for section_list in active_lists
+        }
+
+        active_list_ids = set(
+            active_list_by_id,
+        )
+
+        submitted_list_ids = {
             item.section_list_id
             for item in reorder_request.items
         }
 
-        section_lists = (
-            SectionListRepository.list_for_section(
+        invalid_list_ids = (
+            submitted_list_ids
+            - active_list_ids
+        )
+
+        if invalid_list_ids:
+            raise TaskReorderError(
+                "The reorder request contains a list "
+                "that is archived or does not belong "
+                "to this section.",
+            )
+
+        section_tasks = (
+            TaskRepository.list_for_section(
                 db,
                 section_id=section.id,
-                include_archived=True,
+                state="all",
             )
         )
 
-        list_by_id = {
-            section_list.id: section_list
-            for section_list in section_lists
+        reorderable_tasks = [
+            task
+            for task in section_tasks
+            if (
+                not task.is_deleted
+                and task.section_list_id
+                in active_list_ids
+            )
+        ]
+
+        task_by_id = {
+            task.id: task
+            for task in reorderable_tasks
         }
 
-        if not list_ids.issubset(
-            list_by_id,
-        ):
-            raise TaskReorderError(
-                "The reorder request contains a list "
-                "that does not belong to this section.",
-            )
-
-        for list_id in list_ids:
-            TaskPermissionService.require_active_destination_list(
-                section_list=list_by_id[list_id],
-            )
+        reorderable_task_ids = set(
+            task_by_id,
+        )
 
         submitted_task_ids = {
             item.task_id
             for item in reorder_request.items
         }
 
-        section_tasks = TaskRepository.list_for_section(
-            db,
-            section_id=section.id,
-            state="all",
+        unexpected_task_ids = (
+            submitted_task_ids
+            - reorderable_task_ids
         )
 
-        task_by_id = {
-            task.id: task
-            for task in section_tasks
-        }
-
-        if not submitted_task_ids.issubset(
-            task_by_id,
-        ):
+        if unexpected_task_ids:
             raise TaskReorderError(
                 "The reorder request contains a task "
-                "that does not belong to this section.",
+                "that is deleted or does not belong "
+                "to this section.",
             )
 
-        positions: dict[int, tuple[int, int]] = {}
+        missing_task_ids = (
+            reorderable_task_ids
+            - submitted_task_ids
+        )
+
+        if missing_task_ids:
+            raise TaskReorderError(
+                "The reorder request must include every "
+                "active task on the section board.",
+            )
+
+        requested_positions: dict[
+            int,
+            tuple[int, int],
+        ] = {}
+
+        changed_positions: dict[
+            int,
+            dict[str, int],
+        ] = {}
 
         for item in reorder_request.items:
-            task = task_by_id[item.task_id]
+            task = task_by_id[
+                item.task_id
+            ]
+
+            destination_list = active_list_by_id[
+                item.section_list_id
+            ]
 
             TaskPermissionService.require_active_task(
                 task=task,
             )
-
-            destination_list = list_by_id[
-                item.section_list_id
-            ]
 
             TaskPermissionService.require_same_section(
                 task=task,
                 section_list=destination_list,
             )
 
-            positions[item.task_id] = (
+            requested_positions[task.id] = (
                 item.section_list_id,
                 item.sort_position,
             )
 
+            if (
+                task.section_list_id
+                != item.section_list_id
+                or task.sort_position
+                != item.sort_position
+            ):
+                changed_positions[task.id] = {
+                    "previous_section_list_id": (
+                        task.section_list_id
+                    ),
+                    "section_list_id": (
+                        item.section_list_id
+                    ),
+                    "previous_sort_position": (
+                        task.sort_position
+                    ),
+                    "sort_position": (
+                        item.sort_position
+                    ),
+                }
+
+        if not changed_positions:
+            return section_tasks
+
         TaskRepository.update_positions(
             db,
-            positions=positions,
+            positions=requested_positions,
         )
 
         AuditService.record(
@@ -905,12 +973,12 @@ class TaskService:
             entity_type="section",
             entity_id=section.id,
             metadata_json={
+                "company_id": section.company_id,
+                "section_id": section.id,
                 "task_positions": {
-                    str(task_id): {
-                        "section_list_id": values[0],
-                        "sort_position": values[1],
-                    }
-                    for task_id, values in positions.items()
+                    str(task_id): values
+                    for task_id, values
+                    in changed_positions.items()
                 },
             },
             ip_address=ip_address,

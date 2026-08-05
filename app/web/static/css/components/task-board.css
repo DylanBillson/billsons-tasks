@@ -243,3 +243,82 @@
         );
     }
 }
+
+/* -------------------------------------------------------------------------
+ * SortableJS
+ * ------------------------------------------------------------------------- */
+
+.task-board.is-saving-order {
+    opacity: 0.75;
+    pointer-events: none;
+}
+
+.task-list-sortable-ghost {
+    opacity: 0.25;
+}
+
+.task-list-sortable-chosen {
+    z-index: 20;
+}
+
+.task-list-sortable-drag {
+    cursor: grabbing;
+    box-shadow: var(--shadow-xl);
+    transform: rotate(1deg);
+}
+
+.task-list-sortable-fallback {
+    opacity: 0.92;
+}
+
+.task-card-sortable-ghost {
+    opacity: 0.18;
+}
+
+.task-card-sortable-chosen {
+    z-index: 20;
+}
+
+.task-card-sortable-drag {
+    cursor: grabbing;
+    box-shadow: var(--shadow-lg);
+    transform: rotate(1deg);
+}
+
+.task-card-sortable-fallback {
+    opacity: 0.92;
+}
+
+.task-list-items.is-task-drop-target {
+    background: var(--color-primary-muted);
+    outline: 2px dashed var(--color-primary-border);
+    outline-offset: -2px;
+}
+
+.task-list-column.is-list-drop-target {
+    border-color: var(--color-primary);
+}
+
+.task-card.is-insertion-before {
+    box-shadow:
+        inset 0 4px 0
+        var(--color-primary);
+}
+
+.task-card.is-insertion-after {
+    box-shadow:
+        inset 0 -4px 0
+        var(--color-primary);
+}
+
+.task-list-column.is-insertion-before {
+    box-shadow:
+        inset 4px 0 0
+        var(--color-primary);
+}
+
+.task-list-column.is-insertion-after {
+    box-shadow:
+        inset -4px 0 0
+        var(--color-primary);
+}

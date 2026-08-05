@@ -1,16 +1,23 @@
-from sqlalchemy import func, select
-from sqlalchemy.orm import Session
-
-from app.models.user import User
-
 from datetime import datetime
 
-from sqlalchemy import delete, func, select, update
+from sqlalchemy import (
+    delete,
+    func,
+    select,
+    update,
+)
+from sqlalchemy.orm import Session
 
-from app.models.company_membership import CompanyMembership
-from app.models.section_membership import SectionMembership
+from app.models.company_membership import (
+    CompanyMembership,
+)
+from app.models.section_membership import (
+    SectionMembership,
+)
 from app.models.session import AuthSession
 from app.models.task_assignee import TaskAssignee
+from app.models.user import User
+
 
 class UserRepository:
     @staticmethod
@@ -33,14 +40,9 @@ class UserRepository:
         *,
         username: str,
     ) -> User | None:
-        """
-        Return a user using a case-insensitive username lookup.
-
-        Usernames should normally be stored in normalised lowercase form, but
-        the case-insensitive comparison protects authentication against legacy
-        or manually inserted mixed-case values.
-        """
-        normalised_username = username.strip().lower()
+        normalised_username = (
+            username.strip().lower()
+        )
 
         if not normalised_username:
             return None
@@ -53,7 +55,182 @@ class UserRepository:
         return db.scalar(
             query,
         )
-    
+
+    @staticmethod
+    def get_authenticatable_by_username(
+        db: Session,
+        *,
+        username: str,
+    ) -> User | None:
+        normalised_username = (
+            username.strip().lower()
+        )
+
+        if not normalised_username:
+            return None
+
+        query = select(User).where(
+            func.lower(User.username)
+            == normalised_username,
+            User.is_active.is_(True),
+            User.is_anonymised.is_(False),
+        )
+
+        return db.scalar(
+            query,
+        )
+
+    @staticmethod
+    def username_exists(
+        db: Session,
+        *,
+        username: str,
+        exclude_user_id: int | None = None,
+    ) -> bool:
+        normalised_username = (
+            username.strip().lower()
+        )
+
+        if not normalised_username:
+            return False
+
+        query = select(User.id).where(
+            func.lower(User.username)
+            == normalised_username,
+        )
+
+        if exclude_user_id is not None:
+            query = query.where(
+                User.id != exclude_user_id,
+            )
+
+        return db.scalar(
+            query,
+        ) is not None
+
+    @staticmethod
+    def list_all(
+        db: Session,
+        *,
+        include_inactive: bool = True,
+        include_anonymised: bool = True,
+    ) -> list[User]:
+        query = select(User)
+
+        if not include_inactive:
+            query = query.where(
+                User.is_active.is_(True),
+            )
+
+        if not include_anonymised:
+            query = query.where(
+                User.is_anonymised.is_(False),
+            )
+
+        query = query.order_by(
+            func.lower(
+                User.display_name,
+            ),
+            func.lower(
+                User.username,
+            ),
+            User.id,
+        )
+
+        return list(
+            db.scalars(
+                query,
+            ).all(),
+        )
+
+    @staticmethod
+    def create(
+        db: Session,
+        *,
+        username: str,
+        display_name: str,
+        password_hash: str,
+        global_role: str,
+        is_active: bool = True,
+    ) -> User:
+        user = User(
+            username=username.strip().lower(),
+            display_name=display_name.strip(),
+            password_hash=password_hash,
+            global_role=global_role,
+            is_active=is_active,
+            is_anonymised=False,
+        )
+
+        db.add(
+            user,
+        )
+
+        db.flush()
+
+        return user
+
+    @staticmethod
+    def update_profile(
+        db: Session,
+        *,
+        user: User,
+        username: str,
+        display_name: str,
+        global_role: str,
+    ) -> User:
+        user.username = (
+            username.strip().lower()
+        )
+
+        user.display_name = (
+            display_name.strip()
+        )
+
+        user.global_role = global_role
+
+        db.add(
+            user,
+        )
+
+        db.flush()
+
+        return user
+
+    @staticmethod
+    def update_password_hash(
+        db: Session,
+        *,
+        user: User,
+        password_hash: str,
+    ) -> User:
+        user.password_hash = password_hash
+
+        db.add(
+            user,
+        )
+
+        db.flush()
+
+        return user
+
+    @staticmethod
+    def set_active_status(
+        db: Session,
+        *,
+        user: User,
+        is_active: bool,
+    ) -> User:
+        user.is_active = is_active
+
+        db.add(
+            user,
+        )
+
+        db.flush()
+
+        return user
+
     @staticmethod
     def build_anonymised_username(
         *,
@@ -93,6 +270,7 @@ class UserRepository:
         db.add(
             user,
         )
+
         db.flush()
 
         return user
@@ -267,183 +445,3 @@ class UserRepository:
             result.rowcount
             or 0,
         )
-    
-    @staticmethod
-    def get_authenticatable_by_username(
-        db: Session,
-        *,
-        username: str,
-    ) -> User | None:
-        """
-        Return an active, non-anonymised user for authentication.
-
-        Administration workflows may still retrieve inactive or anonymised
-        users through get_by_username().
-        """
-        normalised_username = username.strip().lower()
-
-        if not normalised_username:
-            return None
-
-        query = select(User).where(
-            func.lower(User.username)
-            == normalised_username,
-            User.is_active.is_(True),
-            User.is_anonymised.is_(False),
-        )
-
-        return db.scalar(
-            query,
-        )
-
-    @staticmethod
-    def username_exists(
-        db: Session,
-        *,
-        username: str,
-        exclude_user_id: int | None = None,
-    ) -> bool:
-        normalised_username = username.strip().lower()
-
-        if not normalised_username:
-            return False
-
-        query = select(User.id).where(
-            func.lower(User.username)
-            == normalised_username,
-        )
-
-        if exclude_user_id is not None:
-            query = query.where(
-                User.id != exclude_user_id,
-            )
-
-        return db.scalar(
-            query,
-        ) is not None
-
-    @staticmethod
-    def list_all(
-        db: Session,
-        *,
-        include_inactive: bool = True,
-        include_anonymised: bool = True,
-    ) -> list[User]:
-        query = select(User)
-
-        if not include_inactive:
-            query = query.where(
-                User.is_active.is_(True),
-            )
-
-        if not include_anonymised:
-            query = query.where(
-                User.is_anonymised.is_(False),
-            )
-
-        query = query.order_by(
-            func.lower(
-                User.display_name,
-            ),
-            func.lower(
-                User.username,
-            ),
-            User.id,
-        )
-
-        return list(
-            db.scalars(
-                query,
-            ).all(),
-        )
-
-    @staticmethod
-    def create(
-        db: Session,
-        *,
-        username: str,
-        display_name: str,
-        password_hash: str,
-        global_role: str,
-        is_active: bool = True,
-    ) -> User:
-        user = User(
-            username=username.strip().lower(),
-            display_name=display_name.strip(),
-            password_hash=password_hash,
-            global_role=global_role,
-            is_active=is_active,
-            is_anonymised=False,
-        )
-
-        db.add(
-            user,
-        )
-        db.flush()
-
-        return user
-
-    @staticmethod
-    def update_password_hash(
-        db: Session,
-        *,
-        user: User,
-        password_hash: str,
-    ) -> User:
-        user.password_hash = password_hash
-
-        db.add(
-            user,
-        )
-        db.flush()
-
-        return user
-
-    @staticmethod
-    def set_active_status(
-        db: Session,
-        *,
-        user: User,
-        is_active: bool,
-    ) -> User:
-        user.is_active = is_active
-
-        db.add(
-            user,
-        )
-        db.flush()
-
-        return user
-
-    @staticmethod
-    def update_profile(
-        db: Session,
-        *,
-        user: User,
-        username: str | None = None,
-        display_name: str | None = None,
-        global_role: str | None = None,
-        is_active: bool | None = None,
-    ) -> User:
-        if username is not None:
-            user.username = (
-                username.strip().lower()
-            )
-
-        if display_name is not None:
-            user.display_name = (
-                display_name.strip()
-            )
-
-        if global_role is not None:
-            user.global_role = global_role
-
-        if is_active is not None:
-            user.is_active = is_active
-
-        db.add(
-            user,
-        )
-        db.flush()
-
-        return user

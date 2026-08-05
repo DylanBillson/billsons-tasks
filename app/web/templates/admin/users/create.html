@@ -1,0 +1,486 @@
+{% extends "base.html" %}
+
+{% block title %}
+Create User
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <header class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+                &middot;
+                Users
+            </p>
+
+            <h1>
+                Create User
+            </h1>
+
+            <p class="page-subtitle">
+                Create a new application-wide user account and set their
+                initial access level.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_users') }}"
+                class="btn btn-secondary"
+            >
+                Cancel
+            </a>
+
+        </div>
+
+    </header>
+
+    <div class="form-page-layout">
+
+        <section
+            class="content-card form-card"
+            aria-labelledby="create-user-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="create-user-heading">
+                        Account Details
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Enter the user's identity, initial password and global
+                        application role.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-error-summary"
+                role="alert"
+                aria-labelledby="user-form-errors-heading"
+            >
+
+                <h3 id="user-form-errors-heading">
+                    Please correct the following
+                </h3>
+
+                <ul>
+
+                    {% for message in form.errors.form_errors %}
+
+                    <li>
+                        {{ message }}
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('admin_user_create_submit') }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="username">
+                        Username
+                    </label>
+
+                    <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        maxlength="100"
+                        autocomplete="username"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        required
+                        autofocus
+                        value="{{ form.username }}"
+                        {% if form.errors.for_field("username") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="username-help username-errors"
+                        {% else %}
+                        aria-describedby="username-help"
+                        {% endif %}
+                    >
+
+                    <p
+                        id="username-help"
+                        class="form-help"
+                    >
+                        Usernames are stored in lowercase and cannot contain
+                        spaces.
+                    </p>
+
+                    {% if form.errors.for_field("username") %}
+
+                    <div
+                        id="username-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("username") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="display_name">
+                        Display Name
+                    </label>
+
+                    <input
+                        id="display_name"
+                        name="display_name"
+                        type="text"
+                        maxlength="150"
+                        autocomplete="name"
+                        required
+                        value="{{ form.display_name }}"
+                        {% if form.errors.for_field("display_name") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="display-name-help display-name-errors"
+                        {% else %}
+                        aria-describedby="display-name-help"
+                        {% endif %}
+                    >
+
+                    <p
+                        id="display-name-help"
+                        class="form-help"
+                    >
+                        This name is shown throughout the application and in
+                        audit records.
+                    </p>
+
+                    {% if form.errors.for_field("display_name") %}
+
+                    <div
+                        id="display-name-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("display_name") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-grid form-grid-two-columns">
+
+                    <div class="form-group">
+
+                        <label for="password">
+                            Initial Password
+                        </label>
+
+                        <input
+                            id="password"
+                            name="password"
+                            type="password"
+                            maxlength="128"
+                            autocomplete="new-password"
+                            required
+                            {% if form.errors.for_field("password") %}
+                            class="is-invalid"
+                            aria-invalid="true"
+                            aria-describedby="password-help password-errors"
+                            {% else %}
+                            aria-describedby="password-help"
+                            {% endif %}
+                        >
+
+                        <p
+                            id="password-help"
+                            class="form-help"
+                        >
+                            Use a strong temporary password that can be shared
+                            securely with the user.
+                        </p>
+
+                        {% if form.errors.for_field("password") %}
+
+                        <div
+                            id="password-errors"
+                            class="form-field-errors"
+                        >
+
+                            {% for message in form.errors.for_field("password") %}
+
+                            <p class="form-error">
+                                {{ message }}
+                            </p>
+
+                            {% endfor %}
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+                    <div class="form-group">
+
+                        <label for="confirm_password">
+                            Confirm Password
+                        </label>
+
+                        <input
+                            id="confirm_password"
+                            name="confirm_password"
+                            type="password"
+                            maxlength="128"
+                            autocomplete="new-password"
+                            required
+                            {% if form.errors.for_field("confirm_password") %}
+                            class="is-invalid"
+                            aria-invalid="true"
+                            aria-describedby="confirm-password-errors"
+                            {% endif %}
+                        >
+
+                        {% if form.errors.for_field("confirm_password") %}
+
+                        <div
+                            id="confirm-password-errors"
+                            class="form-field-errors"
+                        >
+
+                            {% for message in form.errors.for_field("confirm_password") %}
+
+                            <p class="form-error">
+                                {{ message }}
+                            </p>
+
+                            {% endfor %}
+
+                        </div>
+
+                        {% endif %}
+
+                    </div>
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="global_role">
+                        Global Role
+                    </label>
+
+                    <select
+                        id="global_role"
+                        name="global_role"
+                        required
+                        {% if form.errors.for_field("global_role") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="global-role-help global-role-errors"
+                        {% else %}
+                        aria-describedby="global-role-help"
+                        {% endif %}
+                    >
+
+                        <option
+                            value="user"
+                            {% if form.global_role == "user" %}selected{% endif %}
+                        >
+                            User
+                        </option>
+
+                        <option
+                            value="administrator"
+                            {% if form.global_role == "administrator" %}selected{% endif %}
+                        >
+                            Administrator
+                        </option>
+
+                    </select>
+
+                    <p
+                        id="global-role-help"
+                        class="form-help"
+                    >
+                        Administrators can access application-wide
+                        administration, users, archives and audit records.
+                    </p>
+
+                    {% if form.errors.for_field("global_role") %}
+
+                    <div
+                        id="global-role-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("global_role") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label class="checkbox-list-item">
+
+                        <input
+                            type="checkbox"
+                            name="is_active"
+                            value="1"
+                            {% if form.is_active %}checked{% endif %}
+                        >
+
+                        <span class="checkbox-list-content">
+
+                            <span class="checkbox-list-primary">
+                                Account is active
+                            </span>
+
+                            <span class="checkbox-list-secondary">
+                                Active users may sign in immediately. Clear
+                                this option to create the account without
+                                allowing access yet.
+                            </span>
+
+                        </span>
+
+                    </label>
+
+                    {% if form.errors.for_field("is_active") %}
+
+                    <div class="form-field-errors">
+
+                        {% for message in form.errors.for_field("is_active") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        data-loading-text="Creating User..."
+                    >
+                        Create User
+                    </button>
+
+                    <a
+                        href="{{ url_for('admin_users') }}"
+                        class="btn btn-secondary"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <aside
+            class="content-card form-context-card"
+            aria-labelledby="user-security-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="user-security-heading">
+                        Account Security
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <div class="stack">
+
+                <p>
+                    The initial password is hashed before it is stored. Its
+                    plaintext value is never written to the audit log.
+                </p>
+
+                <p>
+                    Creating an account records the username, display name,
+                    role and active status in the audit log.
+                </p>
+
+                <p>
+                    Company and section access are assigned separately after
+                    the user account has been created.
+                </p>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+</div>
+
+{% endblock %}

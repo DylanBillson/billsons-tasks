@@ -25,8 +25,8 @@
 
     background: var(--colour-surface);
 
-    text-decoration: none;
     color: inherit;
+    text-decoration: none;
 
     transition:
         border-color .15s ease,
@@ -49,8 +49,297 @@
     color: var(--colour-text-muted);
 }
 
-.admin-actions {
+.admin-actions,
+.page-actions {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: .75rem;
+}
+
+/* ------------------------------------------------------------------
+   User management
+------------------------------------------------------------------ */
+
+.form-page-layout {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 2fr)
+        minmax(300px, 1fr);
+    gap: 2rem;
+    align-items: start;
+}
+
+.form-card,
+.form-context-card {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+}
+
+.card-subtitle {
+    margin: .35rem 0 0;
+    color: var(--colour-text-muted);
+}
+
+.form-grid {
+    display: grid;
+    gap: 1.25rem;
+}
+
+.form-grid-two-columns {
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(260px, 1fr)
+        );
+}
+
+.form-group {
+    display: flex;
+    flex-direction: column;
+    gap: .5rem;
+}
+
+.form-group label {
+    font-weight: 600;
+}
+
+.form-help {
+    margin: 0;
+    font-size: .9rem;
+    color: var(--colour-text-muted);
+}
+
+.form-field-errors {
+    display: flex;
+    flex-direction: column;
+    gap: .35rem;
+}
+
+.form-error {
+    margin: 0;
+    color: var(--colour-danger);
+    font-size: .9rem;
+}
+
+.form-error-summary {
+    padding: 1rem 1.25rem;
+
+    border: 1px solid var(--colour-danger);
+    border-radius: var(--radius-medium);
+
+    background: color-mix(
+        in srgb,
+        var(--colour-danger) 10%,
+        var(--colour-surface)
+    );
+}
+
+.form-error-summary h3 {
+    margin: 0 0 .75rem;
+}
+
+.form-error-summary ul {
+    margin: 0;
+    padding-left: 1.25rem;
+}
+
+.form-actions {
     display: flex;
     flex-wrap: wrap;
     gap: .75rem;
+
+    padding-top: .5rem;
+}
+
+.checkbox-list-item {
+    display: flex;
+    align-items: flex-start;
+    gap: .9rem;
+
+    padding: 1rem;
+
+    border: 1px solid var(--colour-border);
+    border-radius: var(--radius-medium);
+
+    cursor: pointer;
+}
+
+.checkbox-list-item input {
+    margin-top: .2rem;
+    flex-shrink: 0;
+}
+
+.checkbox-list-content {
+    display: flex;
+    flex-direction: column;
+    gap: .25rem;
+}
+
+.checkbox-list-primary {
+    font-weight: 600;
+}
+
+.checkbox-list-secondary {
+    font-size: .9rem;
+    color: var(--colour-text-muted);
+}
+
+.detail-list {
+    display: flex;
+    flex-direction: column;
+    gap: .9rem;
+    margin: 0;
+}
+
+.detail-list-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    gap: 1rem;
+
+    padding-bottom: .75rem;
+
+    border-bottom: 1px solid var(--colour-border);
+}
+
+.detail-list-item:last-child {
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.detail-list dt {
+    font-weight: 600;
+}
+
+.detail-list dd {
+    margin: 0;
+    text-align: right;
+}
+
+.stack {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.table-primary {
+    display: flex;
+    flex-direction: column;
+    gap: .2rem;
+}
+
+.table-primary-text {
+    font-weight: 600;
+}
+
+.table-secondary {
+    font-size: .9rem;
+    color: var(--colour-text-muted);
+}
+
+.table-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: .5rem;
+}
+
+.table-actions-column {
+    width: 1%;
+    white-space: nowrap;
+}
+
+.inline-form {
+    display: inline-flex;
+}
+
+.text-muted {
+    color: var(--colour-text-muted);
+}
+
+.status-badge {
+    display: inline-flex;
+    align-items: center;
+
+    padding: .3rem .7rem;
+
+    border-radius: 999px;
+
+    font-size: .8rem;
+    font-weight: 600;
+}
+
+.status-badge-primary {
+    background: color-mix(
+        in srgb,
+        var(--colour-primary) 18%,
+        transparent
+    );
+    color: var(--colour-primary);
+}
+
+.status-badge-success {
+    background: color-mix(
+        in srgb,
+        var(--colour-success) 18%,
+        transparent
+    );
+    color: var(--colour-success);
+}
+
+.status-badge-danger {
+    background: color-mix(
+        in srgb,
+        var(--colour-danger) 18%,
+        transparent
+    );
+    color: var(--colour-danger);
+}
+
+.status-badge-muted {
+    background: color-mix(
+        in srgb,
+        var(--colour-border) 50%,
+        transparent
+    );
+    color: var(--colour-text-muted);
+}
+
+.empty-state {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 1rem;
+
+    padding: 4rem 2rem;
+
+    text-align: center;
+}
+
+.empty-state h2,
+.empty-state p {
+    margin: 0;
+}
+
+@media (
+    max-width: 960px
+) {
+    .form-page-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .table-actions {
+        justify-content: flex-start;
+    }
+
+    .detail-list-item {
+        flex-direction: column;
+        align-items: flex-start;
+    }
+
+    .detail-list dd {
+        text-align: left;
+    }
 }

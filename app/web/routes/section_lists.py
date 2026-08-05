@@ -582,7 +582,14 @@ async def reorder_section_lists(
             section_id=section_id,
         )
 
-        payload = await request.json()
+        try:
+            payload = await request.json()
+
+        except ValueError:
+            return _json_error(
+                "The list order request was not valid JSON.",
+                status.HTTP_422_UNPROCESSABLE_CONTENT,
+            )
 
         reorder_request = (
             SectionListReorderRequest.model_validate(
@@ -590,17 +597,19 @@ async def reorder_section_lists(
             )
         )
 
-        ordered_lists = SectionListService.reorder_lists(
-            db,
-            actor=current_user,
-            section=section,
-            reorder_request=reorder_request,
-            ip_address=get_client_ip_address(
-                request,
-            ),
-            user_agent=get_user_agent(
-                request,
-            ),
+        ordered_lists = (
+            SectionListService.reorder_lists(
+                db,
+                actor=current_user,
+                section=section,
+                reorder_request=reorder_request,
+                ip_address=get_client_ip_address(
+                    request,
+                ),
+                user_agent=get_user_agent(
+                    request,
+                ),
+            )
         )
 
     except SectionNotFoundError:
@@ -617,7 +626,9 @@ async def reorder_section_lists(
                     include_url=False,
                 ),
             },
-            status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
+            status_code=(
+                status.HTTP_422_UNPROCESSABLE_CONTENT
+            ),
         )
 
     except (
@@ -631,7 +642,10 @@ async def reorder_section_lists(
 
     except PermissionDeniedError:
         return _json_error(
-            "You do not have permission to reorder these lists.",
+            (
+                "You do not have permission "
+                "to reorder these lists."
+            ),
             status.HTTP_403_FORBIDDEN,
         )
 
@@ -641,9 +655,12 @@ async def reorder_section_lists(
             "items": [
                 {
                     "list_id": section_list.id,
-                    "sort_position": section_list.sort_position,
+                    "sort_position": (
+                        section_list.sort_position
+                    ),
                 }
-                for section_list in ordered_lists
+                for section_list
+                in ordered_lists
             ],
         },
         status_code=status.HTTP_200_OK,

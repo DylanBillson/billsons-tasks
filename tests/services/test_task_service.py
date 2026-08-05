@@ -1311,7 +1311,7 @@ def test_reorder_tasks_rejects_foreign_list(
 
     with pytest.raises(
         TaskReorderError,
-        match="list that does not belong",
+        match="archived or does not belong",
     ):
         TaskService.reorder_tasks(
             db,
@@ -1363,7 +1363,7 @@ def test_reorder_tasks_rejects_foreign_task(
 
     with pytest.raises(
         TaskReorderError,
-        match="task that does not belong",
+        match="deleted or does not belong",
     ):
         TaskService.reorder_tasks(
             db,
@@ -1404,7 +1404,7 @@ def test_reorder_tasks_rejects_deleted_task(
 
     with pytest.raises(
         TaskReorderError,
-        match="task that does not belong",
+        match="deleted or does not belong",
     ):
         TaskService.reorder_tasks(
             db,
@@ -2014,3 +2014,348 @@ def test_non_administrator_cannot_permanently_delete_task(
             task=task,
             commit=False,
         )
+def test_reorder_tasks_requires_every_active_board_task(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    first_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    second_task = create_task(
+        db,
+        section_list=second_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    with pytest.raises(
+        TaskReorderError,
+        match="include every active task",
+    ):
+        TaskService.reorder_tasks(
+            db,
+            actor=creator,
+            section=section,
+            reorder_request=TaskReorderRequest(
+                items=[
+                    TaskPositionUpdate(
+                        task_id=first_task.id,
+                        section_list_id=first_list.id,
+                        sort_position=2000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert first_task.section_list_id == first_list.id
+    assert first_task.sort_position == 1000
+
+    assert second_task.section_list_id == second_list.id
+    assert second_task.sort_position == 1000
+
+
+def test_reorder_tasks_ignores_deleted_tasks_when_checking_completeness(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        _,
+    ) = _create_context(
+        db,
+    )
+
+    active_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    deleted_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=2000,
+        deleted_by=creator,
+    )
+
+    TaskService.reorder_tasks(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=TaskReorderRequest(
+            items=[
+                TaskPositionUpdate(
+                    task_id=active_task.id,
+                    section_list_id=first_list.id,
+                    sort_position=3000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    assert active_task.sort_position == 3000
+    assert deleted_task.sort_position == 2000
+
+
+def test_reorder_tasks_ignores_tasks_in_archived_lists_for_completeness(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    second_list.is_archived = True
+
+    active_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    archived_list_task = create_task(
+        db,
+        section_list=second_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    db.flush()
+
+    TaskService.reorder_tasks(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=TaskReorderRequest(
+            items=[
+                TaskPositionUpdate(
+                    task_id=active_task.id,
+                    section_list_id=first_list.id,
+                    sort_position=2000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    assert active_task.sort_position == 2000
+    assert archived_list_task.sort_position == 1000
+
+
+def test_reorder_tasks_rejects_archived_destination_list(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    second_list.is_archived = True
+
+    task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    db.flush()
+
+    with pytest.raises(
+        TaskReorderError,
+        match="archived or does not belong",
+    ):
+        TaskService.reorder_tasks(
+            db,
+            actor=creator,
+            section=section,
+            reorder_request=TaskReorderRequest(
+                items=[
+                    TaskPositionUpdate(
+                        task_id=task.id,
+                        section_list_id=second_list.id,
+                        sort_position=1000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert task.section_list_id == first_list.id
+    assert task.sort_position == 1000
+
+
+def test_reorder_tasks_with_unchanged_positions_is_noop(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    first_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    second_task = create_task(
+        db,
+        section_list=second_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    result = TaskService.reorder_tasks(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=TaskReorderRequest(
+            items=[
+                TaskPositionUpdate(
+                    task_id=first_task.id,
+                    section_list_id=first_list.id,
+                    sort_position=1000,
+                ),
+                TaskPositionUpdate(
+                    task_id=second_task.id,
+                    section_list_id=second_list.id,
+                    sort_position=1000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    assert result == [
+        first_task,
+        second_task,
+    ]
+
+    audit_logs = AuditRepository.list_logs(
+        db,
+        action=AuditAction.TASK_MOVED.value,
+    )
+
+    assert all(
+        not (
+            log.entity_type == "section"
+            and log.entity_id == section.id
+        )
+        for log in audit_logs
+    )
+
+
+def test_reorder_tasks_audit_records_previous_and_current_positions(
+    db: Session,
+) -> None:
+    (
+        company,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    first_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    second_task = create_task(
+        db,
+        section_list=second_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    TaskService.reorder_tasks(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=TaskReorderRequest(
+            items=[
+                TaskPositionUpdate(
+                    task_id=first_task.id,
+                    section_list_id=second_list.id,
+                    sort_position=2000,
+                ),
+                TaskPositionUpdate(
+                    task_id=second_task.id,
+                    section_list_id=second_list.id,
+                    sort_position=1000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    audit_logs = AuditRepository.list_logs(
+        db,
+        action=AuditAction.TASK_MOVED.value,
+    )
+
+    matching = [
+        log
+        for log in audit_logs
+        if (
+            log.entity_type == "section"
+            and log.entity_id == section.id
+        )
+    ]
+
+    assert len(matching) == 1
+
+    metadata = matching[0].metadata_json
+
+    assert metadata["company_id"] == company.id
+    assert metadata["section_id"] == section.id
+
+    assert metadata["task_positions"] == {
+        str(first_task.id): {
+            "previous_section_list_id": first_list.id,
+            "section_list_id": second_list.id,
+            "previous_sort_position": 1000,
+            "sort_position": 2000,
+        },
+    }

@@ -6,9 +6,9 @@
 
 {% block content %}
 
-<div class="app-page">
+<div class="app-page company-detail-page">
 
-    <div class="page-header">
+    <header class="page-header">
 
         <div>
 
@@ -39,16 +39,22 @@
         <div class="page-actions">
 
             <a
-                href="{{ url_for('company_dashboard', company_id=company.id) }}"
+                href="{{ url_for(
+                    'company_dashboard',
+                    company_id=company.id
+                ) }}"
                 class="btn btn-primary"
             >
                 Company Dashboard
             </a>
-            
+
             {% if can_create_section and not company.is_archived %}
 
             <a
-                href="{{ url_for('section_create', company_id=company.id) }}"
+                href="{{ url_for(
+                    'section_create',
+                    company_id=company.id
+                ) }}"
                 class="btn btn-primary"
             >
                 Create Section
@@ -59,19 +65,46 @@
             {% if can_manage_company_memberships %}
 
             <a
-                href="{{ url_for('company_members', company_id=company.id) }}"
+                href="{{ url_for(
+                    'company_members',
+                    company_id=company.id
+                ) }}"
                 class="btn btn-secondary"
             >
-                Manage Company Members
+                Manage Members
             </a>
 
             {% endif %}
 
         </div>
 
-    </div>
+    </header>
 
-    <div class="detail-grid">
+    {% if company.is_archived %}
+
+    <section
+        class="company-status-notice company-status-notice-archived"
+        aria-label="Archived company"
+    >
+
+        <div>
+
+            <strong>
+                This company is archived.
+            </strong>
+
+            <p>
+                Its existing information remains available, but new sections
+                and memberships cannot be created.
+            </p>
+
+        </div>
+
+    </section>
+
+    {% endif %}
+
+    <div class="company-detail-grid">
 
         <section
             class="content-card"
@@ -123,7 +156,7 @@
                 <div class="detail-list-item">
 
                     <dt>
-                        Your Role
+                        Your Company Role
                     </dt>
 
                     <dd>
@@ -146,12 +179,30 @@
 
                 </div>
 
+                {% elif current_user.is_administrator %}
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Your Access
+                    </dt>
+
+                    <dd>
+
+                        <span class="status-badge status-badge-primary">
+                            Administrator
+                        </span>
+
+                    </dd>
+
+                </div>
+
                 {% endif %}
 
                 <div class="detail-list-item">
 
                     <dt>
-                        Sections Available to You
+                        Accessible Sections
                     </dt>
 
                     <dd>
@@ -174,44 +225,62 @@
                 <div>
 
                     <h2 id="company-access-heading">
-                        Access
+                        Your Access
                     </h2>
 
                 </div>
 
             </div>
 
-            <div class="prose">
+            <div class="company-access-summary">
 
                 {% if current_user.is_administrator %}
 
                 <p>
                     As an administrator, you can access every section in this
-                    company.
+                    company and manage its company membership.
                 </p>
 
                 {% elif membership and membership.role == "manager" %}
 
                 <p>
-                    As a company manager, you can create sections in this
-                    company.
+                    As a company manager, you can create sections and manage
+                    this company’s members.
                 </p>
 
                 <p>
-                    You can only access sections that you created or sections
-                    to which you have been explicitly assigned.
+                    You can open sections you created or sections to which you
+                    have been explicitly assigned.
                 </p>
 
                 {% else %}
 
                 <p>
-                    You can access sections to which you have been explicitly
-                    assigned.
+                    As a company employee, you can open sections to which you
+                    have been explicitly assigned.
                 </p>
 
                 {% endif %}
 
             </div>
+
+            {% if can_manage_company_memberships %}
+
+            <div class="card-actions">
+
+                <a
+                    href="{{ url_for(
+                        'company_members',
+                        company_id=company.id
+                    ) }}"
+                    class="btn btn-secondary"
+                >
+                    Manage Company Members
+                </a>
+
+            </div>
+
+            {% endif %}
 
         </section>
 
@@ -241,7 +310,10 @@
             <div class="card-actions">
 
                 <a
-                    href="{{ url_for('section_create', company_id=company.id) }}"
+                    href="{{ url_for(
+                        'section_create',
+                        company_id=company.id
+                    ) }}"
                     class="btn btn-primary btn-small"
                 >
                     Create Section
@@ -266,12 +338,17 @@
                     <div>
 
                         <h3>
+
                             <a
-                                href="{{ url_for('section_detail', section_id=section.id) }}"
+                                href="{{ url_for(
+                                    'section_detail',
+                                    section_id=section.id
+                                ) }}"
                                 class="section-card-link"
                             >
                                 {{ section.name }}
                             </a>
+
                         </h3>
 
                         {% if section.description %}
@@ -282,7 +359,10 @@
 
                         {% else %}
 
-                        <p class="section-card-description section-card-description-muted">
+                        <p class="
+                            section-card-description
+                            section-card-description-muted
+                        ">
                             No description has been provided.
                         </p>
 
@@ -328,13 +408,13 @@
 
                         <span class="meta-value">
 
-                            {% if section.created_by_user_id == current_user.id %}
-
-                            Creator
-
-                            {% elif current_user.is_administrator %}
+                            {% if current_user.is_administrator %}
 
                             Administrator
+
+                            {% elif section.created_by_user_id == current_user.id %}
+
+                            Creator
 
                             {% else %}
 
@@ -351,7 +431,10 @@
                 <div class="section-card-actions">
 
                     <a
-                        href="{{ url_for('section_detail', section_id=section.id) }}"
+                        href="{{ url_for(
+                            'section_detail',
+                            section_id=section.id
+                        ) }}"
                         class="btn btn-secondary"
                     >
                         Open Section
@@ -363,7 +446,10 @@
                     ) %}
 
                     <a
-                        href="{{ url_for('section_edit', section_id=section.id) }}"
+                        href="{{ url_for(
+                            'section_edit',
+                            section_id=section.id
+                        ) }}"
                         class="btn btn-secondary"
                     >
                         Edit
@@ -395,7 +481,10 @@
             </p>
 
             <a
-                href="{{ url_for('section_create', company_id=company.id) }}"
+                href="{{ url_for(
+                    'section_create',
+                    company_id=company.id
+                ) }}"
                 class="btn btn-primary"
             >
                 Create Section

@@ -348,3 +348,27 @@
         grid-template-columns: minmax(0, 1fr);
     }
 }
+/* -------------------------------------------------------------------------
+ * Sortable board behaviour
+ * ------------------------------------------------------------------------- */
+
+.task-board-section {
+    overflow: hidden;
+}
+
+.task-board {
+    scroll-behavior: smooth;
+}
+
+.task-board::-webkit-scrollbar {
+    height: 0.75rem;
+}
+
+.task-board::-webkit-scrollbar-thumb {
+    background: var(--color-border-strong);
+    border-radius: 999px;
+}
+
+.task-board::-webkit-scrollbar-track {
+    background: transparent;
+}

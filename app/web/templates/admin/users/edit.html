@@ -1,0 +1,427 @@
+{% extends "base.html" %}
+
+{% block title %}
+Edit User
+{% endblock %}
+
+{% block content %}
+
+<div class="admin-page">
+
+    <header class="page-header">
+
+        <div>
+
+            <p class="page-eyebrow">
+                Administration
+                &middot;
+                Users
+            </p>
+
+            <h1>
+                Edit User
+            </h1>
+
+            <p class="page-subtitle">
+                Update the account details and application-wide role for
+                {{ user.display_name }}.
+            </p>
+
+        </div>
+
+        <div class="page-actions">
+
+            <a
+                href="{{ url_for('admin_users') }}"
+                class="btn btn-secondary"
+            >
+                Back to Users
+            </a>
+
+        </div>
+
+    </header>
+
+    <div class="form-page-layout">
+
+        <section
+            class="content-card form-card"
+            aria-labelledby="edit-user-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="edit-user-heading">
+                        Account Details
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Change the user's name, username or global role.
+                    </p>
+
+                </div>
+
+            </div>
+
+            {% if form.errors.form_errors %}
+
+            <div
+                class="form-error-summary"
+                role="alert"
+                aria-labelledby="user-form-errors-heading"
+            >
+
+                <h3 id="user-form-errors-heading">
+                    Please correct the following
+                </h3>
+
+                <ul>
+
+                    {% for message in form.errors.form_errors %}
+
+                    <li>
+                        {{ message }}
+                    </li>
+
+                    {% endfor %}
+
+                </ul>
+
+            </div>
+
+            {% endif %}
+
+            <form
+                method="post"
+                action="{{ url_for('admin_user_edit_submit', user_id=user.id) }}"
+                novalidate
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                <div class="form-group">
+
+                    <label for="username">
+                        Username
+                    </label>
+
+                    <input
+                        id="username"
+                        name="username"
+                        type="text"
+                        maxlength="100"
+                        autocomplete="username"
+                        autocapitalize="none"
+                        spellcheck="false"
+                        required
+                        autofocus
+                        value="{{ form.username }}"
+                        {% if form.errors.for_field("username") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="username-help username-errors"
+                        {% else %}
+                        aria-describedby="username-help"
+                        {% endif %}
+                    >
+
+                    <p
+                        id="username-help"
+                        class="form-help"
+                    >
+                        Usernames are stored in lowercase and cannot contain
+                        spaces.
+                    </p>
+
+                    {% if form.errors.for_field("username") %}
+
+                    <div
+                        id="username-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("username") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="display_name">
+                        Display Name
+                    </label>
+
+                    <input
+                        id="display_name"
+                        name="display_name"
+                        type="text"
+                        maxlength="150"
+                        autocomplete="name"
+                        required
+                        value="{{ form.display_name }}"
+                        {% if form.errors.for_field("display_name") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="display-name-help display-name-errors"
+                        {% else %}
+                        aria-describedby="display-name-help"
+                        {% endif %}
+                    >
+
+                    <p
+                        id="display-name-help"
+                        class="form-help"
+                    >
+                        This name is displayed throughout the application and
+                        in future audit entries.
+                    </p>
+
+                    {% if form.errors.for_field("display_name") %}
+
+                    <div
+                        id="display-name-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("display_name") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-group">
+
+                    <label for="global_role">
+                        Global Role
+                    </label>
+
+                    <select
+                        id="global_role"
+                        name="global_role"
+                        required
+                        {% if form.errors.for_field("global_role") %}
+                        class="is-invalid"
+                        aria-invalid="true"
+                        aria-describedby="global-role-help global-role-errors"
+                        {% else %}
+                        aria-describedby="global-role-help"
+                        {% endif %}
+                    >
+
+                        <option
+                            value="user"
+                            {% if form.global_role == "user" %}selected{% endif %}
+                        >
+                            User
+                        </option>
+
+                        <option
+                            value="administrator"
+                            {% if form.global_role == "administrator" %}selected{% endif %}
+                        >
+                            Administrator
+                        </option>
+
+                    </select>
+
+                    <p
+                        id="global-role-help"
+                        class="form-help"
+                    >
+                        Changing a global role affects application-wide
+                        administration access. Company roles are managed
+                        separately.
+                    </p>
+
+                    {% if user.id == current_user.id %}
+
+                    <p class="form-help">
+                        You cannot remove your own administrator role.
+                    </p>
+
+                    {% endif %}
+
+                    {% if form.errors.for_field("global_role") %}
+
+                    <div
+                        id="global-role-errors"
+                        class="form-field-errors"
+                    >
+
+                        {% for message in form.errors.for_field("global_role") %}
+
+                        <p class="form-error">
+                            {{ message }}
+                        </p>
+
+                        {% endfor %}
+
+                    </div>
+
+                    {% endif %}
+
+                </div>
+
+                <div class="form-actions">
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        data-loading-text="Saving Changes..."
+                    >
+                        Save Changes
+                    </button>
+
+                    <a
+                        href="{{ url_for('admin_users') }}"
+                        class="btn btn-secondary"
+                    >
+                        Cancel
+                    </a>
+
+                </div>
+
+            </form>
+
+        </section>
+
+        <aside
+            class="content-card form-context-card"
+            aria-labelledby="account-status-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="account-status-heading">
+                        Account Status
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <dl class="detail-list">
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        User ID
+                    </dt>
+
+                    <dd>
+                        {{ user.id }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Status
+                    </dt>
+
+                    <dd>
+
+                        {% if user.is_anonymised %}
+
+                        <span class="status-badge status-badge-muted">
+                            Anonymised
+                        </span>
+
+                        {% elif user.is_active %}
+
+                        <span class="status-badge status-badge-success">
+                            Active
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-danger">
+                            Inactive
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Current Role
+                    </dt>
+
+                    <dd>
+
+                        {% if user.is_administrator %}
+
+                        <span class="status-badge status-badge-primary">
+                            Administrator
+                        </span>
+
+                        {% else %}
+
+                        <span class="status-badge status-badge-muted">
+                            User
+                        </span>
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+            </dl>
+
+            <div class="stack">
+
+                <p>
+                    Passwords and sign-in status are managed through the
+                    separate account actions on the user list.
+                </p>
+
+                <a
+                    href="{{ url_for(
+                        'admin_user_reset_password',
+                        user_id=user.id
+                    ) }}"
+                    class="btn btn-secondary"
+                >
+                    Reset Password
+                </a>
+
+            </div>
+
+        </aside>
+
+    </div>
+
+</div>
+
+{% endblock %}

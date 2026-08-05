@@ -3,13 +3,30 @@ from datetime import datetime
 
 from sqlalchemy.orm import Session
 
-from app.core.constants import AuditAction, GlobalRole
-from app.core.security import hash_password, validate_password
+from app.core.constants import (
+    AuditAction,
+    GlobalRole,
+)
+from app.core.security import (
+    hash_password,
+    validate_password,
+)
 from app.core.timezone import utc_now
 from app.models.user import User
-from app.repositories.session_repository import SessionRepository
-from app.repositories.user_repository import UserRepository
-from app.schemas.auth import PasswordResetRequest, PasswordResetResult
+from app.repositories.session_repository import (
+    SessionRepository,
+)
+from app.repositories.user_repository import (
+    UserRepository,
+)
+from app.schemas.auth import (
+    PasswordResetRequest,
+    PasswordResetResult,
+)
+from app.schemas.user import (
+    UserCreateRequest,
+    UserUpdateRequest,
+)
 from app.services.audit_service import AuditService
 
 
@@ -33,8 +50,16 @@ class UserSelfDeactivationError(UserServiceError):
     """Raised when an administrator attempts to deactivate themselves."""
 
 
+class UserSelfRoleChangeError(UserServiceError):
+    """Raised when an administrator attempts to remove their own role."""
+
+
 class AnonymisedUserStatusError(UserServiceError):
     """Raised when account status is changed for an anonymised user."""
+
+
+class AnonymisedUserProfileError(UserServiceError):
+    """Raised when an anonymised user profile is edited."""
 
 
 @dataclass(frozen=True)
@@ -98,6 +123,181 @@ class UserService:
             include_inactive=include_inactive,
             include_anonymised=include_anonymised,
         )
+
+    @staticmethod
+    def create_user(
+        db: Session,
+        *,
+        acting_user: User,
+        user_create: UserCreateRequest,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        commit: bool = True,
+    ) -> User:
+        UserService._require_administrator(
+            acting_user,
+        )
+
+        if UserRepository.username_exists(
+            db,
+            username=user_create.username,
+        ):
+            raise UsernameAlreadyExistsError(
+                "A user with this username already exists.",
+            )
+
+        validate_password(
+            user_create.password,
+            confirmation=user_create.confirm_password,
+        )
+
+        user = UserRepository.create(
+            db,
+            username=user_create.username,
+            display_name=user_create.display_name,
+            password_hash=hash_password(
+                user_create.password,
+            ),
+            global_role=user_create.global_role,
+            is_active=user_create.is_active,
+        )
+
+        AuditService.record(
+            db,
+            user=acting_user,
+            action=AuditAction.USER_CREATED,
+            summary=(
+                f"{acting_user.display_name} created "
+                f"the user {user.display_name}."
+            ),
+            entity_type="user",
+            entity_id=user.id,
+            metadata_json={
+                "username": user.username,
+                "display_name": user.display_name,
+                "global_role": user.global_role,
+                "is_active": user.is_active,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        if commit:
+            db.commit()
+
+            db.refresh(
+                user,
+            )
+
+        return user
+
+    @staticmethod
+    def update_user(
+        db: Session,
+        *,
+        acting_user: User,
+        target_user: User,
+        user_update: UserUpdateRequest,
+        ip_address: str | None = None,
+        user_agent: str | None = None,
+        commit: bool = True,
+    ) -> User:
+        UserService._require_administrator(
+            acting_user,
+        )
+
+        if target_user.is_anonymised:
+            raise AnonymisedUserProfileError(
+                "An anonymised user cannot be edited.",
+            )
+
+        if (
+            acting_user.id == target_user.id
+            and user_update.global_role
+            != GlobalRole.ADMINISTRATOR.value
+        ):
+            raise UserSelfRoleChangeError(
+                "You cannot remove your own administrator role.",
+            )
+
+        if UserRepository.username_exists(
+            db,
+            username=user_update.username,
+            exclude_user_id=target_user.id,
+        ):
+            raise UsernameAlreadyExistsError(
+                "A user with this username already exists.",
+            )
+
+        previous_username = target_user.username
+        previous_display_name = target_user.display_name
+        previous_global_role = target_user.global_role
+
+        changes: dict[
+            str,
+            dict[str, object],
+        ] = {}
+
+        if previous_username != user_update.username:
+            changes["username"] = {
+                "previous": previous_username,
+                "current": user_update.username,
+            }
+
+        if (
+            previous_display_name
+            != user_update.display_name
+        ):
+            changes["display_name"] = {
+                "previous": previous_display_name,
+                "current": user_update.display_name,
+            }
+
+        if (
+            previous_global_role
+            != user_update.global_role
+        ):
+            changes["global_role"] = {
+                "previous": previous_global_role,
+                "current": user_update.global_role,
+            }
+
+        if not changes:
+            return target_user
+
+        UserRepository.update_profile(
+            db,
+            user=target_user,
+            username=user_update.username,
+            display_name=user_update.display_name,
+            global_role=user_update.global_role,
+        )
+
+        AuditService.record(
+            db,
+            user=acting_user,
+            action=AuditAction.USER_UPDATED,
+            summary=(
+                f"{acting_user.display_name} updated "
+                f"the user {target_user.display_name}."
+            ),
+            entity_type="user",
+            entity_id=target_user.id,
+            metadata_json={
+                "changes": changes,
+            },
+            ip_address=ip_address,
+            user_agent=user_agent,
+        )
+
+        if commit:
+            db.commit()
+
+            db.refresh(
+                target_user,
+            )
+
+        return target_user
 
     @staticmethod
     def reset_password(
@@ -167,6 +367,7 @@ class UserService:
 
         if commit:
             db.commit()
+
             db.refresh(
                 target_user,
             )
@@ -219,12 +420,6 @@ class UserService:
         user_agent: str | None = None,
         commit: bool = True,
     ) -> UserStatusChangeResult:
-        """
-        Activate or deactivate a user.
-
-        Deactivation revokes every active authentication session belonging to
-        the target account. Reactivation does not restore previous sessions.
-        """
         UserService._require_administrator(
             acting_user,
         )
@@ -308,6 +503,7 @@ class UserService:
 
         if commit:
             db.commit()
+
             db.refresh(
                 target_user,
             )

@@ -995,7 +995,10 @@ def test_reorder_lists_rejects_list_from_other_section(
 
     with pytest.raises(
         SectionListReorderError,
-        match="does not belong to this section",
+        match=(
+            "archived or does not belong "
+            "to this section"
+        ),
     ):
         SectionListService.reorder_lists(
             db,
@@ -1060,12 +1063,18 @@ def test_reorder_lists_records_audit_log(
 
     assert len(matching) == 1
 
-    positions = matching[0].metadata_json["list_positions"]
+    positions = matching[0].metadata_json[
+        "list_positions"
+    ]
 
-    assert (
-        positions[str(section_list.id)] == 2500
-        or positions[section_list.id] == 2500
-    )
+    change = positions[
+        str(section_list.id)
+    ]
+
+    assert change == {
+        "previous_sort_position": 1000,
+        "sort_position": 2500,
+    }
 
 
 def test_section_creator_deletes_empty_list(
@@ -1194,3 +1203,268 @@ def test_delete_list_records_audit_log(
     assert len(matching) == 1
     assert matching[0].metadata_json["section_id"] == section.id
     assert matching[0].metadata_json["name"] == "Temporary"
+
+def test_reorder_lists_requires_every_active_list(
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    first = create_section_list(
+        db,
+        section=section,
+        name="First",
+        sort_position=1000,
+    )
+
+    second = create_section_list(
+        db,
+        section=section,
+        name="Second",
+        sort_position=2000,
+    )
+
+    with pytest.raises(
+        SectionListReorderError,
+        match="include every active list",
+    ):
+        SectionListService.reorder_lists(
+            db,
+            actor=creator,
+            section=section,
+            reorder_request=SectionListReorderRequest(
+                items=[
+                    SectionListPositionUpdate(
+                        list_id=first.id,
+                        sort_position=2000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert first.sort_position == 1000
+    assert second.sort_position == 2000
+
+
+def test_reorder_lists_rejects_archived_list(
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    active = create_section_list(
+        db,
+        section=section,
+        name="Active",
+        sort_position=1000,
+    )
+
+    archived = create_section_list(
+        db,
+        section=section,
+        name="Archived",
+        sort_position=2000,
+        is_archived=True,
+    )
+
+    with pytest.raises(
+        SectionListReorderError,
+        match="archived or does not belong",
+    ):
+        SectionListService.reorder_lists(
+            db,
+            actor=creator,
+            section=section,
+            reorder_request=SectionListReorderRequest(
+                items=[
+                    SectionListPositionUpdate(
+                        list_id=active.id,
+                        sort_position=2000,
+                    ),
+                    SectionListPositionUpdate(
+                        list_id=archived.id,
+                        sort_position=1000,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert active.sort_position == 1000
+    assert archived.sort_position == 2000
+
+
+def test_reorder_lists_ignores_archived_lists_when_checking_completeness(
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    active = create_section_list(
+        db,
+        section=section,
+        name="Active",
+        sort_position=1000,
+    )
+
+    archived = create_section_list(
+        db,
+        section=section,
+        name="Archived",
+        sort_position=2000,
+        is_archived=True,
+    )
+
+    result = SectionListService.reorder_lists(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=SectionListReorderRequest(
+            items=[
+                SectionListPositionUpdate(
+                    list_id=active.id,
+                    sort_position=3000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    assert result == [
+        active,
+    ]
+
+    assert active.sort_position == 3000
+    assert archived.sort_position == 2000
+
+
+def test_reorder_lists_with_unchanged_positions_is_noop(
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    first = create_section_list(
+        db,
+        section=section,
+        name="First",
+        sort_position=1000,
+    )
+
+    second = create_section_list(
+        db,
+        section=section,
+        name="Second",
+        sort_position=2000,
+    )
+
+    result = SectionListService.reorder_lists(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=SectionListReorderRequest(
+            items=[
+                SectionListPositionUpdate(
+                    list_id=first.id,
+                    sort_position=1000,
+                ),
+                SectionListPositionUpdate(
+                    list_id=second.id,
+                    sort_position=2000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    assert result == [
+        first,
+        second,
+    ]
+
+    audit_logs = AuditRepository.list_logs(
+        db,
+        action=AuditAction.LIST_UPDATED.value,
+    )
+
+    assert all(
+        not (
+            log.entity_type == "section"
+            and log.entity_id == section.id
+        )
+        for log in audit_logs
+    )
+
+
+def test_reorder_lists_audit_records_only_changed_lists(
+    db: Session,
+) -> None:
+    company, creator, section = _create_context(
+        db,
+    )
+
+    first = create_section_list(
+        db,
+        section=section,
+        name="First",
+        sort_position=1000,
+    )
+
+    second = create_section_list(
+        db,
+        section=section,
+        name="Second",
+        sort_position=2000,
+    )
+
+    SectionListService.reorder_lists(
+        db,
+        actor=creator,
+        section=section,
+        reorder_request=SectionListReorderRequest(
+            items=[
+                SectionListPositionUpdate(
+                    list_id=first.id,
+                    sort_position=3000,
+                ),
+                SectionListPositionUpdate(
+                    list_id=second.id,
+                    sort_position=2000,
+                ),
+            ],
+        ),
+        commit=False,
+    )
+
+    audit_logs = AuditRepository.list_logs(
+        db,
+        action=AuditAction.LIST_UPDATED.value,
+    )
+
+    matching = [
+        log
+        for log in audit_logs
+        if (
+            log.entity_type == "section"
+            and log.entity_id == section.id
+        )
+    ]
+
+    assert len(matching) == 1
+
+    metadata = matching[0].metadata_json
+
+    assert metadata["company_id"] == company.id
+    assert metadata["section_id"] == section.id
+
+    assert metadata["list_positions"] == {
+        str(first.id): {
+            "previous_sort_position": 1000,
+            "sort_position": 3000,
+        },
+    }

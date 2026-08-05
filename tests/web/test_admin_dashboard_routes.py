@@ -458,3 +458,147 @@ def test_admin_dashboard_renders_empty_activity_state(
         "No audit activity has been recorded yet."
         in response.text
     )
+
+def test_admin_dashboard_user_management_link_is_accessible(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        "/admin",
+    )
+
+    assert response.status_code == 200
+    assert "/admin/users" in response.text
+    assert "Users" in response.text
+
+
+def test_admin_user_list_contains_create_user_action(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        "/admin/users",
+    )
+
+    assert response.status_code == 200
+    assert "Create User" in response.text
+
+    assert (
+        'href="http://testserver/admin/users/create"'
+        in response.text
+    )
+
+
+def test_admin_user_list_contains_edit_action(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    target_user = create_user(
+        db,
+        username="dashboard-edit-user",
+        display_name="Dashboard Edit User",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        "/admin/users",
+    )
+
+    assert response.status_code == 200
+    assert "Dashboard Edit User" in response.text
+
+    assert (
+        f'href="http://testserver/admin/users/'
+        f'{target_user.id}/edit"'
+        in response.text
+    )
+
+
+def test_admin_user_list_retains_lifecycle_actions(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+
+    active_user = create_user(
+        db,
+        username="dashboard-active-user",
+        is_active=True,
+    )
+
+    inactive_user = create_user(
+        db,
+        username="dashboard-inactive-user",
+        is_active=False,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        "/admin/users",
+    )
+
+    assert response.status_code == 200
+
+    assert (
+        f"/admin/users/{active_user.id}/reset-password"
+        in response.text
+    )
+
+    assert (
+        f"/admin/users/{active_user.id}/deactivate"
+        in response.text
+    )
+
+    assert (
+        f"/admin/users/{inactive_user.id}/activate"
+        in response.text
+    )
+
+    assert (
+        f"/admin/users/{inactive_user.id}/anonymise"
+        in response.text
+    )

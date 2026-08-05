@@ -1,27 +1,25 @@
 {% extends "base.html" %}
 
 {% block title %}
-Manage Members — {{ company.name }}
+Company Members — {{ company.name }}
 {% endblock %}
 
 {% block content %}
 
-<div class="admin-page company-membership-page">
+<div class="company-page company-membership-page">
 
     <header class="page-header">
 
         <div>
 
             <p class="page-eyebrow">
-                Administration
-                &middot;
-                Companies
+                {{ company.name }}
                 &middot;
                 Members
             </p>
 
             <h1>
-                {{ company.name }}
+                Manage Company Members
             </h1>
 
             <p class="page-subtitle">
@@ -35,7 +33,7 @@ Manage Members — {{ company.name }}
 
             <a
                 href="{{ url_for(
-                    'admin_company_detail',
+                    'company_detail',
                     company_id=company.id
                 ) }}"
                 class="btn btn-secondary"
@@ -50,11 +48,11 @@ Manage Members — {{ company.name }}
     <div class="membership-layout">
 
         {% set membership_role_update_route_name =
-            "admin_company_member_role_update"
+            "company_member_role_update"
         %}
 
         {% set membership_remove_route_name =
-            "admin_company_member_remove"
+            "company_member_remove"
         %}
 
         {% include
@@ -62,7 +60,7 @@ Manage Members — {{ company.name }}
         %}
 
         {% set membership_add_route_name =
-            "admin_company_member_add"
+            "company_member_add"
         %}
 
         {% include

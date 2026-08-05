@@ -4,7 +4,8 @@
     data-list-id="{{ section_list.id }}"
     data-sort-position="{{ section_list.sort_position }}"
     {% if task_board_drag_enabled and can_manage_section %}
-    draggable="true"
+    data-task-list
+    data-list-id="..."
     {% endif %}
     aria-labelledby="task-list-{{ section_list.id }}-heading"
 >
@@ -85,6 +86,7 @@
 
     <div
         class="task-list-items"
+        data-task-list-container
         data-task-list-items
         data-list-id="{{ section_list.id }}"
     >
