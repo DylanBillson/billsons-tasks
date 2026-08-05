@@ -5,44 +5,112 @@ document.addEventListener(
     },
 );
 
+
 function initialiseTaskFilters() {
-    const form = document.querySelector(
-        "[data-task-filters]",
-    );
-
-    if (!form) {
-        return;
-    }
-
-    form
+    document
         .querySelectorAll(
-            "select,input[type='search'],input[type='checkbox']",
+            "[data-task-filter-panel]",
         )
         .forEach(
-            (field) => {
-                field.addEventListener(
-                    "change",
-                    () => {
-                        form.submit();
-                    },
+            (panel) => {
+                initialiseTaskFilterPanel(
+                    panel,
                 );
             },
         );
 
-    const resetButton =
-        form.querySelector(
-            "[data-reset-filters]",
+    document
+        .querySelectorAll(
+            "[data-task-filters]",
+        )
+        .forEach(
+            (form) => {
+                initialiseTaskFilterForm(
+                    form,
+                );
+            },
         );
+}
 
-    if (!resetButton) {
+
+function initialiseTaskFilterPanel(panel) {
+    if (!(panel instanceof HTMLDetailsElement)) {
         return;
     }
 
-    resetButton.addEventListener(
-        "click",
+    panel.addEventListener(
+        "toggle",
         () => {
-            form.reset();
-            form.submit();
+            panel.dataset.expanded = (
+                panel.open
+                    ? "true"
+                    : "false"
+            );
         },
     );
+
+    panel.dataset.expanded = (
+        panel.open
+            ? "true"
+            : "false"
+    );
+}
+
+
+function initialiseTaskFilterForm(form) {
+    if (!(form instanceof HTMLFormElement)) {
+        return;
+    }
+
+    const resetButton = form.querySelector(
+        "[data-reset-filters]",
+    );
+
+    if (resetButton instanceof HTMLElement) {
+        resetButton.addEventListener(
+            "click",
+            () => {
+                const clearUrl = (
+                    resetButton.dataset.clearUrl
+                );
+
+                if (clearUrl) {
+                    window.location.assign(
+                        clearUrl,
+                    );
+
+                    return;
+                }
+
+                form.reset();
+                form.requestSubmit();
+            },
+        );
+    }
+
+    form.addEventListener(
+        "submit",
+        () => {
+            normaliseTaskFilterValues(
+                form,
+            );
+        },
+    );
+}
+
+
+function normaliseTaskFilterValues(form) {
+    form
+        .querySelectorAll(
+            "input[type='search'], input[type='text']",
+        )
+        .forEach(
+            (field) => {
+                if (!(field instanceof HTMLInputElement)) {
+                    return;
+                }
+
+                field.value = field.value.trim();
+            },
+        );
 }

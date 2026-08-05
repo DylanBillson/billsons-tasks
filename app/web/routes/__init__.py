@@ -28,6 +28,9 @@ from app.web.routes.comments import (
 from app.web.routes.companies import (
     router as companies_router,
 )
+from app.web.routes.feedback import (
+    router as feedback_router,
+)
 from app.web.routes.home import (
     router as home_router,
 )
@@ -56,6 +59,7 @@ __all__ = [
     "auth_router",
     "comments_router",
     "companies_router",
+    "feedback_router",
     "home_router",
     "my_tasks_router",
     "section_lists_router",

@@ -307,3 +307,30 @@ def test_comment_mutation_requires_csrf(
     )
 
     assert response.status_code == 403
+
+
+def test_task_detail_renders_comment_as_compact_bubble(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime
+    _, member, task = _create_context(db)
+    comment = create_task_comment(
+        db,
+        task=task,
+        user=member,
+        body="Rendered inside a compact comment bubble.",
+    )
+    comment.created_at = datetime(2026, 8, 3, 18, 55, tzinfo=UTC)
+    db.add(comment)
+    db.commit()
+    _authenticate(client, db, user=member)
+    response = client.get(f"/tasks/{task.id}")
+    assert response.status_code == 200
+    assert "task-comment-content" in response.text
+    assert "task-comment-message" in response.text
+    assert "task-comment-meta" in response.text
+    assert f"{member.display_name}:" in response.text
+    assert "Rendered inside a compact comment bubble." in response.text
+    assert "19:55 03/08/26" in response.text
+    assert "task-comment-delete" in response.text

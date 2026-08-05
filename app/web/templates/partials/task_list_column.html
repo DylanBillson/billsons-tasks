@@ -3,10 +3,7 @@
     data-task-list
     data-list-id="{{ section_list.id }}"
     data-sort-position="{{ section_list.sort_position }}"
-    {% if (
-        task_board_drag_enabled
-        and can_manage_section
-    ) %}
+    {% if task_board_drag_enabled and can_manage_section %}
     draggable="true"
     {% endif %}
     aria-labelledby="task-list-{{ section_list.id }}-heading"
@@ -16,27 +13,23 @@
 
         <div class="task-list-heading">
 
-            {% if (
-                task_board_drag_enabled
-                and can_manage_section
-            ) %}
+            {% if task_board_drag_enabled and can_manage_section %}
 
-            <span
+            <button
+                type="button"
                 class="task-list-drag-handle"
                 data-list-drag-handle
-                role="button"
-                tabindex="0"
                 aria-label="Drag {{ section_list.name }} to reorder"
                 title="Drag to reorder list"
             >
                 <span aria-hidden="true">
                     ⋮⋮
                 </span>
-            </span>
+            </button>
 
             {% endif %}
 
-            <div>
+            <div class="task-list-heading-content">
 
                 <h3 id="task-list-{{ section_list.id }}-heading">
                     {{ section_list.name }}
@@ -98,7 +91,7 @@
 
         {% for task in list_tasks %}
 
-            {% include "partials/task_card.html" %}
+        {% include "partials/task_card.html" %}
 
         {% else %}
 
@@ -108,11 +101,17 @@
         >
 
             <p>
+
                 {% if task_filter_form.is_active %}
+
                 No tasks match the current filters.
+
                 {% else %}
+
                 No tasks in this list.
+
                 {% endif %}
+
             </p>
 
             {% if (

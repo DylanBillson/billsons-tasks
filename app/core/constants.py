@@ -45,6 +45,7 @@ class AuditAction(StrEnum):
     USER_DEACTIVATED = "user_deactivated"
     USER_REACTIVATED = "user_reactivated"
     USER_ANONYMISED = "user_anonymised"
+    FEEDBACK_SUBMITTED = "feedback_submitted"
     PASSWORD_RESET = "password_reset"
 
     COMPANY_CREATED = "company_created"

@@ -440,3 +440,92 @@ def test_invalid_filter_returns_validation_response(
 
     assert response.status_code == 422
     assert "Check the selected filters" in response.text
+
+
+def test_active_filters_render_active_badge_and_clear_link(
+    client: TestClient,
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+    )
+
+    creator = create_user(
+        db,
+    )
+
+    _create_assigned_task(
+        db,
+        user=user,
+        creator=creator,
+        company_name="Active Filter Company",
+        section_name="Active Filter Section",
+        title="Active Filter Task",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=user,
+    )
+
+    response = client.get(
+        "/my-tasks?state=all&search=Active",
+    )
+
+    assert response.status_code == 200
+    assert "status-badge status-badge-primary" in response.text
+    assert "Active" in response.text
+    assert "Clear Filters" in response.text
+
+
+def test_filter_form_preserves_selected_values(
+    client: TestClient,
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+    )
+
+    creator = create_user(
+        db,
+    )
+
+    company, section, _ = _create_assigned_task(
+        db,
+        user=user,
+        creator=creator,
+        company_name="Preserved Filter Company",
+        section_name="Preserved Filter Section",
+        title="Preserved Filter Task",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=user,
+    )
+
+    response = client.get(
+        (
+            "/my-tasks"
+            f"?state=all&company_id={company.id}"
+            f"&section_id={section.id}"
+            "&search=Preserved"
+        ),
+    )
+
+    assert response.status_code == 200
+    assert (
+        f'value="{company.id}" selected'
+        in response.text
+    )
+    assert (
+        f'value="{section.id}"'
+        in response.text
+    )
+    assert 'value="Preserved"' in response.text

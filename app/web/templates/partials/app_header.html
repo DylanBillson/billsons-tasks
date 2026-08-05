@@ -2,24 +2,35 @@
 
     <div class="app-header-inner">
 
-        <a
-            href="{% if current_user is defined and current_user %}{{ url_for('home') }}{% else %}{{ url_for('login') }}{% endif %}"
-            class="app-brand"
-            aria-label="{{ settings.application_name }} home"
-        >
+        <div class="app-brand-group">
+
+            <a
+                href="{% if current_user is defined and current_user %}{{ url_for('home') }}{% else %}{{ url_for('login') }}{% endif %}"
+                class="app-brand"
+                aria-label="{{ settings.app_name }} home"
+            >
+
+                <span
+                    class="app-brand-mark"
+                    aria-hidden="true"
+                >
+                    Billson's Tasks
+                </span>
+
+                <span class="app-brand-text">
+                    {{ settings.app_name }}
+                </span>
+
+            </a>
 
             <span
-                class="app-brand-mark"
-                aria-hidden="true"
+                class="app-version"
+                aria-label="Application version {{ app_version }}"
             >
-                Billson's Tasks
+                v{{ app_version }}
             </span>
 
-            <span class="app-brand-text">
-                {{ settings.application_name }}
-            </span>
-
-        </a>
+        </div>
 
         {% if current_user is defined and current_user %}
 
@@ -51,30 +62,118 @@
 
             </div>
 
-            {% if csrf_token is defined and csrf_token %}
+            <div class="app-header-actions">
 
-            <form
-                method="post"
-                action="{{ url_for('logout') }}"
-                class="app-logout-form"
-            >
-
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token }}"
-                >
+                {% if csrf_token is defined and csrf_token %}
 
                 <button
-                    type="submit"
+                    type="button"
                     class="btn btn-secondary btn-small"
+                    data-feedback-open
+                    aria-haspopup="dialog"
+                    aria-controls="feedback-modal"
                 >
-                    Sign Out
+                    Feedback
                 </button>
 
-            </form>
+                {% endif %}
 
-            {% endif %}
+                {% if current_user.is_administrator %}
+
+                <details class="app-admin-menu">
+
+                    <summary
+                        class="btn btn-secondary btn-small app-admin-menu-toggle"
+                    >
+                        Administration
+                    </summary>
+
+                    <nav
+                        class="app-admin-menu-panel"
+                        aria-label="Administration"
+                    >
+
+                        <a
+                            href="{{ url_for('admin_dashboard') }}"
+                            class="app-admin-menu-link{% if request.url.path == '/admin' %} is-active{% endif %}"
+                        >
+                            Overview
+                        </a>
+
+                        <a
+                            href="{{ url_for('admin_users') }}"
+                            class="app-admin-menu-link{% if request.url.path.startswith('/admin/users') %} is-active{% endif %}"
+                        >
+                            Users
+                        </a>
+
+                        <a
+                            href="{{ url_for('admin_companies') }}"
+                            class="app-admin-menu-link{% if request.url.path.startswith('/admin/companies') %} is-active{% endif %}"
+                        >
+                            Companies
+                        </a>
+
+                        <a
+                            href="{{ url_for('admin_archived_companies') }}"
+                            class="app-admin-menu-link{% if request.url.path.startswith('/admin/archived-companies') %} is-active{% endif %}"
+                        >
+                            Archived Companies
+                        </a>
+
+                        <a
+                            href="{{ url_for('admin_archived_sections') }}"
+                            class="app-admin-menu-link{% if request.url.path.startswith('/admin/archived-sections') %} is-active{% endif %}"
+                        >
+                            Archived Sections
+                        </a>
+
+                        <a
+                            href="{{ url_for('admin_deleted_tasks') }}"
+                            class="app-admin-menu-link{% if request.url.path.startswith('/admin/deleted-tasks') %} is-active{% endif %}"
+                        >
+                            Deleted Tasks
+                        </a>
+
+                        <a
+                            href="{{ url_for('admin_audit') }}"
+                            class="app-admin-menu-link{% if request.url.path.startswith('/admin/audit') %} is-active{% endif %}"
+                        >
+                            Audit Log
+                        </a>
+
+                    </nav>
+
+                </details>
+
+                {% endif %}
+
+                {% if csrf_token is defined and csrf_token %}
+
+                <form
+                    method="post"
+                    action="{{ url_for('logout') }}"
+                    class="app-logout-form"
+                >
+
+                    <input
+                        type="hidden"
+                        name="csrf_token"
+                        value="{{ csrf_token }}"
+                    >
+
+                    <button
+                        type="submit"
+                        class="btn btn-secondary btn-small"
+                    >
+                        Sign Out
+                    </button>
+
+                </form>
+
+                {% endif %}
+
+            </div>
 
         </div>
 

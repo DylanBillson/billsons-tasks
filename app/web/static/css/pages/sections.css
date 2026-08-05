@@ -5,6 +5,7 @@
  * - Section cards
  * - Section create and edit pages
  * - Section detail pages
+ * - Section summary
  * - Section membership management
  */
 
@@ -109,7 +110,10 @@
  * ------------------------------------------------------------------------- */
 
 .app-page > .admin-card {
-    width: min(100%, var(--content-width-narrow));
+    width: min(
+        100%,
+        var(--content-width-narrow)
+    );
     margin-inline: auto;
 }
 
@@ -126,6 +130,10 @@
 /* -------------------------------------------------------------------------
  * Section detail
  * ------------------------------------------------------------------------- */
+
+.section-detail-page {
+    gap: var(--space-6);
+}
 
 .section-detail-summary {
     display: grid;
@@ -154,6 +162,75 @@
 .section-detail-meta-label {
     color: var(--color-text);
     font-weight: var(--font-weight-semibold);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Lists and tasks
+ * ------------------------------------------------------------------------- */
+
+.task-board-section {
+    min-width: 0;
+    overflow: hidden;
+}
+
+.task-board-section > .card-header {
+    margin-bottom: var(--space-4);
+}
+
+.task-board-notice {
+    margin: var(--space-4) 0 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Full-width summary
+ * ------------------------------------------------------------------------- */
+
+.section-summary-card {
+    width: 100%;
+}
+
+.section-summary-list {
+    display: grid;
+    grid-template-columns: repeat(
+        auto-fit,
+        minmax(min(100%, 14rem), 1fr)
+    );
+    gap: var(--space-3);
+}
+
+.section-summary-list .detail-list-item {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-start;
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border-subtle);
+    border-radius: var(--radius-md);
+    background: var(--color-background-secondary);
+    gap: var(--space-2);
+}
+
+.section-summary-list dt {
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.section-summary-list dd {
+    min-width: 0;
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
 }
 
 
@@ -204,20 +281,6 @@
 
 
 /* -------------------------------------------------------------------------
- * Lists and tasks placeholder
- * ------------------------------------------------------------------------- */
-
-.section-content-placeholder {
-    display: grid;
-    gap: var(--space-4);
-}
-
-.section-content-placeholder .empty-state {
-    margin: 0;
-}
-
-
-/* -------------------------------------------------------------------------
  * Archived section treatment
  * ------------------------------------------------------------------------- */
 
@@ -261,6 +324,13 @@
         max-height: none;
         overflow: visible;
     }
+
+    .section-summary-list {
+        grid-template-columns: repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    }
 }
 
 @media (max-width: 36rem) {
@@ -272,5 +342,9 @@
         align-items: flex-start;
         flex-direction: column;
         gap: var(--space-2);
+    }
+
+    .section-summary-list {
+        grid-template-columns: minmax(0, 1fr);
     }
 }

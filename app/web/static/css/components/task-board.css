@@ -1,51 +1,245 @@
+/*
+ * Task board
+ *
+ * Covers:
+ * - Equal-width task lists
+ * - Horizontal overflow
+ * - List drag and drop
+ * - Task drop targets
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Board shell
+ * ------------------------------------------------------------------------- */
+
 .task-board {
-    display: flex;
-    gap: 1.5rem;
+    display: grid;
+    grid-auto-columns: minmax(
+        min(19rem, calc(100vw - (2 * var(--content-gutter)))),
+        1fr
+    );
+    grid-auto-flow: column;
+    align-items: stretch;
+    width: 100%;
+    min-width: 0;
+    padding: var(--space-2) var(--space-1) var(--space-4);
     overflow-x: auto;
-    padding-bottom: 0.5rem;
+    overflow-y: hidden;
+    gap: var(--space-4);
+    overscroll-behavior-inline: contain;
+    scroll-snap-type: inline proximity;
+    scrollbar-width: thin;
 }
 
-.task-board-column {
-    flex: 0 0 20rem;
+
+/* -------------------------------------------------------------------------
+ * List columns
+ * ------------------------------------------------------------------------- */
+
+.task-list-column {
     display: flex;
     flex-direction: column;
-    background: var(--colour-surface);
-    border: 1px solid var(--colour-border);
-    border-radius: var(--border-radius-large);
+    min-width: 0;
+    max-width: 100%;
+    min-height: 14rem;
     overflow: hidden;
+    border: 1px solid var(--color-border-strong);
+    border-radius: var(--radius-lg);
+    background: var(--color-background-secondary);
+    box-shadow: var(--shadow-sm);
+    scroll-snap-align: start;
+    transition:
+        border-color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        opacity var(--transition-fast),
+        transform var(--transition-fast);
 }
 
-.task-board-column-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    padding: 1rem 1.25rem;
-    border-bottom: 1px solid var(--colour-border);
+.task-list-column:hover {
+    border-color: var(--color-primary-border);
 }
 
-.task-board-column-title {
-    font-weight: 600;
-}
-
-.task-board-column-count {
-    font-size: 0.85rem;
-    color: var(--colour-text-muted);
-}
-
-.task-board-column-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem;
-    min-height: 8rem;
-}
-
-.task-board-column-empty {
-    color: var(--colour-text-muted);
-    text-align: center;
-    padding: 2rem 1rem;
-}
-
-.task-board.drag-active .task-board-column {
+.task-list-column.is-dragging {
+    opacity: 0.55;
     border-style: dashed;
+    transform: scale(0.985);
+}
+
+.task-list-header {
+    display: flex;
+    flex: 0 0 auto;
+    flex-direction: column;
+    padding: var(--space-4);
+    border-bottom: 1px solid var(--color-border);
+    background: var(--color-surface-muted);
+    gap: var(--space-4);
+}
+
+.task-list-heading {
+    display: flex;
+    align-items: flex-start;
+    min-width: 0;
+    gap: var(--space-3);
+}
+
+.task-list-heading-content {
+    flex: 1 1 auto;
+    min-width: 0;
+}
+
+.task-list-heading h3 {
+    margin: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-size: var(--font-size-base);
+}
+
+.task-list-description {
+    margin: var(--space-2) 0 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.45;
+}
+
+.task-list-count {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.75rem;
+    min-height: 1.75rem;
+    padding-inline: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-background);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+}
+
+.task-list-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: var(--space-2);
+}
+
+
+/* -------------------------------------------------------------------------
+ * List drag handle
+ * ------------------------------------------------------------------------- */
+
+.task-list-drag-handle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2rem;
+    height: 2rem;
+    padding: 0;
+    border: 1px solid transparent;
+    border-radius: var(--radius-md);
+    background: transparent;
+    color: var(--color-text-muted);
+    font: inherit;
+    line-height: 1;
+    cursor: grab;
+}
+
+.task-list-drag-handle:hover {
+    border-color: var(--color-border);
+    background: var(--color-background);
+    color: var(--color-text);
+}
+
+.task-list-drag-handle:active {
+    cursor: grabbing;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Task list body
+ * ------------------------------------------------------------------------- */
+
+.task-list-items {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    min-height: 10rem;
+    padding: var(--space-3);
+    gap: var(--space-3);
+    transition:
+        background-color var(--transition-fast),
+        box-shadow var(--transition-fast);
+}
+
+.task-list-items.is-task-drop-target {
+    background: var(--color-primary-muted);
+    box-shadow:
+        inset 0 0 0 2px
+        var(--color-primary-border);
+}
+
+.task-list-empty {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    min-height: 8rem;
+    margin: 0;
+    padding: var(--space-5);
+    border: 1px dashed var(--color-border);
+    border-radius: var(--radius-md);
+    background: transparent;
+    text-align: center;
+}
+
+.task-list-empty p {
+    margin: 0;
+    color: var(--color-text-muted);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Drag states
+ * ------------------------------------------------------------------------- */
+
+.task-board.is-dragging-task .task-list-items {
+    min-height: 12rem;
+}
+
+.task-board.is-dragging-list {
+    cursor: grabbing;
+}
+
+.task-board.is-dragging-list > .task-list-column:not(.is-dragging) {
+    border-style: dashed;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (min-width: 80rem) {
+    .task-board {
+        /*
+         * Lists share the available width evenly until doing so would make
+         * them narrower than a usable task column. Additional lists continue
+         * horizontally.
+         */
+        grid-auto-columns: minmax(20rem, 1fr);
+    }
+}
+
+@media (max-width: 48rem) {
+    .task-board {
+        grid-auto-columns: minmax(
+            min(18rem, calc(100vw - (3 * var(--space-4)))),
+            85vw
+        );
+    }
 }

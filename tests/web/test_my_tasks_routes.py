@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
@@ -365,3 +365,86 @@ def test_my_tasks_contains_task_navigation_link(
         f"/tasks/{task.id}"
         in response.text
     )
+
+
+def test_my_tasks_renders_compact_local_due_datetime(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        user,
+        creator,
+        _,
+        _,
+        section_list,
+    ) = _create_context(
+        db,
+    )
+
+    task = create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Compact Due Task",
+        due_at=datetime(
+            2026,
+            8,
+            7,
+            11,
+            0,
+            tzinfo=UTC,
+        ),
+    )
+
+    create_task_assignee(
+        db,
+        task=task,
+        user=user,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=user,
+    )
+
+    response = client.get(
+        "/my-tasks",
+    )
+
+    assert response.status_code == 200
+    assert "12:00 07/08/26" in response.text
+    assert (
+        'datetime="2026-08-07T11:00:00+00:00"'
+        in response.text
+    )
+
+
+def test_my_tasks_renders_summary_and_filter_regions(
+    client: TestClient,
+    db: Session,
+) -> None:
+    user = create_user(
+        db,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=user,
+    )
+
+    response = client.get(
+        "/my-tasks",
+    )
+
+    assert response.status_code == 200
+    assert 'class="my-task-overview"' in response.text
+    assert 'class="my-task-summary"' in response.text
+    assert "my-task-filter-card" in response.text
+    assert 'id="my-tasks-summary-heading"' in response.text
+    assert 'id="my-task-filters-heading"' in response.text

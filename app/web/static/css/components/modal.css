@@ -1,0 +1,224 @@
+/*
+ * Modal dialogs
+ *
+ * Covers:
+ * - Native dialog presentation
+ * - Feedback modal
+ * - Backdrop
+ * - Header, body, and actions
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Dialog shell
+ * ------------------------------------------------------------------------- */
+
+.modal {
+    width: min(
+        calc(100% - (2 * var(--content-gutter))),
+        42rem
+    );
+    max-width: 42rem;
+    max-height: min(90vh, 52rem);
+    margin: auto;
+    padding: 0;
+    overflow: visible;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: transparent;
+    color: var(--color-text);
+    box-shadow: var(--shadow-lg);
+}
+
+.modal::backdrop {
+    background: rgb(0 0 0 / 0.72);
+    backdrop-filter: blur(0.2rem);
+}
+
+.modal[open] {
+    animation: modal-enter 140ms ease-out;
+}
+
+.modal-panel {
+    display: flex;
+    flex-direction: column;
+    max-height: min(90vh, 52rem);
+    overflow: hidden;
+    border-radius: inherit;
+    background: var(--color-surface);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Modal header
+ * ------------------------------------------------------------------------- */
+
+.modal-header {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: flex-start;
+    justify-content: space-between;
+    padding: var(--space-6);
+    border-bottom: 1px solid var(--color-border-subtle);
+    gap: var(--space-4);
+}
+
+.modal-header h2 {
+    margin: 0;
+}
+
+.modal-header .page-eyebrow {
+    margin-bottom: var(--space-2);
+}
+
+.modal-close {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    padding: 0;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    font: inherit;
+    font-size: 1.5rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        border-color var(--transition-fast),
+        background-color var(--transition-fast),
+        color var(--transition-fast);
+}
+
+.modal-close:hover {
+    border-color: var(--color-primary-border);
+    background: var(--color-primary-muted);
+    color: var(--color-text);
+}
+
+.modal-close:focus-visible {
+    border-color: var(--color-primary);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Modal body
+ * ------------------------------------------------------------------------- */
+
+.modal-body {
+    flex: 1 1 auto;
+    min-height: 0;
+    padding: var(--space-6);
+    overflow-y: auto;
+}
+
+.modal-body > :first-child {
+    margin-top: 0;
+}
+
+.modal-body > :last-child {
+    margin-bottom: 0;
+}
+
+.feedback-form {
+    display: flex;
+    flex-direction: column;
+    margin-top: var(--space-5);
+    gap: var(--space-5);
+}
+
+.feedback-form textarea {
+    width: 100%;
+    min-height: 12rem;
+    resize: vertical;
+}
+
+.form-field-help {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    margin-top: var(--space-2);
+    gap: var(--space-4);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+}
+
+.feedback-character-count {
+    flex: 0 0 auto;
+    white-space: nowrap;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Actions
+ * ------------------------------------------------------------------------- */
+
+.modal-actions {
+    display: flex;
+    align-items: center;
+    justify-content: flex-end;
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+    gap: var(--space-3);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Animation
+ * ------------------------------------------------------------------------- */
+
+@keyframes modal-enter {
+    from {
+        opacity: 0;
+        transform: translateY(0.5rem) scale(0.985);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 36rem) {
+    .modal {
+        width: calc(100% - (2 * var(--space-3)));
+        max-height: calc(100vh - (2 * var(--space-3)));
+    }
+
+    .modal-panel {
+        max-height: calc(100vh - (2 * var(--space-3)));
+    }
+
+    .modal-header,
+    .modal-body {
+        padding: var(--space-4);
+    }
+
+    .form-field-help {
+        flex-direction: column;
+        gap: var(--space-2);
+    }
+
+    .modal-actions {
+        align-items: stretch;
+        flex-direction: column-reverse;
+    }
+
+    .modal-actions .btn {
+        width: 100%;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .modal[open] {
+        animation: none;
+    }
+}

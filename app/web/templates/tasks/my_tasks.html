@@ -47,137 +47,153 @@ My Tasks
     </div>
 
     <section
-        aria-labelledby="my-tasks-summary-heading"
+        class="my-task-overview"
+        aria-label="Task summary and filters"
     >
 
-        <div class="section-heading">
+        <div
+            class="my-task-summary"
+            aria-labelledby="my-tasks-summary-heading"
+        >
 
-            <div>
+            <div class="section-heading">
 
-                <h2 id="my-tasks-summary-heading">
-                    Summary
-                </h2>
+                <div>
 
-                <p class="section-subtitle">
-                    Counts include active tasks assigned to your account.
-                </p>
+                    <h2 id="my-tasks-summary-heading">
+                        Summary
+                    </h2>
+
+                    <p class="section-subtitle">
+                        Counts include active tasks assigned to your account.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="metric-grid my-task-metric-grid">
+
+                <article class="metric-card">
+
+                    <span class="metric-label">
+                        All
+                    </span>
+
+                    <strong class="metric-value">
+                        {{ metrics.all_count }}
+                    </strong>
+
+                </article>
+
+                <article class="metric-card">
+
+                    <span class="metric-label">
+                        Open
+                    </span>
+
+                    <strong class="metric-value">
+                        {{ metrics.open_count }}
+                    </strong>
+
+                </article>
+
+                <article
+                    class="metric-card{% if metrics.overdue_count %} metric-card-warning{% endif %}"
+                >
+
+                    <span class="metric-label">
+                        Overdue
+                    </span>
+
+                    <strong class="metric-value">
+                        {{ metrics.overdue_count }}
+                    </strong>
+
+                </article>
+
+                <article class="metric-card">
+
+                    <span class="metric-label">
+                        Due Today
+                    </span>
+
+                    <strong class="metric-value">
+                        {{ metrics.due_today_count }}
+                    </strong>
+
+                </article>
+
+                <article class="metric-card">
+
+                    <span class="metric-label">
+                        Due Soon
+                    </span>
+
+                    <strong class="metric-value">
+                        {{ metrics.due_soon_count }}
+                    </strong>
+
+                </article>
+
+                <article class="metric-card">
+
+                    <span class="metric-label">
+                        Completed
+                    </span>
+
+                    <strong class="metric-value">
+                        {{ metrics.completed_count }}
+                    </strong>
+
+                </article>
 
             </div>
 
         </div>
 
-        <div class="metric-grid">
+        <div
+            class="content-card my-task-filter-card"
+            aria-labelledby="my-task-filters-heading"
+        >
 
-            <article class="metric-card">
+            <div class="card-header">
 
-                <span class="metric-label">
-                    All
-                </span>
+                <div>
 
-                <strong class="metric-value">
-                    {{ metrics.all_count }}
-                </strong>
+                    <h2 id="my-task-filters-heading">
+                        Filters
+                    </h2>
 
-            </article>
+                    <p class="card-subtitle">
+                        Narrow the task list by status, location, or search
+                        text.
+                    </p>
 
-            <article class="metric-card">
+                </div>
 
-                <span class="metric-label">
-                    Open
-                </span>
+                {% if filter_form.is_active %}
 
-                <strong class="metric-value">
-                    {{ metrics.open_count }}
-                </strong>
+                <div class="card-actions">
 
-            </article>
+                    <span class="status-badge status-badge-primary">
+                        Active
+                    </span>
 
-            <article
-                class="
-                    metric-card
-                    {% if metrics.overdue_count %}
-                    metric-card-warning
-                    {% endif %}
-                "
-            >
+                </div>
 
-                <span class="metric-label">
-                    Overdue
-                </span>
+                {% endif %}
 
-                <strong class="metric-value">
-                    {{ metrics.overdue_count }}
-                </strong>
+            </div>
 
-            </article>
-
-            <article class="metric-card">
-
-                <span class="metric-label">
-                    Due Today
-                </span>
-
-                <strong class="metric-value">
-                    {{ metrics.due_today_count }}
-                </strong>
-
-            </article>
-
-            <article class="metric-card">
-
-                <span class="metric-label">
-                    Due Soon
-                </span>
-
-                <strong class="metric-value">
-                    {{ metrics.due_soon_count }}
-                </strong>
-
-            </article>
-
-            <article class="metric-card">
-
-                <span class="metric-label">
-                    Completed
-                </span>
-
-                <strong class="metric-value">
-                    {{ metrics.completed_count }}
-                </strong>
-
-            </article>
+            {% include "partials/my_task_filters.html" %}
 
         </div>
 
     </section>
 
     <section
-        class="content-card"
-        aria-labelledby="my-task-filters-heading"
-    >
-
-        <div class="card-header">
-
-            <div>
-
-                <h2 id="my-task-filters-heading">
-                    Filters
-                </h2>
-
-                <p class="card-subtitle">
-                    Narrow the task list by status, location, or search text.
-                </p>
-
-            </div>
-
-        </div>
-
-        {% include "partials/my_task_filters.html" %}
-
-    </section>
-
-    <section
-        class="content-card"
+        class="content-card my-task-results-card"
         aria-labelledby="my-task-results-heading"
     >
 

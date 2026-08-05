@@ -30,6 +30,7 @@ from app.web.routes import (
     auth_router,
     comments_router,
     companies_router,
+    feedback_router,
     home_router,
     my_tasks_router,
     section_lists_router,
@@ -41,7 +42,10 @@ from app.web.routes.health import router as health_router
 
 logging.basicConfig(
     level=settings.log_level.upper(),
-    format="%(asctime)s | %(levelname)s | %(name)s | %(message)s",
+    format=(
+        "%(asctime)s | %(levelname)s | "
+        "%(name)s | %(message)s"
+    ),
 )
 
 logger = logging.getLogger(
@@ -194,6 +198,10 @@ app.include_router(
 
 app.include_router(
     my_tasks_router,
+)
+
+app.include_router(
+    feedback_router,
 )
 
 app.include_router(

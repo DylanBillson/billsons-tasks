@@ -1,18 +1,10 @@
 <article
-    class="
-        task-card
-        {% if task.is_completed %}is-completed{% endif %}
-        {% if task.is_overdue %}is-overdue{% endif %}
-        {% if task.is_deleted %}is-deleted{% endif %}
-    "
+    class="task-card{% if task.is_completed %} is-completed{% endif %}{% if task.is_overdue %} is-overdue{% endif %}{% if task.is_deleted %} is-deleted{% endif %}"
     data-task-card
     data-task-id="{{ task.id }}"
     data-list-id="{{ task.section_list_id }}"
     data-sort-position="{{ task.sort_position }}"
-    {% if (
-        task_board_drag_enabled
-        and not task.is_deleted
-    ) %}
+    {% if task_board_drag_enabled and not task.is_deleted %}
     draggable="true"
     {% endif %}
 >
@@ -21,10 +13,7 @@
 
         <div class="task-card-heading">
 
-            {% if (
-                task_board_drag_enabled
-                and not task.is_deleted
-            ) %}
+            {% if task_board_drag_enabled and not task.is_deleted %}
 
             <span
                 class="task-card-drag-handle"
@@ -108,14 +97,12 @@
 
         {% if task.due_at %}
 
-        <span
-            class="
-                task-card-due-date
-                {% if task.is_overdue %}text-danger{% endif %}
-            "
+        <time
+            class="task-card-due-date{% if task.is_overdue %} text-danger{% endif %}"
+            datetime="{{ task.due_at.isoformat() }}"
         >
-            Due {{ task.due_at }}
-        </span>
+            Due {{ task.due_at | format_compact_datetime }}
+        </time>
 
         {% else %}
 

@@ -1,5 +1,5 @@
 <section
-    class="content-card"
+    class="content-card task-comments-card"
     aria-labelledby="task-comments-heading"
 >
 
@@ -19,7 +19,10 @@
 
         <div class="card-actions">
 
-            <span class="status-badge status-badge-muted">
+            <span
+                class="status-badge status-badge-muted"
+                aria-label="{{ comments | length }} comments"
+            >
                 {{ comments | length }}
             </span>
 
@@ -81,91 +84,95 @@
         {% for comment in comments %}
 
         <article
-            class="
-                task-comment
-                {% if comment.is_deleted %}is-deleted{% endif %}
-            "
+            class="task-comment{% if comment.is_deleted %} is-deleted{% endif %}"
         >
 
-            <header class="task-comment-header">
+            <div class="task-comment-content">
 
-                <div>
+                <div class="task-comment-message">
 
                     <span class="task-comment-author">
 
                         {% if comment.user %}
 
-                        {{ comment.user.display_name }}
+                        {{ comment.user.display_name }}:
 
                         {% else %}
 
-                        Removed User
+                        Removed User:
 
                         {% endif %}
 
                     </span>
 
-                    <time class="task-comment-date">
-                        {{ comment.created_at }}
-                    </time>
+                    {% if comment.is_deleted %}
+
+                    <span class="task-comment-body text-muted">
+                        This comment was deleted.
+                    </span>
+
+                    {% else %}
+
+                    <span class="task-comment-body">
+                        {{ comment.body }}
+                    </span>
+
+                    {% endif %}
 
                 </div>
 
-                {% if (
-                    not comment.is_deleted
-                    and not task.is_deleted
-                    and (
-                        current_user.is_administrator
-                        or current_user.id == comment.user_id
-                        or current_user.id == section.created_by_user_id
-                    )
-                ) %}
+                <div class="task-comment-meta">
 
-                <form
-                    method="post"
-                    action="{{ url_for(
-                        'task_comment_delete',
-                        task_id=task.id,
-                        comment_id=comment.id
-                    ) }}"
-                    class="inline-form"
-                    data-confirm="Delete this comment?"
-                >
+                    <time
+                        class="task-comment-date"
+                        datetime="{{ comment.created_at.isoformat() }}"
+                    >
+                        {{ comment.created_at | format_compact_datetime }}
+                    </time>
 
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token }}"
+                    {% if (
+                        not comment.is_deleted
+                        and not task.is_deleted
+                        and (
+                            current_user.is_administrator
+                            or current_user.id == comment.user_id
+                            or current_user.id == section.created_by_user_id
+                        )
+                    ) %}
+
+                    <span aria-hidden="true">
+                        &middot;
+                    </span>
+
+                    <form
+                        method="post"
+                        action="{{ url_for(
+                            'task_comment_delete',
+                            task_id=task.id,
+                            comment_id=comment.id
+                        ) }}"
+                        class="inline-form task-comment-delete-form"
+                        data-confirm="Delete this comment?"
                     >
 
-                    <button
-                        type="submit"
-                        class="btn btn-danger btn-small"
-                    >
-                        Delete
-                    </button>
+                        <input
+                            type="hidden"
+                            name="csrf_token"
+                            value="{{ csrf_token }}"
+                        >
 
-                </form>
+                        <button
+                            type="submit"
+                            class="task-comment-delete"
+                        >
+                            Delete
+                        </button>
 
-                {% endif %}
+                    </form>
 
-            </header>
+                    {% endif %}
 
-            <div class="task-comment-body">
-
-                {% if comment.is_deleted %}
-
-                <p class="text-muted">
-                    This comment was deleted.
-                </p>
-
-                {% else %}
-
-                <p>
-                    {{ comment.body }}
-                </p>
-
-                {% endif %}
+                </div>
 
             </div>
 

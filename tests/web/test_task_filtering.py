@@ -358,3 +358,133 @@ def test_foreign_list_filter_does_not_expose_tasks(
 
     assert response.status_code == 200
     assert "Foreign Filter Task" not in response.text
+
+
+
+def test_task_filters_are_collapsed_when_inactive(
+    client: TestClient,
+    db: Session,
+) -> None:
+    creator, section, _, _ = _create_context(
+        db,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+
+    panel_start = response.text.index(
+        'class="task-filter-panel"',
+    )
+    panel_end = response.text.index(
+        ">",
+        panel_start,
+    )
+    opening_tag = response.text[
+        panel_start:panel_end
+    ]
+
+    assert "open" not in opening_tag
+    assert "Filter Tasks" in response.text
+
+
+def test_task_filters_open_when_active(
+    client: TestClient,
+    db: Session,
+) -> None:
+    creator, section, section_list, _ = (
+        _create_context(
+            db,
+        )
+    )
+
+    create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Matching Active Filter",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+        params={
+            "search": "Matching",
+        },
+    )
+
+    assert response.status_code == 200
+
+    panel_start = response.text.index(
+        'class="task-filter-panel"',
+    )
+    panel_end = response.text.index(
+        ">",
+        panel_start,
+    )
+    opening_tag = response.text[
+        panel_start:panel_end
+    ]
+
+    assert "open" in opening_tag
+    assert "Filters are currently applied." in response.text
+    assert "Matching Active Filter" in response.text
+
+
+def test_active_task_filters_disable_board_dragging(
+    client: TestClient,
+    db: Session,
+) -> None:
+    creator, section, section_list, _ = (
+        _create_context(
+            db,
+        )
+    )
+
+    create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Filtered Drag Task",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+        params={
+            "state": "open",
+        },
+    )
+
+    assert response.status_code == 200
+    assert 'data-drag-enabled="false"' in response.text
+    assert 'data-list-drag-enabled="false"' in response.text
+    assert (
+        "Drag and drop is disabled while task filters are active."
+        in response.text
+    )
+

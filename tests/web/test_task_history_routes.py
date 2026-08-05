@@ -238,3 +238,24 @@ def test_assigned_member_can_view_task_history(
 
     assert response.status_code == 200
     assert "created this task" in response.text
+
+
+def test_task_history_uses_timeline_markup(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, _, task = _create_context(db)
+    TaskHistoryService.record_created(
+        db,
+        task=task,
+        actor=creator,
+        commit=False,
+    )
+    db.commit()
+    _authenticate(client, db, user=creator)
+    response = client.get(f"/tasks/{task.id}")
+    assert response.status_code == 200
+    assert 'class="task-history"' in response.text
+    assert "task-history-event" in response.text
+    assert "task-history-marker" in response.text
+    assert "task-history-content" in response.text

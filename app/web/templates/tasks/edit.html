@@ -185,7 +185,7 @@ Edit {{ task.title }}
                     <textarea
                         id="description"
                         name="description"
-                        rows="8"
+                        rows="9"
                         maxlength="10000"
                         {% if form.errors.for_field("description") %}
                         class="is-invalid"
@@ -193,6 +193,11 @@ Edit {{ task.title }}
                         aria-describedby="description-errors"
                         {% endif %}
                     >{{ form.description }}</textarea>
+
+                    <p class="form-help">
+                        Include any instructions, background or completion
+                        requirements.
+                    </p>
 
                     {% if form.errors.for_field("description") %}
 
@@ -369,7 +374,11 @@ Edit {{ task.title }}
                     </dt>
 
                     <dd>
-                        {{ task.created_at }}
+
+                        <time datetime="{{ task.created_at.isoformat() }}">
+                            {{ task.created_at | format_compact_datetime }}
+                        </time>
+
                     </dd>
 
                 </div>
@@ -381,7 +390,11 @@ Edit {{ task.title }}
                     </dt>
 
                     <dd>
-                        {{ task.updated_at }}
+
+                        <time datetime="{{ task.updated_at.isoformat() }}">
+                            {{ task.updated_at | format_compact_datetime }}
+                        </time>
+
                     </dd>
 
                 </div>

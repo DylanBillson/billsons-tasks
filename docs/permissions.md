@@ -1177,12 +1177,11 @@ Companies
 My Tasks
 
 Administration
-
-Audit Log
-
-Users
-
-Archives
+    Users
+    Audit Log
+    Archived Companies
+    Archived Sections
+    Deleted Tasks
 ```
 
 Hidden navigation items do not provide security.
@@ -1600,3 +1599,17 @@ By combining a minimal global role model with explicit organisational
 membership and centralised permission services, Billson's Tasks provides a
 permission system that is straightforward to reason about, resilient against
 client-side manipulation, and scalable as additional features are introduced.
+
+# Feedback
+
+Authenticated users may submit application feedback.
+
+Feedback is available from every authenticated page.
+
+Feedback:
+
+• is emailed
+• is not stored in the database
+• records an audit event
+• cannot be submitted anonymously
+• uses CSRF protection

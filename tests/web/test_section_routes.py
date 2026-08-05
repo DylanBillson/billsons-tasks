@@ -454,3 +454,163 @@ def test_section_mutations_require_csrf(
     )
 
     assert response.status_code == 403
+
+
+
+def test_section_detail_places_lists_before_summary(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from tests.factories import (
+        create_section_list,
+        create_task,
+    )
+
+    creator = create_user(
+        db,
+    )
+    company = create_company(
+        db,
+    )
+    section = create_section(
+        db,
+        company=company,
+        created_by=creator,
+        name="Board Before Summary",
+    )
+    section_list = create_section_list(
+        db,
+        section=section,
+        name="Visible List",
+    )
+    create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Visible Board Task",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+
+    board_heading_position = response.text.index(
+        'id="section-content-heading"',
+    )
+    summary_heading_position = response.text.index(
+        'id="section-summary-heading"',
+    )
+
+    assert board_heading_position < summary_heading_position
+    assert "Visible Board Task" in response.text
+
+
+def test_section_detail_does_not_render_assigned_members_card(
+    client: TestClient,
+    db: Session,
+) -> None:
+    creator = create_user(
+        db,
+    )
+    assigned = create_user(
+        db,
+    )
+    company = create_company(
+        db,
+    )
+    section = create_section(
+        db,
+        company=company,
+        created_by=creator,
+        name="No Members Card",
+    )
+
+    create_section_membership(
+        db,
+        section=section,
+        user=assigned,
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+    assert 'id="section-members-heading"' not in response.text
+    assert "Users explicitly assigned to this section." not in response.text
+    assert 'id="section-summary-heading"' in response.text
+    assert "Manage Members" in response.text
+
+
+def test_section_detail_summary_uses_compact_datetimes(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime
+
+    creator = create_user(
+        db,
+    )
+    company = create_company(
+        db,
+    )
+    section = create_section(
+        db,
+        company=company,
+        created_by=creator,
+    )
+
+    section.created_at = datetime(
+        2026,
+        8,
+        7,
+        11,
+        0,
+        tzinfo=UTC,
+    )
+    section.updated_at = datetime(
+        2026,
+        8,
+        7,
+        12,
+        30,
+        tzinfo=UTC,
+    )
+
+    db.add(
+        section,
+    )
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+    assert "12:00 07/08/26" in response.text
+    assert "13:30 07/08/26" in response.text
+

@@ -9,28 +9,54 @@ document.addEventListener(
 
 function initialiseTaskBoards() {
     document
-        .querySelectorAll("[data-task-board]")
+        .querySelectorAll(
+            "[data-task-board]",
+        )
         .forEach(
             (board) => {
-                initialiseTaskBoard(board);
+                initialiseTaskBoard(
+                    board,
+                );
             },
         );
 }
 
 
 function initialiseTaskBoard(board) {
+    if (!(board instanceof HTMLElement)) {
+        return;
+    }
+
     if (board.dataset.dragEnabled !== "true") {
         return;
     }
 
-    initialiseTaskDragging(board);
-    initialiseListDragging(board);
+    initialiseTaskDragging(
+        board,
+    );
+
+    if (
+        board.dataset.listDragEnabled
+        === "true"
+    ) {
+        initialiseListDragging(
+            board,
+        );
+    }
+
+    synchroniseTaskListEmptyStates(
+        board,
+    );
+
+    updateTaskListCounts(
+        board,
+    );
 }
 
 
 function initialiseTaskDragging(board) {
     let draggedCard = null;
-    let originalList = null;
+    let originalState = null;
     let requestInProgress = false;
 
     board
@@ -44,16 +70,37 @@ function initialiseTaskDragging(board) {
                     (event) => {
                         event.stopPropagation();
 
-                        if (requestInProgress) {
+                        if (
+                            requestInProgress
+                            || !isTaskDragStartAllowed(
+                                event,
+                                card,
+                            )
+                        ) {
+                            event.preventDefault();
+                            return;
+                        }
+
+                        const taskList = card.closest(
+                            "[data-task-list-items]",
+                        );
+
+                        if (!(taskList instanceof HTMLElement)) {
                             event.preventDefault();
                             return;
                         }
 
                         draggedCard = card;
 
-                        originalList = card.closest(
-                            "[data-task-list-items]",
-                        );
+                        originalState = {
+                            taskList,
+                            nextSibling:
+                                card.nextElementSibling,
+                            listId:
+                                card.dataset.listId,
+                            sortPosition:
+                                card.dataset.sortPosition,
+                        };
 
                         card.classList.add(
                             "is-dragging",
@@ -63,13 +110,15 @@ function initialiseTaskDragging(board) {
                             "is-dragging-task",
                         );
 
-                        event.dataTransfer.effectAllowed =
-                            "move";
+                        if (event.dataTransfer) {
+                            event.dataTransfer.effectAllowed =
+                                "move";
 
-                        event.dataTransfer.setData(
-                            "text/plain",
-                            card.dataset.taskId,
-                        );
+                            event.dataTransfer.setData(
+                                "text/plain",
+                                card.dataset.taskId || "",
+                            );
+                        }
                     },
                 );
 
@@ -99,7 +148,7 @@ function initialiseTaskDragging(board) {
                         );
 
                         draggedCard = null;
-                        originalList = null;
+                        originalState = null;
                     },
                 );
             },
@@ -135,11 +184,17 @@ function initialiseTaskDragging(board) {
 
                         event.preventDefault();
 
-                        event.dataTransfer.dropEffect =
-                            "move";
+                        if (event.dataTransfer) {
+                            event.dataTransfer.dropEffect =
+                                "move";
+                        }
 
                         taskList.classList.add(
                             "is-task-drop-target",
+                        );
+
+                        removeEmptyState(
+                            taskList,
                         );
 
                         const insertBefore =
@@ -148,10 +203,6 @@ function initialiseTaskDragging(board) {
                                 event.clientY,
                                 draggedCard,
                             );
-
-                        removeEmptyState(
-                            taskList,
-                        );
 
                         if (insertBefore) {
                             taskList.insertBefore(
@@ -187,7 +238,7 @@ function initialiseTaskDragging(board) {
                     "dragleave",
                     (event) => {
                         if (
-                            event.relatedTarget
+                            event.relatedTarget instanceof Node
                             && taskList.contains(
                                 event.relatedTarget,
                             )
@@ -242,33 +293,24 @@ function initialiseTaskDragging(board) {
                                 board,
                             );
 
-                            updateTaskListCounts(
-                                board,
+                            board.dispatchEvent(
+                                new CustomEvent(
+                                    "taskboard:tasks-reordered",
+                                ),
                             );
 
-                            synchroniseTaskListEmptyStates(
-                                board,
-                            );
                         } catch (error) {
                             console.error(
                                 "Unable to save task order.",
                                 error,
                             );
 
-                            if (
-                                originalList
-                                && draggedCard
-                            ) {
-                                removeEmptyState(
-                                    originalList,
-                                );
+                            restoreTaskPosition(
+                                draggedCard,
+                                originalState,
+                            );
 
-                                originalList.appendChild(
-                                    draggedCard,
-                                );
-                            }
-
-                            updateTaskListCounts(
+                            updateTaskSortPositionData(
                                 board,
                             );
 
@@ -276,12 +318,19 @@ function initialiseTaskDragging(board) {
                                 board,
                             );
 
-                            window.alert(
-                                "The task could not be moved. "
-                                + "The board will be reloaded.",
+                            updateTaskListCounts(
+                                board,
                             );
 
-                            window.location.reload();
+                            window.alert(
+                                error.message
+                                || (
+                                    "The task could not be moved. "
+                                    + "Its previous position has "
+                                    + "been restored."
+                                ),
+                            );
+
                         } finally {
                             requestInProgress = false;
                         }
@@ -292,31 +341,117 @@ function initialiseTaskDragging(board) {
 }
 
 
+function isTaskDragStartAllowed(
+    event,
+    card,
+) {
+    const target = event.target;
+
+    if (!(target instanceof Element)) {
+        return true;
+    }
+
+    if (
+        target.closest(
+            "a, button, input, select, textarea",
+        )
+    ) {
+        return false;
+    }
+
+    const handle = card.querySelector(
+        "[data-task-drag-handle]",
+    );
+
+    if (!handle) {
+        return true;
+    }
+
+    return (
+        target === handle
+        || handle.contains(
+            target,
+        )
+    );
+}
+
+
+function restoreTaskPosition(
+    card,
+    originalState,
+) {
+    if (
+        !(card instanceof HTMLElement)
+        || !originalState
+        || !(
+            originalState.taskList
+            instanceof HTMLElement
+        )
+    ) {
+        return;
+    }
+
+    removeEmptyState(
+        originalState.taskList,
+    );
+
+    if (
+        originalState.nextSibling
+        && originalState.nextSibling.parentElement
+            === originalState.taskList
+    ) {
+        originalState.taskList.insertBefore(
+            card,
+            originalState.nextSibling,
+        );
+    } else {
+        originalState.taskList.appendChild(
+            card,
+        );
+    }
+
+    card.dataset.listId = (
+        originalState.listId || ""
+    );
+
+    card.dataset.sortPosition = (
+        originalState.sortPosition || ""
+    );
+}
+
+
 function initialiseListDragging(board) {
     let draggedList = null;
+    let originalState = null;
     let requestInProgress = false;
 
     board
         .querySelectorAll(
-            "[data-task-list][draggable='true']",
+            ":scope > [data-task-list][draggable='true']",
         )
         .forEach(
             (list) => {
                 list.addEventListener(
                     "dragstart",
                     (event) => {
+                        const target = event.target;
+
                         if (
-                            event.target.closest(
+                            target instanceof Element
+                            && target.closest(
                                 "[data-task-card]",
                             )
                         ) {
                             return;
                         }
 
-                        const handle =
-                            event.target.closest(
-                                "[data-list-drag-handle]",
-                            );
+                        const handle = (
+                            target instanceof Element
+                                ? target.closest(
+                                    "[data-list-drag-handle]",
+                                )
+                                : null
+                        );
 
                         if (
                             !handle
@@ -328,6 +463,13 @@ function initialiseListDragging(board) {
 
                         draggedList = list;
 
+                        originalState = {
+                            nextSibling:
+                                list.nextElementSibling,
+                            sortPosition:
+                                list.dataset.sortPosition,
+                        };
+
                         list.classList.add(
                             "is-dragging",
                         );
@@ -336,27 +478,21 @@ function initialiseListDragging(board) {
                             "is-dragging-list",
                         );
 
-                        event.dataTransfer.effectAllowed =
-                            "move";
+                        if (event.dataTransfer) {
+                            event.dataTransfer.effectAllowed =
+                                "move";
 
-                        event.dataTransfer.setData(
-                            "text/plain",
-                            list.dataset.listId,
-                        );
+                            event.dataTransfer.setData(
+                                "text/plain",
+                                list.dataset.listId || "",
+                            );
+                        }
                     },
                 );
 
                 list.addEventListener(
                     "dragend",
-                    (event) => {
-                        if (
-                            event.target.closest(
-                                "[data-task-card]",
-                            )
-                        ) {
-                            return;
-                        }
-
+                    () => {
                         list.classList.remove(
                             "is-dragging",
                         );
@@ -366,6 +502,7 @@ function initialiseListDragging(board) {
                         );
 
                         draggedList = null;
+                        originalState = null;
                     },
                 );
             },
@@ -380,8 +517,10 @@ function initialiseListDragging(board) {
 
             event.preventDefault();
 
-            event.dataTransfer.dropEffect =
-                "move";
+            if (event.dataTransfer) {
+                event.dataTransfer.dropEffect =
+                    "move";
+            }
 
             const insertBefore =
                 getListInsertionPoint(
@@ -414,6 +553,7 @@ function initialiseListDragging(board) {
             }
 
             event.preventDefault();
+            event.stopPropagation();
 
             requestInProgress = true;
 
@@ -425,22 +565,74 @@ function initialiseListDragging(board) {
                 updateListSortPositionData(
                     board,
                 );
+
+                board.dispatchEvent(
+                    new CustomEvent(
+                        "taskboard:lists-reordered",
+                    ),
+                );
+
             } catch (error) {
                 console.error(
                     "Unable to save list order.",
                     error,
                 );
 
-                window.alert(
-                    "The list order could not be saved. "
-                    + "The board will be reloaded.",
+                restoreListPosition(
+                    board,
+                    draggedList,
+                    originalState,
                 );
 
-                window.location.reload();
+                updateListSortPositionData(
+                    board,
+                );
+
+                window.alert(
+                    error.message
+                    || (
+                        "The list order could not be saved. "
+                        + "Its previous position has been restored."
+                    ),
+                );
+
             } finally {
                 requestInProgress = false;
             }
         },
+    );
+}
+
+
+function restoreListPosition(
+    board,
+    list,
+    originalState,
+) {
+    if (
+        !(list instanceof HTMLElement)
+        || !originalState
+    ) {
+        return;
+    }
+
+    if (
+        originalState.nextSibling
+        && originalState.nextSibling.parentElement
+            === board
+    ) {
+        board.insertBefore(
+            list,
+            originalState.nextSibling,
+        );
+    } else {
+        board.appendChild(
+            list,
+        );
+    }
+
+    list.dataset.sortPosition = (
+        originalState.sortPosition || ""
     );
 }
 
@@ -452,7 +644,7 @@ function getTaskInsertionPoint(
 ) {
     const cards = [
         ...taskList.querySelectorAll(
-            "[data-task-card]:not(.is-dragging)",
+            ":scope > [data-task-card]:not(.is-dragging)",
         ),
     ];
 
@@ -470,10 +662,11 @@ function getTaskInsertionPoint(
             const rectangle =
                 card.getBoundingClientRect();
 
-            const offset =
+            const offset = (
                 pointerY
                 - rectangle.top
-                - rectangle.height / 2;
+                - rectangle.height / 2
+            );
 
             if (
                 offset < 0
@@ -498,8 +691,7 @@ function getListInsertionPoint(
 ) {
     const lists = [
         ...board.querySelectorAll(
-            ":scope > [data-task-list]"
-            + ":not(.is-dragging)",
+            ":scope > [data-task-list]:not(.is-dragging)",
         ),
     ];
 
@@ -517,10 +709,11 @@ function getListInsertionPoint(
             const rectangle =
                 list.getBoundingClientRect();
 
-            const offset =
+            const offset = (
                 pointerX
                 - rectangle.left
-                - rectangle.width / 2;
+                - rectangle.width / 2
+            );
 
             if (
                 offset < 0
@@ -558,7 +751,7 @@ async function persistTaskOrder(board) {
 
     board
         .querySelectorAll(
-            "[data-task-list]",
+            ":scope > [data-task-list]",
         )
         .forEach(
             (list) => {
@@ -573,15 +766,17 @@ async function persistTaskOrder(board) {
                     )
                     .forEach(
                         (card, index) => {
-                            items.push({
-                                task_id: Number(
-                                    card.dataset.taskId,
-                                ),
-                                section_list_id:
-                                    listId,
-                                sort_position:
-                                    (index + 1) * 1000,
-                            });
+                            items.push(
+                                {
+                                    task_id: Number(
+                                        card.dataset.taskId,
+                                    ),
+                                    section_list_id:
+                                        listId,
+                                    sort_position:
+                                        (index + 1) * 1000,
+                                },
+                            );
                         },
                     );
             },
@@ -593,16 +788,15 @@ async function persistTaskOrder(board) {
             method: "POST",
             credentials: "same-origin",
             headers: {
-                "Accept":
-                    "application/json",
-                "Content-Type":
-                    "application/json",
-                "X-CSRF-Token":
-                    csrfToken,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken,
             },
-            body: JSON.stringify({
-                items,
-            }),
+            body: JSON.stringify(
+                {
+                    items,
+                },
+            ),
         },
     );
 
@@ -648,16 +842,15 @@ async function persistListOrder(board) {
             method: "POST",
             credentials: "same-origin",
             headers: {
-                "Accept":
-                    "application/json",
-                "Content-Type":
-                    "application/json",
-                "X-CSRF-Token":
-                    csrfToken,
+                "Accept": "application/json",
+                "Content-Type": "application/json",
+                "X-CSRF-Token": csrfToken,
             },
-            body: JSON.stringify({
-                items,
-            }),
+            body: JSON.stringify(
+                {
+                    items,
+                },
+            ),
         },
     );
 
@@ -671,15 +864,16 @@ function updateTaskCardListData(
     card,
     taskList,
 ) {
-    card.dataset.listId =
-        taskList.dataset.listId;
+    card.dataset.listId = (
+        taskList.dataset.listId || ""
+    );
 }
 
 
 function updateTaskSortPositionData(board) {
     board
         .querySelectorAll(
-            "[data-task-list]",
+            ":scope > [data-task-list]",
         )
         .forEach(
             (list) => {
@@ -696,8 +890,9 @@ function updateTaskSortPositionData(board) {
                                     * 1000,
                                 );
 
-                            card.dataset.listId =
-                                list.dataset.listId;
+                            card.dataset.listId = (
+                                list.dataset.listId || ""
+                            );
                         },
                     );
             },
@@ -724,15 +919,16 @@ function updateListSortPositionData(board) {
 function updateTaskListCounts(board) {
     board
         .querySelectorAll(
-            "[data-task-list]",
+            ":scope > [data-task-list]",
         )
         .forEach(
             (list) => {
-                const count =
+                const count = (
                     list.querySelectorAll(
                         "[data-task-list-items] "
                         + "> [data-task-card]",
-                    ).length;
+                    ).length
+                );
 
                 const countElement =
                     list.querySelector(
@@ -744,7 +940,9 @@ function updateTaskListCounts(board) {
                 }
 
                 countElement.textContent =
-                    String(count);
+                    String(
+                        count,
+                    );
 
                 countElement.setAttribute(
                     "aria-label",
@@ -768,16 +966,16 @@ function synchroniseTaskListEmptyStates(
         .forEach(
             (taskList) => {
                 if (
-                    taskList
-                    === excludeTaskList
+                    taskList === excludeTaskList
                 ) {
                     return;
                 }
 
-                const taskCount =
+                const taskCount = (
                     taskList.querySelectorAll(
                         ":scope > [data-task-card]",
-                    ).length;
+                    ).length
+                );
 
                 const emptyState =
                     taskList.querySelector(
@@ -810,13 +1008,13 @@ function createTaskListEmptyState() {
             "div",
         );
 
-    emptyState.className =
+    emptyState.className = (
         "empty-state "
         + "empty-state-compact "
-        + "task-list-empty";
+        + "task-list-empty"
+    );
 
-    emptyState.dataset.taskListEmpty =
-        "";
+    emptyState.dataset.taskListEmpty = "";
 
     const message =
         document.createElement(
@@ -868,9 +1066,10 @@ async function requireSuccessfulResponse(
         return;
     }
 
-    let detail =
+    let detail = (
         `Request failed with status `
-        + `${response.status}.`;
+        + `${response.status}.`
+    );
 
     try {
         const payload =
@@ -880,10 +1079,12 @@ async function requireSuccessfulResponse(
             detail = payload.detail;
         }
     } catch {
-        // Keep the generic error message.
+        // Preserve the generic response message.
     }
 
-    throw new Error(detail);
+    throw new Error(
+        detail,
+    );
 }
 
 
@@ -912,7 +1113,7 @@ async function moveTaskFromDetailPage(button) {
         "[data-task-move-list]",
     );
 
-    if (!select) {
+    if (!(select instanceof HTMLSelectElement)) {
         return;
     }
 
@@ -939,20 +1140,19 @@ async function moveTaskFromDetailPage(button) {
                 method: "POST",
                 credentials: "same-origin",
                 headers: {
-                    "Accept":
-                        "application/json",
-                    "Content-Type":
-                        "application/json",
-                    "X-CSRF-Token":
-                        csrfToken,
+                    "Accept": "application/json",
+                    "Content-Type": "application/json",
+                    "X-CSRF-Token": csrfToken,
                 },
-                body: JSON.stringify({
-                    destination_list_id:
-                        Number(
-                            select.value,
-                        ),
-                    sort_position: 1000,
-                }),
+                body: JSON.stringify(
+                    {
+                        destination_list_id:
+                            Number(
+                                select.value,
+                            ),
+                        sort_position: 1000,
+                    },
+                ),
             },
         );
 
@@ -961,6 +1161,7 @@ async function moveTaskFromDetailPage(button) {
         );
 
         window.location.reload();
+
     } catch (error) {
         console.error(
             "Unable to move task.",
@@ -971,6 +1172,7 @@ async function moveTaskFromDetailPage(button) {
             error.message
             || "The task could not be moved.",
         );
+
     } finally {
         button.disabled = false;
     }

@@ -1,5 +1,5 @@
 <section
-    class="content-card"
+    class="content-card task-assignees-card"
     aria-labelledby="task-assignees-heading"
 >
 
@@ -19,7 +19,10 @@
 
         <div class="card-actions">
 
-            <span class="status-badge status-badge-muted">
+            <span
+                class="status-badge status-badge-muted"
+                aria-label="{{ assignments | length }} assignees"
+            >
                 {{ assignments | length }}
             </span>
 

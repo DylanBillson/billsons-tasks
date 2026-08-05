@@ -40,11 +40,12 @@
 <form
     method="get"
     action="{{ url_for('my_tasks') }}"
-    class="filter-panel"
+    class="filter-panel my-task-filter-panel"
     data-my-task-filters
+    data-filter-form
 >
 
-    <div class="filter-grid">
+    <div class="filter-grid my-task-filter-grid">
 
         <div class="form-field">
 
@@ -180,7 +181,7 @@
 
         </div>
 
-        <div class="form-field">
+        <div class="form-field my-task-filter-search">
 
             <label
                 for="my-tasks-search"

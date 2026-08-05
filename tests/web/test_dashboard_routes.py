@@ -2,7 +2,7 @@ from datetime import timedelta
 
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
-from app.core.timezone import utc_now
+from app.core.timezone import format_compact_datetime, utc_now
 from app.core.config import settings
 from app.core.constants import CompanyRole
 from app.main import app
@@ -659,3 +659,106 @@ def test_dashboard_contains_navigation_links(
         f'href="http://testserver/tasks/{task.id}"'
         in response.text
     )
+
+def test_dashboard_uses_compact_local_datetime_format(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+    creator = create_user(
+        db,
+    )
+
+    (
+        _,
+        _,
+        section_list,
+    ) = _create_company_context(
+        db,
+        company_name="Formatted Date Company",
+        creator=creator,
+    )
+
+    task = create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Formatted Dashboard Task",
+        due_at=utc_now() + timedelta(
+            days=1,
+        ),
+    )
+
+    db.commit()
+    db.refresh(
+        task,
+    )
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        "/",
+    )
+
+    assert response.status_code == 200
+    assert format_compact_datetime(
+        task.due_at,
+    ) in response.text
+    assert format_compact_datetime(
+        task.updated_at,
+    ) in response.text
+
+
+def test_dashboard_recent_tasks_use_scrollable_separated_cards(
+    client: TestClient,
+    db: Session,
+) -> None:
+    administrator = create_administrator(
+        db,
+    )
+    creator = create_user(
+        db,
+    )
+
+    (
+        _,
+        _,
+        section_list,
+    ) = _create_company_context(
+        db,
+        company_name="Recent Task Styling Company",
+        creator=creator,
+    )
+
+    create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Styled Recent Task",
+    )
+
+    db.commit()
+
+    _authenticate(
+        client,
+        db,
+        user=administrator,
+    )
+
+    response = client.get(
+        "/",
+    )
+
+    assert response.status_code == 200
+    assert "dashboard-balanced-grid" in response.text
+    assert "dashboard-panel-scroll" in response.text
+    assert "dashboard-task-list" in response.text
+    assert "dashboard-task-item" in response.text
+    assert "Styled Recent Task" in response.text
+

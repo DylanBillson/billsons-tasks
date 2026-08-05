@@ -54,20 +54,6 @@
 
             </div>
 
-            {% if task.description %}
-
-            <p class="page-subtitle">
-                {{ task.description }}
-            </p>
-
-            {% else %}
-
-            <p class="page-subtitle">
-                No task description has been provided.
-            </p>
-
-            {% endif %}
-
         </div>
 
         <div class="page-actions">
@@ -213,326 +199,382 @@
 
     {% endif %}
 
-    <div class="task-detail-layout">
+    <section
+        class="content-card task-description-card"
+        aria-labelledby="task-description-heading"
+    >
 
-        <main class="task-detail-main">
+        <div class="card-header">
 
-            <section
-                class="content-card"
-                aria-labelledby="task-details-heading"
-            >
+            <div>
 
-                <div class="card-header">
+                <h2 id="task-description-heading">
+                    Description
+                </h2>
 
-                    <div>
+            </div>
 
-                        <h2 id="task-details-heading">
-                            Task Details
-                        </h2>
+        </div>
 
-                    </div>
+        {% if task.description %}
+
+        <div class="task-description-content">
+            {{ task.description }}
+        </div>
+
+        {% else %}
+
+        <p class="task-description-empty">
+            No task description has been provided.
+        </p>
+
+        {% endif %}
+
+    </section>
+
+    {% include "partials/task_comments.html" %}
+
+    <div class="task-detail-columns">
+
+        <section
+            class="content-card task-information-card"
+            aria-labelledby="task-details-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="task-details-heading">
+                        Task Details
+                    </h2>
 
                 </div>
 
-                <dl class="detail-list">
+            </div>
 
-                    <div class="detail-list-item">
+            <dl class="detail-list">
 
-                        <dt>
-                            Company
-                        </dt>
+                <div class="detail-list-item">
 
-                        <dd>
+                    <dt>
+                        Company
+                    </dt>
 
-                            <a
-                                href="{{ url_for('company_detail', company_id=section.company_id) }}"
-                            >
-                                {{ section.company.name }}
-                            </a>
+                    <dd>
 
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Section
-                        </dt>
-
-                        <dd>
-
-                            <a
-                                href="{{ url_for('section_detail', section_id=section.id) }}"
-                            >
-                                {{ section.name }}
-                            </a>
-
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            List
-                        </dt>
-
-                        <dd>
-                            {{ section_list.name }}
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Created By
-                        </dt>
-
-                        <dd>
-                            {{ task.created_by.display_name }}
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Due
-                        </dt>
-
-                        <dd>
-
-                            {% if task.due_at %}
-
-                            <span{% if task.is_overdue %} class="text-danger"{% endif %}>
-                                {{ task.due_at }}
-                            </span>
-
-                            {% else %}
-
-                            No deadline
-
-                            {% endif %}
-
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Completion
-                        </dt>
-
-                        <dd>
-
-                            {% if task.is_completed %}
-
-                                {% if task.completed_by %}
-
-                                Completed by
-                                {{ task.completed_by.display_name }}
-                                on
-                                {{ task.completed_at }}
-
-                                {% else %}
-
-                                Completed on
-                                {{ task.completed_at }}
-
-                                {% endif %}
-
-                            {% else %}
-
-                            Not completed
-
-                            {% endif %}
-
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Created
-                        </dt>
-
-                        <dd>
-                            {{ task.created_at }}
-                        </dd>
-
-                    </div>
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Last Updated
-                        </dt>
-
-                        <dd>
-                            {{ task.updated_at }}
-                        </dd>
-
-                    </div>
-
-                    {% if task.is_deleted %}
-
-                    <div class="detail-list-item">
-
-                        <dt>
-                            Deleted
-                        </dt>
-
-                        <dd>
-                            {{ task.deleted_at }}
-
-                            {% if task.deleted_by %}
-
-                            by {{ task.deleted_by.display_name }}
-
-                            {% endif %}
-                        </dd>
-
-                    </div>
-
-                    {% endif %}
-
-                </dl>
-
-            </section>
-
-            {% include "partials/task_comments.html" %}
-
-            {% include "partials/task_history.html" %}
-
-        </main>
-
-        <aside class="task-detail-sidebar">
-
-            {% include "partials/task_assignees.html" %}
-
-            {% if not task.is_deleted and can_update %}
-
-            <section
-                class="content-card"
-                aria-labelledby="move-task-heading"
-            >
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h2 id="move-task-heading">
-                            Move Task
-                        </h2>
-
-                    </div>
-
-                </div>
-
-                <p class="card-subtitle">
-                    Drag the task on the board or move it using the controls
-                    below.
-                </p>
-
-                <div class="form-group">
-
-                    <label for="task-move-list">
-                        Destination List
-                    </label>
-
-                    <select
-                        id="task-move-list"
-                        data-task-move-list
-                    >
-
-                        {% for list in section_lists %}
-
-                        <option
-                            value="{{ list.id }}"
-                            {% if list.id == task.section_list_id %}selected{% endif %}
-                            {% if list.is_archived %}disabled{% endif %}
+                        <a
+                            href="{{ url_for('company_detail', company_id=section.company_id) }}"
                         >
-                            {{ list.name }}
-                        </option>
+                            {{ section.company.name }}
+                        </a>
 
-                        {% endfor %}
-
-                    </select>
+                    </dd>
 
                 </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Section
+                    </dt>
+
+                    <dd>
+
+                        <a
+                            href="{{ url_for('section_detail', section_id=section.id) }}"
+                        >
+                            {{ section.name }}
+                        </a>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        List
+                    </dt>
+
+                    <dd>
+                        {{ section_list.name }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created By
+                    </dt>
+
+                    <dd>
+                        {{ task.created_by.display_name }}
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Due
+                    </dt>
+
+                    <dd>
+
+                        {% if task.due_at %}
+
+                        <time
+                            datetime="{{ task.due_at.isoformat() }}"
+                            {% if task.is_overdue %}
+                            class="text-danger"
+                            {% endif %}
+                        >
+                            {{ task.due_at | format_compact_datetime }}
+                        </time>
+
+                        {% else %}
+
+                        No deadline
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Completion
+                    </dt>
+
+                    <dd>
+
+                        {% if task.is_completed %}
+
+                            {% if task.completed_by %}
+
+                            Completed by
+                            {{ task.completed_by.display_name }}
+
+                            {% else %}
+
+                            Completed
+
+                            {% endif %}
+
+                            {% if task.completed_at %}
+
+                            at
+
+                            <time datetime="{{ task.completed_at.isoformat() }}">
+                                {{ task.completed_at | format_compact_datetime }}
+                            </time>
+
+                            {% endif %}
+
+                        {% else %}
+
+                        Not completed
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Created
+                    </dt>
+
+                    <dd>
+
+                        <time datetime="{{ task.created_at.isoformat() }}">
+                            {{ task.created_at | format_compact_datetime }}
+                        </time>
+
+                    </dd>
+
+                </div>
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Last Updated
+                    </dt>
+
+                    <dd>
+
+                        <time datetime="{{ task.updated_at.isoformat() }}">
+                            {{ task.updated_at | format_compact_datetime }}
+                        </time>
+
+                    </dd>
+
+                </div>
+
+                {% if task.is_deleted %}
+
+                <div class="detail-list-item">
+
+                    <dt>
+                        Deleted
+                    </dt>
+
+                    <dd>
+
+                        {% if task.deleted_at %}
+
+                        <time datetime="{{ task.deleted_at.isoformat() }}">
+                            {{ task.deleted_at | format_compact_datetime }}
+                        </time>
+
+                        {% endif %}
+
+                        {% if task.deleted_by %}
+
+                        by {{ task.deleted_by.display_name }}
+
+                        {% endif %}
+
+                    </dd>
+
+                </div>
+
+                {% endif %}
+
+            </dl>
+
+        </section>
+
+        {% include "partials/task_history.html" %}
+
+    </div>
+
+    <div class="task-detail-secondary-grid">
+
+        {% include "partials/task_assignees.html" %}
+
+        {% if not task.is_deleted and can_update %}
+
+        <section
+            class="content-card"
+            aria-labelledby="move-task-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="move-task-heading">
+                        Move Task
+                    </h2>
+
+                    <p class="card-subtitle">
+                        Move this task to another list in the same section.
+                    </p>
+
+                </div>
+
+            </div>
+
+            <div class="form-group">
+
+                <label for="task-move-list">
+                    Destination List
+                </label>
+
+                <select
+                    id="task-move-list"
+                    data-task-move-list
+                >
+
+                    {% for list in section_lists %}
+
+                    <option
+                        value="{{ list.id }}"
+                        {% if list.id == task.section_list_id %}selected{% endif %}
+                        {% if list.is_archived %}disabled{% endif %}
+                    >
+                        {{ list.name }}
+                    </option>
+
+                    {% endfor %}
+
+                </select>
+
+            </div>
+
+            <button
+                type="button"
+                class="btn btn-secondary"
+                data-task-move-button
+                data-task-id="{{ task.id }}"
+                data-move-url="{{ url_for('task_move', task_id=task.id) }}"
+                data-csrf-token="{{ csrf_token }}"
+            >
+                Move Task
+            </button>
+
+        </section>
+
+        {% endif %}
+
+        {% if can_permanently_delete and task.is_deleted %}
+
+        <section
+            class="content-card danger-zone"
+            aria-labelledby="permanent-delete-heading"
+        >
+
+            <div class="card-header">
+
+                <div>
+
+                    <h2 id="permanent-delete-heading">
+                        Permanent Deletion
+                    </h2>
+
+                </div>
+
+            </div>
+
+            <p>
+                Permanently deleting this task also removes its comments,
+                assignees and history. This cannot be undone.
+            </p>
+
+            <form
+                method="post"
+                action="{{ url_for(
+                    'admin_deleted_task_permanent_delete',
+                    task_id=task.id
+                ) }}"
+                data-confirm="Permanently delete this task? This cannot be undone."
+            >
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
 
                 <button
-                    type="button"
-                    class="btn btn-secondary"
-                    data-task-move-button
-                    data-task-id="{{ task.id }}"
-                    data-move-url="{{ url_for('task_move', task_id=task.id) }}"
-                    data-csrf-token="{{ csrf_token }}"
+                    type="submit"
+                    class="btn btn-danger"
                 >
-                    Move Task
+                    Delete Permanently
                 </button>
 
-            </section>
+            </form>
 
-            {% endif %}
+        </section>
 
-            {% if can_permanently_delete and task.is_deleted %}
-
-            <section
-                class="content-card danger-zone"
-                aria-labelledby="permanent-delete-heading"
-            >
-
-                <div class="card-header">
-
-                    <div>
-
-                        <h2 id="permanent-delete-heading">
-                            Permanent Deletion
-                        </h2>
-
-                    </div>
-
-                </div>
-
-                <p>
-                    Permanently deleting this task also removes its comments,
-                    assignees and history. This cannot be undone.
-                </p>
-
-                <form
-                    method="post"
-                    action="{{ url_for(
-                        'admin_deleted_task_permanent_delete',
-                        task_id=task.id
-                    ) }}"
-                    data-confirm="Permanently delete this task? This cannot be undone."
-                >
-
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token }}"
-                    >
-
-                    <button
-                        type="submit"
-                        class="btn btn-danger"
-                    >
-                        Delete Permanently
-                    </button>
-
-                </form>
-
-            </section>
-
-            {% endif %}
-
-        </aside>
+        {% endif %}
 
     </div>
 

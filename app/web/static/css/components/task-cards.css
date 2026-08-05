@@ -1,78 +1,253 @@
+/*
+ * Task cards
+ *
+ * Covers:
+ * - Card layout
+ * - Visual states
+ * - Drag handles
+ * - Assignees and deadlines
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Card shell
+ * ------------------------------------------------------------------------- */
+
 .task-card {
     display: flex;
+    flex: 0 0 auto;
     flex-direction: column;
-    gap: 0.75rem;
-    padding: 1rem;
-    background: var(--colour-background);
-    border: 1px solid var(--colour-border);
-    border-radius: var(--border-radius-medium);
+    min-width: 0;
+    max-width: 100%;
+    padding: var(--space-4);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-surface);
+    box-shadow: var(--shadow-sm);
+    gap: var(--space-3);
+    cursor: default;
     transition:
-        box-shadow 0.2s ease,
-        transform 0.2s ease;
-    cursor: pointer;
+        border-color var(--transition-fast),
+        background-color var(--transition-fast),
+        box-shadow var(--transition-fast),
+        opacity var(--transition-fast),
+        transform var(--transition-fast);
 }
 
 .task-card:hover {
-    transform: translateY(-2px);
-    box-shadow: var(--shadow-medium);
+    border-color: var(--color-primary-border);
+    background: var(--color-surface-raised);
+    box-shadow: var(--shadow-md);
+    transform: translateY(-1px);
 }
 
-.task-card.dragging {
-    opacity: 0.5;
+.task-card.is-dragging {
+    opacity: 0.45;
+    border-style: dashed;
+    transform: rotate(1deg) scale(0.985);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Heading
+ * ------------------------------------------------------------------------- */
+
+.task-card-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+    gap: var(--space-3);
+}
+
+.task-card-heading {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: flex-start;
+    min-width: 0;
+    gap: var(--space-2);
 }
 
 .task-card-title {
-    font-weight: 600;
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
     line-height: 1.35;
+    text-decoration: none;
 }
+
+.task-card-title:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+.task-card-header > .status-badge {
+    flex: 0 0 auto;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Drag handle
+ * ------------------------------------------------------------------------- */
+
+.task-card-drag-handle {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: center;
+    width: 1.5rem;
+    min-height: 1.5rem;
+    color: var(--color-text-subtle);
+    line-height: 1;
+    cursor: grab;
+    user-select: none;
+}
+
+.task-card-drag-handle:hover {
+    color: var(--color-text);
+}
+
+.task-card-drag-handle:active {
+    cursor: grabbing;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Description
+ * ------------------------------------------------------------------------- */
 
 .task-card-description {
-    color: var(--colour-text-muted);
-    font-size: 0.95rem;
+    display: -webkit-box;
+    min-width: 0;
+    margin: 0;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+    line-height: 1.5;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 4;
 }
 
-.task-card-footer {
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-    gap: 1rem;
-    margin-top: auto;
-}
 
-.task-card-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem;
-    font-size: 0.85rem;
-    color: var(--colour-text-muted);
-}
+/* -------------------------------------------------------------------------
+ * Assignees
+ * ------------------------------------------------------------------------- */
 
 .task-card-assignees {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
-    gap: 0.4rem;
+    min-width: 0;
+    gap: var(--space-2);
 }
 
-.task-avatar {
-    width: 1.9rem;
-    height: 1.9rem;
-    border-radius: 50%;
-    background: var(--colour-primary);
-    color: white;
-    display: grid;
-    place-items: center;
-    font-size: 0.75rem;
-    font-weight: 600;
+.task-assignee {
+    display: inline-flex;
+    align-items: center;
+    min-width: 0;
+    max-width: 100%;
+    padding:
+        var(--space-1)
+        var(--space-2);
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-background-secondary);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    line-height: 1.25;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
-.task-card-overdue {
-    border-left: 4px solid var(--colour-danger);
+
+/* -------------------------------------------------------------------------
+ * Footer
+ * ------------------------------------------------------------------------- */
+
+.task-card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    margin-top: auto;
+    padding-top: var(--space-3);
+    border-top: 1px solid var(--color-border-subtle);
+    gap: var(--space-3);
 }
 
-.task-card-completed {
-    opacity: 0.75;
+.task-card-due-date {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
 }
 
-.task-card-deleted {
-    opacity: 0.55;
+.task-card-due-date-empty {
+    color: var(--color-text-subtle);
+    font-weight: var(--font-weight-normal);
+}
+
+.task-card-open-link {
+    flex: 0 0 auto;
+    color: var(--color-primary);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
+}
+
+.task-card-open-link:hover {
+    color: var(--color-primary-hover);
+    text-decoration: underline;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Task states
+ * ------------------------------------------------------------------------- */
+
+.task-card.is-overdue {
+    border-left: 4px solid var(--color-danger);
+}
+
+.task-card.is-completed {
+    opacity: 0.78;
+}
+
+.task-card.is-completed .task-card-title {
+    color: var(--color-text-muted);
+    text-decoration: line-through;
+}
+
+.task-card.is-deleted {
+    opacity: 0.58;
+    border-style: dashed;
+}
+
+.task-card.is-deleted .task-card-title {
+    color: var(--color-text-muted);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 36rem) {
+    .task-card-header {
+        flex-direction: column;
+    }
+
+    .task-card-header > .status-badge {
+        align-self: flex-start;
+    }
+
+    .task-card-footer {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }

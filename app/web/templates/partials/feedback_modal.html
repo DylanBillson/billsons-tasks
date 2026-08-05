@@ -1,0 +1,126 @@
+<dialog
+    class="modal feedback-modal"
+    id="feedback-modal"
+    data-feedback-modal
+    aria-labelledby="feedback-modal-title"
+    aria-describedby="feedback-modal-description"
+>
+
+    <div class="modal-panel">
+
+        <header class="modal-header">
+
+            <div>
+
+                <p class="page-eyebrow">
+                    Feedback
+                </p>
+
+                <h2 id="feedback-modal-title">
+                    Send Feedback
+                </h2>
+
+            </div>
+
+            <button
+                type="button"
+                class="modal-close"
+                data-feedback-close
+                aria-label="Close feedback form"
+            >
+                ×
+            </button>
+
+        </header>
+
+        <div class="modal-body">
+
+            <p id="feedback-modal-description">
+                Send a quick note about an issue, bug, suggestion,
+                or anything that needs attention.
+            </p>
+
+            <form
+                method="post"
+                action="{{ url_for('feedback_submit') }}"
+                class="feedback-form"
+                data-feedback-form
+            >
+
+                {% if csrf_token is defined and csrf_token %}
+
+                <input
+                    type="hidden"
+                    name="csrf_token"
+                    value="{{ csrf_token }}"
+                >
+
+                {% endif %}
+
+                <input
+                    type="hidden"
+                    name="page_url"
+                    value=""
+                    data-feedback-page-url
+                >
+
+                <div class="form-field">
+
+                    <label for="feedback-message">
+                        Message
+                    </label>
+
+                    <textarea
+                        id="feedback-message"
+                        name="message"
+                        rows="8"
+                        maxlength="5000"
+                        required
+                        data-feedback-message
+                    ></textarea>
+
+                    <div class="form-field-help">
+
+                        <span>
+                            Include enough detail for the issue to be
+                            understood and reproduced.
+                        </span>
+
+                        <span
+                            class="feedback-character-count"
+                            data-feedback-character-count
+                        >
+                            0 / 5000
+                        </span>
+
+                    </div>
+
+                </div>
+
+                <div class="modal-actions">
+
+                    <button
+                        type="button"
+                        class="btn btn-secondary"
+                        data-feedback-close
+                    >
+                        Cancel
+                    </button>
+
+                    <button
+                        type="submit"
+                        class="btn btn-primary"
+                        data-loading-text="Sending…"
+                    >
+                        Send
+                    </button>
+
+                </div>
+
+            </form>
+
+        </div>
+
+    </div>
+
+</dialog>

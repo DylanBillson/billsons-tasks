@@ -6,6 +6,7 @@ document.addEventListener(
         initialiseFlashMessageDismissButtons();
         initialiseFormSubmissionProtection();
         initialiseFilterFormPageReset();
+        initialiseAdministrationMenus();
     },
 );
 
@@ -41,9 +42,7 @@ function initialiseConfirmDialogs() {
                 element.addEventListener(
                     "click",
                     (event) => {
-                        if (
-                            event.defaultPrevented
-                        ) {
+                        if (event.defaultPrevented) {
                             return;
                         }
 
@@ -131,7 +130,9 @@ function dismissFlashMessage(message) {
     );
 
     const removeMessage = () => {
-        message.remove();
+        if (message.isConnected) {
+            message.remove();
+        }
     };
 
     message.addEventListener(
@@ -143,8 +144,8 @@ function dismissFlashMessage(message) {
     );
 
     /*
-     * Ensure the hidden message is eventually removed even if its CSS does
-     * not currently define a transition.
+     * Ensure the hidden message is eventually removed even when its CSS does
+     * not define a transition.
      */
     window.setTimeout(
         removeMessage,
@@ -168,8 +169,10 @@ function initialiseFormSubmissionProtection() {
                     "submit",
                     (event) => {
                         /*
-                         * Another handler may have cancelled submission, for
-                         * example a confirmation dialog or custom validation.
+                         * Wait until every submit handler has run. This avoids
+                         * disabling controls when another handler cancels the
+                         * submission, such as a confirmation dialog or custom
+                         * validation routine.
                          */
                         window.queueMicrotask(
                             () => {
@@ -208,6 +211,7 @@ function protectSubmittedForm(form) {
         .forEach(
             (control) => {
                 control.disabled = true;
+
                 control.setAttribute(
                     "aria-disabled",
                     "true",
@@ -217,11 +221,13 @@ function protectSubmittedForm(form) {
                     control instanceof HTMLButtonElement
                     && control.dataset.loadingText
                 ) {
-                    control.dataset.originalText =
-                        control.textContent;
+                    control.dataset.originalText = (
+                        control.textContent
+                    );
 
-                    control.textContent =
-                        control.dataset.loadingText;
+                    control.textContent = (
+                        control.dataset.loadingText
+                    );
                 }
             },
         );
@@ -238,7 +244,7 @@ function initialiseFilterFormPageReset() {
                     "[name='page']",
                 );
 
-                if (!pageInput) {
+                if (!(pageInput instanceof HTMLInputElement)) {
                     return;
                 }
 
@@ -250,8 +256,7 @@ function initialiseFilterFormPageReset() {
                         (control) => {
                             if (
                                 control.name === "page"
-                                || control.type
-                                === "hidden"
+                                || control.type === "hidden"
                             ) {
                                 return;
                             }
@@ -266,6 +271,200 @@ function initialiseFilterFormPageReset() {
                     );
             },
         );
+}
+
+function initialiseAdministrationMenus() {
+    const menus = Array.from(
+        document.querySelectorAll(
+            "details.app-admin-menu",
+        ),
+    );
+
+    if (menus.length === 0) {
+        return;
+    }
+
+    const closeMenu = (
+        menu,
+        {
+            restoreFocus = false,
+        } = {},
+    ) => {
+        if (!menu.open) {
+            return;
+        }
+
+        menu.open = false;
+
+        if (restoreFocus) {
+            const summary = menu.querySelector(
+                "summary",
+            );
+
+            if (summary instanceof HTMLElement) {
+                summary.focus();
+            }
+        }
+    };
+
+    const closeOtherMenus = (currentMenu) => {
+        menus.forEach(
+            (menu) => {
+                if (menu !== currentMenu) {
+                    closeMenu(
+                        menu,
+                    );
+                }
+            },
+        );
+    };
+
+    menus.forEach(
+        (menu) => {
+            const summary = menu.querySelector(
+                "summary",
+            );
+
+            const links = Array.from(
+                menu.querySelectorAll(
+                    ".app-admin-menu-link",
+                ),
+            );
+
+            menu.addEventListener(
+                "toggle",
+                () => {
+                    if (menu.open) {
+                        closeOtherMenus(
+                            menu,
+                        );
+                    }
+                },
+            );
+
+            if (summary instanceof HTMLElement) {
+                summary.addEventListener(
+                    "keydown",
+                    (event) => {
+                        if (
+                            event.key !== "ArrowDown"
+                            || !menu.open
+                        ) {
+                            return;
+                        }
+
+                        const firstLink = links[0];
+
+                        if (
+                            firstLink
+                            instanceof HTMLElement
+                        ) {
+                            event.preventDefault();
+                            firstLink.focus();
+                        }
+                    },
+                );
+            }
+
+            links.forEach(
+                (link, index) => {
+                    link.addEventListener(
+                        "keydown",
+                        (event) => {
+                            if (
+                                event.key === "Escape"
+                            ) {
+                                event.preventDefault();
+
+                                closeMenu(
+                                    menu,
+                                    {
+                                        restoreFocus: true,
+                                    },
+                                );
+
+                                return;
+                            }
+
+                            if (
+                                event.key !== "ArrowDown"
+                                && event.key !== "ArrowUp"
+                            ) {
+                                return;
+                            }
+
+                            event.preventDefault();
+
+                            const direction = (
+                                event.key === "ArrowDown"
+                                    ? 1
+                                    : -1
+                            );
+
+                            const targetIndex = (
+                                index
+                                + direction
+                                + links.length
+                            ) % links.length;
+
+                            const targetLink = (
+                                links[targetIndex]
+                            );
+
+                            if (
+                                targetLink
+                                instanceof HTMLElement
+                            ) {
+                                targetLink.focus();
+                            }
+                        },
+                    );
+                },
+            );
+        },
+    );
+
+    document.addEventListener(
+        "click",
+        (event) => {
+            menus.forEach(
+                (menu) => {
+                    if (
+                        event.target instanceof Node
+                        && !menu.contains(
+                            event.target,
+                        )
+                    ) {
+                        closeMenu(
+                            menu,
+                        );
+                    }
+                },
+            );
+        },
+    );
+
+    document.addEventListener(
+        "keydown",
+        (event) => {
+            if (event.key !== "Escape") {
+                return;
+            }
+
+            menus.forEach(
+                (menu) => {
+                    if (menu.open) {
+                        closeMenu(
+                            menu,
+                            {
+                                restoreFocus: true,
+                            },
+                        );
+                    }
+                },
+            );
+        },
+    );
 }
 
 function parsePositiveInteger(

@@ -1,5 +1,5 @@
 <section
-    class="content-card"
+    class="content-card task-history-card"
     aria-labelledby="task-history-heading"
 >
 
@@ -19,7 +19,10 @@
 
         <div class="card-actions">
 
-            <span class="status-badge status-badge-muted">
+            <span
+                class="status-badge status-badge-muted"
+                aria-label="{{ history_events | length }} history events"
+            >
                 {{ history_events | length }}
             </span>
 
@@ -48,8 +51,11 @@
                         {{ event.summary }}
                     </span>
 
-                    <time class="task-history-date">
-                        {{ event.created_at }}
+                    <time
+                        class="task-history-date"
+                        datetime="{{ event.created_at.isoformat() }}"
+                    >
+                        {{ event.created_at | format_compact_datetime }}
                     </time>
 
                 </div>

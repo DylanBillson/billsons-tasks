@@ -3,8 +3,9 @@
  *
  * Covers:
  * - Global header
- * - Application branding
+ * - Application branding and version
  * - Signed-in user summary
+ * - Header actions
  * - Footer
  * - Authenticated and unauthenticated shell behaviour
  */
@@ -20,8 +21,7 @@
     z-index: 100;
     min-height: var(--header-height);
     border-bottom: 1px solid var(--color-border-subtle);
-    background:
-        rgb(17 24 39 / 0.94);
+    background: rgb(17 24 39 / 0.94);
     backdrop-filter: blur(0.9rem);
 }
 
@@ -40,8 +40,16 @@
 
 
 /* -------------------------------------------------------------------------
- * Brand
+ * Brand and version
  * ------------------------------------------------------------------------- */
+
+.app-brand-group {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    min-width: 0;
+    gap: var(--space-3);
+}
 
 .app-brand {
     display: inline-flex;
@@ -68,7 +76,7 @@
     justify-content: center;
     width: 9.25rem;
     height: 2.25rem;
-    white-space: nowrap; 
+    white-space: nowrap;
     border: 1px solid var(--color-primary-border);
     border-radius: var(--radius-md);
     background: var(--color-primary-muted);
@@ -89,15 +97,33 @@
     white-space: nowrap;
 }
 
+.app-version {
+    display: inline-flex;
+    flex: 0 0 auto;
+    align-items: center;
+    min-height: 1.65rem;
+    padding-inline: var(--space-2);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-full);
+    background: var(--color-surface-muted);
+    color: var(--color-text-muted);
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1;
+    white-space: nowrap;
+}
+
 
 /* -------------------------------------------------------------------------
- * User summary
+ * User summary and actions
  * ------------------------------------------------------------------------- */
 
 .app-header-user {
     display: flex;
     flex: 0 0 auto;
     align-items: center;
+    min-width: 0;
     gap: var(--space-4);
 }
 
@@ -122,6 +148,12 @@
 .app-user-role {
     color: var(--color-text-muted);
     font-size: var(--font-size-xs);
+}
+
+.app-header-actions {
+    display: flex;
+    align-items: center;
+    gap: var(--space-2);
 }
 
 .app-logout-form {
@@ -170,6 +202,11 @@
     color: inherit;
 }
 
+.app-footer-version {
+    font-family: var(--font-family-monospace);
+    font-size: var(--font-size-xs);
+}
+
 
 /* -------------------------------------------------------------------------
  * Unauthenticated shell
@@ -183,8 +220,9 @@ body:has(.auth-page) .app-header-inner {
     justify-content: center;
 }
 
-body:has(.auth-page) .app-brand {
-    margin-inline: auto;
+body:has(.auth-page) .app-brand-group {
+    flex: 0 1 auto;
+    justify-content: center;
 }
 
 body:has(.auth-page) .app-content {
@@ -207,7 +245,7 @@ body:has(.auth-page) .app-footer-inner {
  * Responsive behaviour
  * ------------------------------------------------------------------------- */
 
-@media (max-width: 48rem) {
+@media (max-width: 64rem) {
     .app-header {
         position: relative;
     }
@@ -221,6 +259,10 @@ body:has(.auth-page) .app-footer-inner {
         gap: var(--space-4);
     }
 
+    .app-brand-group {
+        width: 100%;
+    }
+
     .app-header-user {
         width: 100%;
         justify-content: space-between;
@@ -232,6 +274,13 @@ body:has(.auth-page) .app-footer-inner {
 
     .app-user-name {
         max-width: min(65vw, 18rem);
+    }
+}
+
+@media (max-width: 48rem) {
+    .app-header-actions {
+        flex-wrap: wrap;
+        justify-content: flex-end;
     }
 
     .app-footer-inner {
@@ -247,13 +296,19 @@ body:has(.auth-page) .app-footer-inner {
 }
 
 @media (max-width: 36rem) {
+    .app-brand-group {
+        flex-wrap: wrap;
+    }
+
     .app-brand-mark {
-        width: 2rem;
-        height: 2rem;
+        width: auto;
+        min-width: 8rem;
+        padding-inline: var(--space-3);
+        font-size: var(--font-size-base);
     }
 
     .app-brand-text {
-        font-size: var(--font-size-base);
+        display: none;
     }
 
     .app-header-user {
@@ -261,8 +316,21 @@ body:has(.auth-page) .app-footer-inner {
         flex-direction: column;
     }
 
+    .app-header-actions {
+        display: grid;
+        grid-template-columns: 1fr;
+        width: 100%;
+    }
+
+    .app-header-actions > .btn,
+    .app-header-actions > details,
+    .app-header-actions > details > summary,
     .app-logout-form,
     .app-logout-form .btn {
         width: 100%;
+    }
+
+    .app-admin-menu-toggle {
+        justify-content: center;
     }
 }

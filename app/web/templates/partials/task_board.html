@@ -11,20 +11,21 @@
     data-list-reorder-url="{{ url_for('section_lists_reorder', section_id=section.id) }}"
     data-csrf-token="{{ csrf_token }}"
     data-drag-enabled="{% if task_board_drag_enabled %}true{% else %}false{% endif %}"
+    data-list-drag-enabled="{% if task_board_drag_enabled and can_manage_section %}true{% else %}false{% endif %}"
 >
 
     {% for section_list in section_lists %}
 
-        {% set list_tasks = tasks
-            | selectattr(
-                "section_list_id",
-                "equalto",
-                section_list.id
-            )
-            | list
-        %}
+    {% set list_tasks = tasks
+        | selectattr(
+            "section_list_id",
+            "equalto",
+            section_list.id
+        )
+        | list
+    %}
 
-        {% include "partials/task_list_column.html" %}
+    {% include "partials/task_list_column.html" %}
 
     {% endfor %}
 
@@ -32,9 +33,21 @@
 
 {% if task_filter_form.is_active %}
 
-<p class="task-board-notice">
+<p
+    class="task-board-notice"
+    role="status"
+>
     Drag and drop is disabled while task filters are active.
     Clear the filters to reorder lists or tasks.
+</p>
+
+{% elif section.is_archived %}
+
+<p
+    class="task-board-notice"
+    role="status"
+>
+    Drag and drop is unavailable while this section is archived.
 </p>
 
 {% endif %}

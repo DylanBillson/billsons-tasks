@@ -358,3 +358,22 @@ def test_task_assignee_mutation_requires_csrf(
     )
 
     assert response.status_code == 403
+
+
+def test_task_detail_renders_assignee_as_aligned_row(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, _, task, assignee = _create_context(db)
+    create_task_assignee(db, task=task, user=assignee)
+    db.commit()
+    _authenticate(client, db, user=creator)
+    response = client.get(f"/tasks/{task.id}")
+    assert response.status_code == 200
+    assert "task-assignee-list" in response.text
+    assert "task-assignee-row" in response.text
+    assert "task-assignee-user" in response.text
+    assert "task-assignee-name" in response.text
+    assert "task-assignee-username" in response.text
+    assert assignee.display_name in response.text
+    assert assignee.username in response.text

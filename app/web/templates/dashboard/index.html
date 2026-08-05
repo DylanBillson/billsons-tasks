@@ -123,12 +123,7 @@ Dashboard
             </article>
 
             <article
-                class="
-                    metric-card
-                    {% if metrics.overdue_task_count %}
-                    metric-card-warning
-                    {% endif %}
-                "
+                class="metric-card{% if metrics.overdue_task_count %} metric-card-warning{% endif %}"
             >
 
                 <span class="metric-label">
@@ -201,10 +196,10 @@ Dashboard
 
     </section>
 
-    <div class="dashboard-grid">
+    <div class="dashboard-grid dashboard-balanced-grid">
 
         <section
-            class="content-card"
+            class="content-card dashboard-panel"
             aria-labelledby="due-soon-heading"
         >
 
@@ -224,130 +219,138 @@ Dashboard
 
             </div>
 
-            {% if due_soon_tasks %}
+            <div class="dashboard-panel-body">
 
-            <div class="table-container">
+                {% if due_soon_tasks %}
 
-                <table class="data-table">
+                <div class="table-container dashboard-table-scroll">
 
-                    <thead>
+                    <table class="data-table">
 
-                        <tr>
+                        <thead>
 
-                            <th scope="col">
-                                Task
-                            </th>
+                            <tr>
 
-                            <th scope="col">
-                                Location
-                            </th>
+                                <th scope="col">
+                                    Task
+                                </th>
 
-                            <th scope="col">
-                                Due
-                            </th>
+                                <th scope="col">
+                                    Location
+                                </th>
 
-                            <th scope="col">
-                                Assignees
-                            </th>
+                                <th scope="col">
+                                    Due
+                                </th>
 
-                        </tr>
+                                <th scope="col">
+                                    Assignees
+                                </th>
 
-                    </thead>
+                            </tr>
 
-                    <tbody>
+                        </thead>
 
-                        {% for task in due_soon_tasks %}
+                        <tbody>
 
-                        <tr>
+                            {% for task in due_soon_tasks %}
 
-                            <td>
+                            <tr>
 
-                                <div class="table-primary">
+                                <td>
 
-                                    <a
-                                        href="{{ url_for('task_detail', task_id=task.id) }}"
-                                        class="table-primary-text"
-                                    >
-                                        {{ task.title }}
-                                    </a>
+                                    <div class="table-primary">
 
-                                    <span class="table-secondary">
-                                        {{ task.section_list_name }}
+                                        <a
+                                            href="{{ url_for('task_detail', task_id=task.id) }}"
+                                            class="table-primary-text"
+                                        >
+                                            {{ task.title }}
+                                        </a>
+
+                                        <span class="table-secondary">
+                                            {{ task.section_list_name }}
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+                                <td>
+
+                                    <div class="table-primary">
+
+                                        <a
+                                            href="{{ url_for('company_detail', company_id=task.company_id) }}"
+                                            class="table-primary-text"
+                                        >
+                                            {{ task.company_name }}
+                                        </a>
+
+                                        <span class="table-secondary">
+                                            {{ task.section_name }}
+                                        </span>
+
+                                    </div>
+
+                                </td>
+
+                                <td>
+
+                                    <time datetime="{{ task.due_at.isoformat() }}">
+                                        {{ task.due_at | format_compact_datetime }}
+                                    </time>
+
+                                </td>
+
+                                <td>
+
+                                    {% if task.assignee_names %}
+
+                                    {{ task.assignee_names | join(", ") }}
+
+                                    {% else %}
+
+                                    <span class="text-muted">
+                                        Unassigned
                                     </span>
 
-                                </div>
+                                    {% endif %}
 
-                            </td>
+                                </td>
 
-                            <td>
+                            </tr>
 
-                                <div class="table-primary">
+                            {% endfor %}
 
-                                    <a
-                                        href="{{ url_for('company_detail', company_id=task.company_id) }}"
-                                        class="table-primary-text"
-                                    >
-                                        {{ task.company_name }}
-                                    </a>
+                        </tbody>
 
-                                    <span class="table-secondary">
-                                        {{ task.section_name }}
-                                    </span>
+                    </table>
 
-                                </div>
+                </div>
 
-                            </td>
+                {% else %}
 
-                            <td>
-                                {{ task.due_at }}
-                            </td>
+                <div class="empty-state empty-state-compact">
 
-                            <td>
+                    <h3>
+                        Nothing due soon
+                    </h3>
 
-                                {% if task.assignee_names %}
+                    <p>
+                        There are no open tasks due within the next seven days.
+                    </p>
 
-                                {{ task.assignee_names | join(", ") }}
+                </div>
 
-                                {% else %}
-
-                                <span class="text-muted">
-                                    Unassigned
-                                </span>
-
-                                {% endif %}
-
-                            </td>
-
-                        </tr>
-
-                        {% endfor %}
-
-                    </tbody>
-
-                </table>
+                {% endif %}
 
             </div>
-
-            {% else %}
-
-            <div class="empty-state empty-state-compact">
-
-                <h3>
-                    Nothing due soon
-                </h3>
-
-                <p>
-                    There are no open tasks due within the next seven days.
-                </p>
-
-            </div>
-
-            {% endif %}
 
         </section>
 
         <section
-            class="content-card"
+            class="content-card dashboard-panel"
             aria-labelledby="recent-tasks-heading"
         >
 
@@ -367,82 +370,89 @@ Dashboard
 
             </div>
 
-            {% if recent_tasks %}
+            <div class="dashboard-panel-body dashboard-panel-scroll">
 
-            <div class="dashboard-task-list">
+                {% if recent_tasks %}
 
-                {% for task in recent_tasks %}
+                <div class="dashboard-task-list">
 
-                <article class="dashboard-task-item">
+                    {% for task in recent_tasks %}
 
-                    <div class="dashboard-task-item-main">
+                    <article class="dashboard-task-item">
 
-                        <a
-                            href="{{ url_for('task_detail', task_id=task.id) }}"
-                            class="dashboard-task-title"
-                        >
-                            {{ task.title }}
-                        </a>
+                        <div class="dashboard-task-item-main">
 
-                        <p class="dashboard-task-location">
-                            {{ task.company_name }}
-                            &middot;
-                            {{ task.section_name }}
-                            &middot;
-                            {{ task.section_list_name }}
-                        </p>
+                            <a
+                                href="{{ url_for('task_detail', task_id=task.id) }}"
+                                class="dashboard-task-title"
+                            >
+                                {{ task.title }}
+                            </a>
 
-                    </div>
+                            <p class="dashboard-task-location">
+                                {{ task.company_name }}
+                                &middot;
+                                {{ task.section_name }}
+                                &middot;
+                                {{ task.section_list_name }}
+                            </p>
 
-                    <div class="dashboard-task-item-meta">
+                        </div>
 
-                        {% if task.state == "completed" %}
+                        <div class="dashboard-task-item-meta">
 
-                        <span class="status-badge status-badge-success">
-                            Completed
-                        </span>
+                            {% if task.state == "completed" %}
 
-                        {% elif task.state == "overdue" %}
+                            <span class="status-badge status-badge-success">
+                                Completed
+                            </span>
 
-                        <span class="status-badge status-badge-danger">
-                            Overdue
-                        </span>
+                            {% elif task.state == "overdue" %}
 
-                        {% else %}
+                            <span class="status-badge status-badge-danger">
+                                Overdue
+                            </span>
 
-                        <span class="status-badge status-badge-primary">
-                            Open
-                        </span>
+                            {% else %}
 
-                        {% endif %}
+                            <span class="status-badge status-badge-primary">
+                                Open
+                            </span>
 
-                        <span class="dashboard-task-updated">
-                            {{ task.updated_at }}
-                        </span>
+                            {% endif %}
 
-                    </div>
+                            <time
+                                class="dashboard-task-updated"
+                                datetime="{{ task.updated_at.isoformat() }}"
+                            >
+                                {{ task.updated_at | format_compact_datetime }}
+                            </time>
 
-                </article>
+                        </div>
 
-                {% endfor %}
+                    </article>
+
+                    {% endfor %}
+
+                </div>
+
+                {% else %}
+
+                <div class="empty-state empty-state-compact">
+
+                    <h3>
+                        No recent tasks
+                    </h3>
+
+                    <p>
+                        No active tasks are currently available to display.
+                    </p>
+
+                </div>
+
+                {% endif %}
 
             </div>
-
-            {% else %}
-
-            <div class="empty-state empty-state-compact">
-
-                <h3>
-                    No recent tasks
-                </h3>
-
-                <p>
-                    No active tasks are currently available to display.
-                </p>
-
-            </div>
-
-            {% endif %}
 
         </section>
 

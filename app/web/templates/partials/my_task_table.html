@@ -111,13 +111,14 @@
 
                     {% if task.due_at %}
 
-                    <span
+                    <time
+                        datetime="{{ task.due_at.isoformat() }}"
                         {% if task.state == "overdue" %}
                         class="text-danger"
                         {% endif %}
                     >
-                        {{ task.due_at }}
-                    </span>
+                        {{ task.due_at | format_compact_datetime }}
+                    </time>
 
                     {% else %}
 

@@ -172,7 +172,7 @@ Create Task
                     <textarea
                         id="description"
                         name="description"
-                        rows="7"
+                        rows="8"
                         maxlength="10000"
                         {% if form.errors.for_field("description") %}
                         class="is-invalid"
@@ -256,7 +256,7 @@ Create Task
 
                 {% if can_manage_assignees %}
 
-                <fieldset class="form-group">
+                <fieldset class="form-group task-assignee-selector">
 
                     <legend>
                         Assignees
@@ -272,26 +272,34 @@ Create Task
 
                     {% if available_assignees %}
 
-                    <div class="checkbox-list">
+                    <div
+                        class="task-assignee-choice-list"
+                        role="group"
+                        aria-label="Available task assignees"
+                    >
 
                         {% for user in available_assignees %}
 
-                        <label class="checkbox-list-item">
+                        <label class="task-assignee-choice">
 
-                            <input
-                                type="checkbox"
-                                name="assignee_user_ids"
-                                value="{{ user.id }}"
-                                {% if user.id in form.assignee_user_ids %}checked{% endif %}
-                            >
+                            <span class="task-assignee-choice-control">
 
-                            <span class="checkbox-list-content">
+                                <input
+                                    type="checkbox"
+                                    name="assignee_user_ids"
+                                    value="{{ user.id }}"
+                                    {% if user.id in form.assignee_user_ids %}checked{% endif %}
+                                >
 
-                                <span class="checkbox-list-primary">
+                            </span>
+
+                            <span class="task-assignee-choice-user">
+
+                                <span class="task-assignee-choice-name">
                                     {{ user.display_name }}
                                 </span>
 
-                                <span class="checkbox-list-secondary">
+                                <span class="task-assignee-choice-username">
                                     {{ user.username }}
                                 </span>
 

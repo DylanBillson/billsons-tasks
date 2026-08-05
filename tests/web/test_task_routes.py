@@ -422,3 +422,71 @@ def test_task_mutation_requires_csrf(
     )
 
     assert response.status_code == 403
+
+
+def test_task_create_page_renders_structured_assignee_choices(
+    client: TestClient,
+    db: Session,
+) -> None:
+    company, creator, section, section_list, _ = _create_context(db)
+    assignee = create_user(
+        db,
+        display_name="Structured Assignee",
+        username="structured.assignee",
+    )
+    create_company_membership(db, company=company, user=assignee)
+    create_section_membership(db, section=section, user=assignee)
+    db.commit()
+    _authenticate(client, db, user=creator)
+    response = client.get(
+        f"/section-lists/{section_list.id}/tasks/create",
+    )
+    assert response.status_code == 200
+    assert "task-assignee-choice-list" in response.text
+    assert "task-assignee-choice-control" in response.text
+    assert "task-assignee-choice-user" in response.text
+    assert "Structured Assignee" in response.text
+    assert "structured.assignee" in response.text
+    assert 'name="assignee_user_ids"' in response.text
+
+
+def test_task_detail_renders_description_as_prominent_section(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, _, section_list, _ = _create_context(db)
+    task = create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        title="Prominent Description Task",
+        description="Prominent description content.",
+    )
+    db.commit()
+    _authenticate(client, db, user=creator)
+    response = client.get(f"/tasks/{task.id}")
+    assert response.status_code == 200
+    assert 'id="task-description-heading"' in response.text
+    assert "task-description-card" in response.text
+    assert "task-description-content" in response.text
+    assert "Prominent description content." in response.text
+
+
+def test_task_detail_renders_compact_due_datetime(
+    client: TestClient,
+    db: Session,
+) -> None:
+    from datetime import UTC, datetime
+    _, creator, _, section_list, _ = _create_context(db)
+    task = create_task(
+        db,
+        section_list=section_list,
+        created_by=creator,
+        due_at=datetime(2026, 8, 7, 11, 0, tzinfo=UTC),
+    )
+    db.commit()
+    _authenticate(client, db, user=creator)
+    response = client.get(f"/tasks/{task.id}")
+    assert response.status_code == 200
+    assert "12:00 07/08/26" in response.text
+    assert 'datetime="2026-08-07T11:00:00+00:00"' in response.text

@@ -1,8 +1,109 @@
+/*
+ * Task history
+ *
+ * Covers:
+ * - Task history timeline
+ * - Compact event timestamps
+ * - Legacy history presentation
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Task history card
+ * ------------------------------------------------------------------------- */
+
+.task-history-card {
+    min-width: 0;
+}
+
 .task-history {
+    position: relative;
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
 }
+
+.task-history-event {
+    position: relative;
+    display: grid;
+    grid-template-columns: 1.25rem minmax(0, 1fr);
+    min-width: 0;
+    padding: 0 0 var(--space-5);
+    gap: var(--space-3);
+}
+
+.task-history-event:last-child {
+    padding-bottom: 0;
+}
+
+.task-history-event:not(:last-child)::before {
+    position: absolute;
+    top: 1rem;
+    bottom: 0;
+    left: 0.375rem;
+    width: 1px;
+    background: var(--color-border);
+    content: "";
+}
+
+.task-history-marker {
+    position: relative;
+    z-index: 1;
+    width: 0.8rem;
+    height: 0.8rem;
+    margin-top: 0.3rem;
+    border: 2px solid var(--color-primary-border);
+    border-radius: 50%;
+    background: var(--color-primary);
+    box-shadow:
+        0 0 0 0.2rem
+        var(--color-primary-muted);
+}
+
+.task-history-content {
+    min-width: 0;
+    padding: var(--space-3) var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background-secondary);
+}
+
+.task-history-header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    min-width: 0;
+    gap: var(--space-4);
+}
+
+.task-history-summary {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-size: var(--font-size-sm);
+    font-weight: var(--font-weight-semibold);
+    line-height: 1.45;
+}
+
+.task-history-date {
+    flex: 0 0 auto;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    white-space: nowrap;
+}
+
+.task-history-actor {
+    margin: var(--space-2) 0 0;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Legacy history classes
+ * ------------------------------------------------------------------------- */
 
 .history-list {
     display: flex;
@@ -12,43 +113,82 @@
 
 .history-event {
     display: flex;
-    gap: 1rem;
-    padding: 1rem 0;
-    border-bottom: 1px solid var(--colour-border);
+    padding: var(--space-4) 0;
+    border-bottom: 1px solid var(--color-border);
+    gap: var(--space-4);
 }
 
 .history-event:last-child {
-    border-bottom: none;
+    border-bottom: 0;
 }
 
 .history-event-icon {
+    display: grid;
+    flex-shrink: 0;
     width: 2rem;
     height: 2rem;
-    flex-shrink: 0;
-    border-radius: 50%;
-    background: var(--colour-primary-light);
-    display: grid;
     place-items: center;
-    font-size: 0.85rem;
-    font-weight: 600;
+    border-radius: 50%;
+    background: var(--color-primary-muted);
+    color: var(--color-primary-hover);
+    font-size: var(--font-size-xs);
+    font-weight: var(--font-weight-semibold);
 }
 
 .history-event-content {
-    flex: 1;
+    flex: 1 1 auto;
+    min-width: 0;
 }
 
 .history-event-summary {
-    font-weight: 500;
-    margin-bottom: 0.25rem;
+    margin-bottom: var(--space-1);
+    overflow-wrap: anywhere;
+    font-weight: var(--font-weight-medium);
 }
 
 .history-event-meta {
-    color: var(--colour-text-muted);
-    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
 }
 
 .history-event-empty {
-    color: var(--colour-text-muted);
+    padding: var(--space-6);
+    color: var(--color-text-muted);
     text-align: center;
-    padding: 2rem;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 40rem) {
+    .task-history-header {
+        flex-direction: column;
+        gap: var(--space-1);
+    }
+
+    .task-history-date {
+        white-space: normal;
+    }
+}
+
+@media (max-width: 36rem) {
+    .task-history-event {
+        grid-template-columns: 1rem minmax(0, 1fr);
+        gap: var(--space-2);
+    }
+
+    .task-history-event:not(:last-child)::before {
+        left: 0.3rem;
+    }
+
+    .task-history-marker {
+        width: 0.7rem;
+        height: 0.7rem;
+    }
+
+    .task-history-content {
+        padding: var(--space-3);
+    }
 }

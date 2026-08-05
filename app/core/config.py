@@ -4,6 +4,8 @@ from typing import Literal
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
+from app.core.version import get_version
+
 
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(
@@ -120,6 +122,53 @@ class Settings(BaseSettings):
     )
 
     #
+    # Email
+    #
+
+    smtp_host: str = Field(
+        alias="SMTP_HOST",
+    )
+
+    smtp_port: int = Field(
+        default=587,
+        alias="SMTP_PORT",
+        ge=1,
+        le=65535,
+    )
+
+    smtp_username: str = Field(
+        default="",
+        alias="SMTP_USERNAME",
+    )
+
+    smtp_password: str = Field(
+        default="",
+        alias="SMTP_PASSWORD",
+    )
+
+    smtp_from_email: str = Field(
+        alias="SMTP_FROM_EMAIL",
+    )
+
+    smtp_from_name: str = Field(
+        default="Billson's Tasks",
+        alias="SMTP_FROM_NAME",
+    )
+
+    smtp_use_tls: bool = Field(
+        default=True,
+        alias="SMTP_USE_TLS",
+    )
+
+    #
+    # Feedback
+    #
+
+    feedback_email_to: str = Field(
+        alias="FEEDBACK_EMAIL_TO",
+    )
+
+    #
     # Notifications
     #
 
@@ -150,3 +199,5 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
+
+APP_VERSION = get_version()

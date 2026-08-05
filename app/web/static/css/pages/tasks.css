@@ -1,48 +1,310 @@
-.task-detail-page {
+/*
+ * Task pages
+ *
+ * Covers:
+ * - Task create and edit pages
+ * - Task detail layout
+ * - Prominent task description
+ * - Assignee management
+ * - Move controls
+ * - Danger zone
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Shared task page structure
+ * ------------------------------------------------------------------------- */
+
+.task-detail-page,
+.task-form-page {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
-}
-
-.task-detail-layout {
-    display: grid;
-    grid-template-columns: minmax(0, 2fr) 22rem;
-    gap: 2rem;
-    align-items: start;
-}
-
-.task-detail-main,
-.task-detail-sidebar {
-    display: flex;
-    flex-direction: column;
-    gap: 1.5rem;
+    gap: var(--space-6);
 }
 
 .task-title-row {
     display: flex;
-    align-items: center;
-    gap: 1rem;
     flex-wrap: wrap;
+    align-items: center;
+    gap: var(--space-3);
 }
 
-.task-board-section {
+.task-title-row h1 {
+    min-width: 0;
+    overflow-wrap: anywhere;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Task create and edit layout
+ * ------------------------------------------------------------------------- */
+
+.form-page-layout {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 2fr)
+        minmax(18rem, 1fr);
+    align-items: start;
+    gap: var(--space-6);
+}
+
+.form-card,
+.form-context-card {
+    min-width: 0;
+}
+
+.form-card > form {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
 }
 
+.form-context-card {
+    position: sticky;
+    top: calc(
+        var(--header-height)
+        + var(--navigation-height)
+        + var(--space-5)
+    );
+}
+
+.form-context-description {
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+.form-context-description h3 {
+    margin: 0 0 var(--space-2);
+    font-size: var(--font-size-base);
+}
+
+.form-context-description p {
+    margin: 0 0 var(--space-4);
+    color: var(--color-text-muted);
+    line-height: 1.55;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Task description
+ * ------------------------------------------------------------------------- */
+
+.task-description-card {
+    border-color: var(--color-primary-border);
+    background:
+        linear-gradient(
+            135deg,
+            var(--color-primary-muted),
+            transparent 65%
+        ),
+        var(--color-surface);
+}
+
+.task-description-content {
+    max-width: 72rem;
+    overflow-wrap: anywhere;
+    white-space: pre-wrap;
+    color: var(--color-text);
+    font-size: var(--font-size-lg);
+    line-height: var(--line-height-relaxed);
+}
+
+.task-description-empty {
+    margin: 0;
+    color: var(--color-text-muted);
+    font-style: italic;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Task detail primary layout
+ * ------------------------------------------------------------------------- */
+
+.task-detail-columns {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    align-items: start;
+    gap: var(--space-6);
+}
+
+.task-information-card,
+.task-history-card {
+    min-width: 0;
+    height: 100%;
+}
+
+.task-detail-secondary-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            auto-fit,
+            minmax(min(100%, 20rem), 1fr)
+        );
+    align-items: start;
+    gap: var(--space-6);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Assignee management
+ * ------------------------------------------------------------------------- */
+
+.task-assignees-card {
+    min-width: 0;
+}
+
+.task-assignee-list {
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background-secondary);
+}
+
+.task-assignee-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    min-width: 0;
+    padding: var(--space-3) var(--space-4);
+    border-bottom: 1px solid var(--color-border-subtle);
+    gap: var(--space-4);
+}
+
+.task-assignee-row:last-child {
+    border-bottom: 0;
+}
+
+.task-assignee-user {
+    display: flex;
+    flex: 1 1 auto;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--space-1);
+}
+
+.task-assignee-name {
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+.task-assignee-username {
+    overflow-wrap: anywhere;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
+}
+
+.task-assignee-form {
+    display: flex;
+    align-items: flex-end;
+    margin-top: var(--space-5);
+    padding-top: var(--space-5);
+    border-top: 1px solid var(--color-border-subtle);
+    gap: var(--space-3);
+}
+
+.task-assignee-form .form-group {
+    flex: 1 1 auto;
+    margin-bottom: 0;
+}
+
+.task-assignee-form > .btn {
+    flex: 0 0 auto;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Task movement
+ * ------------------------------------------------------------------------- */
+
+.task-detail-secondary-grid .form-group {
+    margin-bottom: var(--space-4);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Danger zone
+ * ------------------------------------------------------------------------- */
+
 .danger-zone {
-    border-color: var(--colour-danger);
+    border-color: var(--color-danger-border);
+    background:
+        linear-gradient(
+            135deg,
+            var(--color-danger-muted),
+            transparent 70%
+        ),
+        var(--color-surface);
+}
+
+.danger-zone h2 {
+    color: var(--color-danger-hover);
+}
+
+.danger-zone p {
+    color: var(--color-text-muted);
 }
 
 .text-danger {
-    color: var(--colour-danger);
+    color: var(--color-danger);
 }
 
-@media (max-width: 1100px) {
 
-    .task-detail-layout {
-        grid-template-columns: 1fr;
+/* -------------------------------------------------------------------------
+ * Archived and deleted treatment
+ * ------------------------------------------------------------------------- */
+
+.task-detail-page:has(.flash-message-warning)
+.task-description-card {
+    border-color: var(--color-border);
+    background: var(--color-surface-muted);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 68rem) {
+    .form-page-layout,
+    .task-detail-columns {
+        grid-template-columns: minmax(0, 1fr);
     }
 
+    .form-context-card {
+        position: static;
+    }
+}
+
+@media (max-width: 48rem) {
+    .task-assignee-form {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .task-assignee-form > .btn {
+        width: 100%;
+    }
+}
+
+@media (max-width: 36rem) {
+    .task-assignee-row {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .task-assignee-row .inline-form,
+    .task-assignee-row .btn {
+        width: 100%;
+    }
+
+    .task-description-content {
+        font-size: var(--font-size-base);
+    }
 }

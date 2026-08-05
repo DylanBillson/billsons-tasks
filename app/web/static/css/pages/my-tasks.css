@@ -1,14 +1,173 @@
+/*
+ * My Tasks
+ *
+ * Covers:
+ * - Summary and filter two-column layout
+ * - Compact metric arrangement
+ * - Assigned-task results table
+ * - Responsive stacking
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Page structure
+ * ------------------------------------------------------------------------- */
+
 .my-tasks-page {
     display: flex;
     flex-direction: column;
-    gap: 2rem;
+    gap: var(--space-6);
 }
+
+
+/* -------------------------------------------------------------------------
+ * Summary and filters
+ * ------------------------------------------------------------------------- */
+
+.my-task-overview {
+    display: grid;
+    grid-template-columns:
+        minmax(0, 3fr)
+        minmax(20rem, 2fr);
+    align-items: start;
+    gap: var(--space-6);
+}
+
+.my-task-summary,
+.my-task-filter-card {
+    min-width: 0;
+}
+
+.my-task-summary {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-4);
+}
+
+.my-task-metric-grid {
+    grid-template-columns:
+        repeat(
+            3,
+            minmax(0, 1fr)
+        );
+}
+
+.my-task-filter-card {
+    position: sticky;
+    top: calc(
+        var(--header-height)
+        + var(--navigation-height)
+        + var(--space-5)
+    );
+}
+
+.my-task-filter-card > .card-header {
+    margin-bottom: var(--space-4);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Filter form
+ * ------------------------------------------------------------------------- */
+
+.my-task-filter-panel {
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.my-task-filter-panel .my-task-filter-grid {
+    display: grid;
+    grid-template-columns:
+        repeat(
+            2,
+            minmax(0, 1fr)
+        );
+    gap: var(--space-4);
+}
+
+.my-task-filter-panel .form-field {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--space-2);
+}
+
+.my-task-filter-panel .form-input,
+.my-task-filter-panel .form-select {
+    width: 100%;
+    min-width: 0;
+}
+
+.my-task-filter-search {
+    grid-column: 1 / -1;
+}
+
+.my-task-filter-panel .filter-actions {
+    margin-top: var(--space-5);
+    padding-top: var(--space-4);
+    border-top: 1px solid var(--color-border-subtle);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Results
+ * ------------------------------------------------------------------------- */
+
+.my-task-results-card {
+    min-width: 0;
+}
+
+.my-task-table {
+    width: 100%;
+}
+
+.my-task-table td,
+.my-task-table th {
+    vertical-align: top;
+}
+
+.my-task-table .table-primary {
+    min-width: 12rem;
+}
+
+.my-task-table .table-secondary {
+    display: -webkit-box;
+    max-width: 34rem;
+    overflow: hidden;
+    overflow-wrap: anywhere;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 3;
+}
+
+.my-task-table time {
+    white-space: nowrap;
+}
+
+.my-task-table .table-row-warning {
+    background: var(--color-danger-muted);
+}
+
+.my-task-table .table-row-warning:hover {
+    background: color-mix(
+        in srgb,
+        var(--color-danger-muted) 82%,
+        var(--color-surface-raised)
+    );
+}
+
+
+/* -------------------------------------------------------------------------
+ * Legacy compatibility
+ * ------------------------------------------------------------------------- */
 
 .my-tasks-header {
     display: flex;
-    justify-content: space-between;
     align-items: flex-start;
-    gap: 2rem;
+    justify-content: space-between;
+    gap: var(--space-6);
 }
 
 .my-tasks-table {
@@ -18,46 +177,97 @@
 .my-task-title {
     display: flex;
     flex-direction: column;
-    gap: .25rem;
+    gap: var(--space-1);
 }
 
 .my-task-title a {
-    font-weight: 600;
-    text-decoration: none;
     color: inherit;
+    font-weight: var(--font-weight-semibold);
+    text-decoration: none;
 }
 
 .my-task-title a:hover {
-    color: var(--colour-primary);
+    color: var(--color-primary);
 }
 
 .my-task-meta {
-    font-size: .875rem;
-    color: var(--colour-text-muted);
+    color: var(--color-text-muted);
+    font-size: var(--font-size-sm);
 }
 
-.my-task-state {
-    white-space: nowrap;
-}
-
+.my-task-state,
 .my-task-due {
     white-space: nowrap;
 }
 
 .my-task-empty {
-    padding: 3rem;
-
+    padding: var(--space-8);
+    border: 2px dashed var(--color-border);
+    border-radius: var(--radius-lg);
     text-align: center;
-
-    border: 2px dashed var(--colour-border);
-    border-radius: var(--radius-large);
 }
 
-@media (max-width: 900px) {
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 68rem) {
+    .my-task-overview {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .my-task-filter-card {
+        position: static;
+    }
+
+    .my-task-metric-grid {
+        grid-template-columns:
+            repeat(
+                3,
+                minmax(0, 1fr)
+            );
+    }
+}
+
+@media (max-width: 48rem) {
+    .my-task-metric-grid {
+        grid-template-columns:
+            repeat(
+                2,
+                minmax(0, 1fr)
+            );
+    }
+
+    .my-task-filter-panel .my-task-filter-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .my-task-filter-search {
+        grid-column: auto;
+    }
+
+    .my-task-filter-panel .filter-actions {
+        align-items: stretch;
+        flex-direction: column;
+    }
+
+    .my-task-filter-panel .filter-actions .btn {
+        width: 100%;
+    }
 
     .my-tasks-header {
         flex-direction: column;
-        gap: 1rem;
+        gap: var(--space-4);
+    }
+}
+
+@media (max-width: 36rem) {
+    .my-task-metric-grid {
+        grid-template-columns: minmax(0, 1fr);
     }
 
+    .my-task-table time {
+        white-space: normal;
+    }
 }

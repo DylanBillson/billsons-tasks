@@ -35,7 +35,7 @@ def _authenticate(
     )
 
 
-def test_standard_user_sees_phase6_primary_navigation(
+def test_standard_user_sees_primary_navigation(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -55,23 +55,18 @@ def test_standard_user_sees_phase6_primary_navigation(
 
     assert response.status_code == 200
 
-    assert (
-        'href="http://testserver/"'
-        in response.text
-    )
-
-    assert (
-        'href="http://testserver/companies"'
-        in response.text
-    )
-
-    assert (
-        'href="http://testserver/my-tasks"'
-        in response.text
-    )
+    for path in (
+        "/",
+        "/companies",
+        "/my-tasks",
+    ):
+        assert (
+            f'href="http://testserver{path}"'
+            in response.text
+        )
 
 
-def test_standard_user_does_not_see_administration_navigation(
+def test_standard_user_does_not_see_administration_dropdown(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -90,6 +85,7 @@ def test_standard_user_does_not_see_administration_navigation(
     )
 
     assert response.status_code == 200
+    assert "app-admin-menu" not in response.text
 
     for path in (
         "/admin",
@@ -106,7 +102,7 @@ def test_standard_user_does_not_see_administration_navigation(
         )
 
 
-def test_administrator_sees_complete_phase6_navigation(
+def test_administrator_sees_complete_administration_dropdown(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -125,11 +121,10 @@ def test_administrator_sees_complete_phase6_navigation(
     )
 
     assert response.status_code == 200
+    assert "app-admin-menu" in response.text
+    assert "Administration" in response.text
 
     for path in (
-        "/",
-        "/companies",
-        "/my-tasks",
         "/admin",
         "/admin/users",
         "/admin/companies",
@@ -144,7 +139,7 @@ def test_administrator_sees_complete_phase6_navigation(
         )
 
 
-def test_phase6_navigation_active_state_on_my_tasks(
+def test_primary_navigation_active_state_on_my_tasks(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -165,14 +160,14 @@ def test_phase6_navigation_active_state_on_my_tasks(
     assert response.status_code == 200
 
     assert (
-        'class="app-navigation-link is-active"'
+        'href="http://testserver/my-tasks"'
         in response.text
     )
 
-    assert "My Tasks" in response.text
+    assert 'aria-current="page"' in response.text
 
 
-def test_phase6_navigation_active_state_on_administration(
+def test_administration_dropdown_marks_active_page(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -187,20 +182,23 @@ def test_phase6_navigation_active_state_on_administration(
     )
 
     response = client.get(
-        "/admin",
+        "/admin/audit",
     )
 
     assert response.status_code == 200
 
     assert (
-        'href="http://testserver/admin"'
+        'href="http://testserver/admin/audit"'
         in response.text
     )
 
-    assert "Overview" in response.text
+    assert (
+        "app-admin-menu-link is-active"
+        in response.text
+    )
 
 
-def test_phase6_header_displays_current_user(
+def test_header_displays_current_user_and_controls(
     client: TestClient,
     db: Session,
 ) -> None:
@@ -222,10 +220,12 @@ def test_phase6_header_displays_current_user(
     assert response.status_code == 200
     assert "Phase Six Administrator" in response.text
     assert "Administrator" in response.text
+    assert "Feedback" in response.text
+    assert "Administration" in response.text
     assert "Sign Out" in response.text
 
 
-def test_unauthenticated_login_page_has_no_phase6_navigation(
+def test_unauthenticated_login_page_has_no_protected_navigation(
     client: TestClient,
 ) -> None:
     response = client.get(
@@ -240,5 +240,7 @@ def test_unauthenticated_login_page_has_no_phase6_navigation(
         "Archived Sections",
         "Deleted Tasks",
         "Audit Log",
+        "Feedback",
+        "Sign Out",
     ):
         assert label not in response.text

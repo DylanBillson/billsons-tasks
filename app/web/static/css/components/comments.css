@@ -1,36 +1,186 @@
+/*
+ * Task comments
+ *
+ * Covers:
+ * - Comment form
+ * - Comment bubbles
+ * - Compact author, message, date and delete presentation
+ */
+
+
+/* -------------------------------------------------------------------------
+ * Comments card and form
+ * ------------------------------------------------------------------------- */
+
+.task-comments-card {
+    min-width: 0;
+}
+
+.task-comment-form {
+    display: flex;
+    flex-direction: column;
+    margin-bottom: var(--space-6);
+    padding-bottom: var(--space-6);
+    border-bottom: 1px solid var(--color-border-subtle);
+}
+
+.task-comment-form .form-group {
+    margin-bottom: 0;
+}
+
+.task-comment-form textarea {
+    min-height: 7rem;
+}
+
+.task-comment-form .form-actions {
+    justify-content: flex-end;
+    margin-top: var(--space-3);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Comment list
+ * ------------------------------------------------------------------------- */
+
 .task-comments {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
+    gap: var(--space-3);
 }
+
+.task-comment {
+    min-width: 0;
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-lg);
+    background: var(--color-background-secondary);
+    box-shadow: var(--shadow-sm);
+    transition:
+        border-color var(--transition-fast),
+        background-color var(--transition-fast);
+}
+
+.task-comment:hover {
+    border-color: var(--color-primary-border);
+    background: var(--color-surface-muted);
+}
+
+.task-comment-content {
+    display: flex;
+    flex-direction: column;
+    min-width: 0;
+    gap: var(--space-2);
+}
+
+.task-comment-message {
+    min-width: 0;
+    overflow-wrap: anywhere;
+    color: var(--color-text);
+    line-height: 1.55;
+}
+
+.task-comment-author {
+    color: var(--color-text);
+    font-weight: var(--font-weight-semibold);
+}
+
+.task-comment-body {
+    white-space: pre-wrap;
+}
+
+.task-comment-meta {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
+    gap: var(--space-2);
+}
+
+.task-comment-date {
+    white-space: nowrap;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Inline delete control
+ * ------------------------------------------------------------------------- */
+
+.task-comment-delete-form {
+    display: inline-flex;
+}
+
+.task-comment-delete {
+    padding: 0;
+    border: 0;
+    background: transparent;
+    color: var(--color-danger-hover);
+    font: inherit;
+    font-size: inherit;
+    cursor: pointer;
+    text-decoration: underline;
+    text-decoration-color: transparent;
+    text-underline-offset: 0.15em;
+}
+
+.task-comment-delete:hover {
+    color: var(--color-danger);
+    text-decoration-color: currentColor;
+}
+
+.task-comment-delete:focus-visible {
+    border-radius: var(--radius-sm);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Deleted comments
+ * ------------------------------------------------------------------------- */
+
+.task-comment.is-deleted {
+    border-style: dashed;
+    background: var(--color-surface-muted);
+    opacity: 0.75;
+}
+
+.task-comment.is-deleted .task-comment-author,
+.task-comment.is-deleted .task-comment-body {
+    color: var(--color-text-muted);
+}
+
+
+/* -------------------------------------------------------------------------
+ * Legacy comment classes
+ * ------------------------------------------------------------------------- */
 
 .comment-list {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-3);
 }
 
 .comment {
-    padding: 1rem;
-    border: 1px solid var(--colour-border);
-    border-radius: var(--border-radius-medium);
+    padding: var(--space-4);
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+    background: var(--color-background-secondary);
 }
 
 .comment-header {
     display: flex;
-    justify-content: space-between;
     align-items: center;
-    gap: 1rem;
-    margin-bottom: 0.75rem;
+    justify-content: space-between;
+    margin-bottom: var(--space-3);
+    gap: var(--space-4);
 }
 
 .comment-author {
-    font-weight: 600;
+    font-weight: var(--font-weight-semibold);
 }
 
 .comment-date {
-    color: var(--colour-text-muted);
-    font-size: 0.85rem;
+    color: var(--color-text-muted);
+    font-size: var(--font-size-xs);
 }
 
 .comment-body {
@@ -41,16 +191,40 @@
 .comment-actions {
     display: flex;
     justify-content: flex-end;
-    margin-top: 1rem;
+    margin-top: var(--space-4);
 }
 
 .comment-form {
     display: flex;
     flex-direction: column;
-    gap: 1rem;
+    gap: var(--space-4);
 }
 
 .comment-form textarea {
     min-height: 8rem;
     resize: vertical;
+}
+
+
+/* -------------------------------------------------------------------------
+ * Responsive behaviour
+ * ------------------------------------------------------------------------- */
+
+@media (max-width: 36rem) {
+    .task-comment {
+        padding: var(--space-3);
+    }
+
+    .task-comment-form .form-actions {
+        align-items: stretch;
+    }
+
+    .task-comment-form .btn {
+        width: 100%;
+    }
+
+    .comment-header {
+        align-items: flex-start;
+        flex-direction: column;
+    }
 }
