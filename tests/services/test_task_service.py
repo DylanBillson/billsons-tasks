@@ -36,6 +36,21 @@ from app.services.task_service import (
     TaskService,
     TaskServiceError,
 )
+from app.services.live_update_service import (
+    LiveUpdateService,
+)
+from app.services.task_service import (
+    TaskAlreadyCompletedError,
+    TaskAlreadyDeletedError,
+    TaskDestinationListNotFoundError,
+    TaskLiveUpdateConflictError,
+    TaskNotCompletedError,
+    TaskNotDeletedError,
+    TaskNotFoundError,
+    TaskReorderError,
+    TaskService,
+    TaskServiceError,
+)
 from tests.factories import (
     create_administrator,
     create_company,
@@ -2359,3 +2374,292 @@ def test_reorder_tasks_audit_records_previous_and_current_positions(
             "sort_position": 2000,
         },
     }
+
+def test_update_task_changes_live_update_revision(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        _,
+    ) = _create_context(
+        db,
+    )
+
+    task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        title="Original title",
+    )
+
+    before = LiveUpdateService.get_section_revision(
+        db,
+        actor=creator,
+        section_id=section.id,
+    )
+
+    TaskService.update_task(
+        db,
+        actor=creator,
+        task=task,
+        task_update=TaskUpdateRequest(
+            title="Updated title",
+        ),
+        commit=False,
+    )
+
+    db.flush()
+
+    after = LiveUpdateService.get_section_revision(
+        db,
+        actor=creator,
+        section_id=section.id,
+    )
+
+    assert before.revision != after.revision
+
+
+def test_move_task_accepts_current_revision(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    revision = LiveUpdateService.get_section_revision(
+        db,
+        actor=creator,
+        section_id=section.id,
+    )
+
+    result = TaskService.move_task(
+        db,
+        actor=creator,
+        task=task,
+        destination_list=second_list,
+        move_request=TaskMoveRequest(
+            destination_list_id=second_list.id,
+            sort_position=2000,
+            known_revision=revision.revision,
+        ),
+        commit=False,
+    )
+
+    assert result is task
+    assert task.section_list_id == second_list.id
+    assert task.sort_position == 2000
+
+
+def test_move_task_rejects_stale_revision(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    stale_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=creator,
+            section_id=section.id,
+        )
+    )
+
+    task.title = "Changed by another user"
+    task.updated_at = (
+        utc_now()
+        + timedelta(
+            seconds=1,
+        )
+    )
+
+    db.flush()
+
+    with pytest.raises(
+        TaskLiveUpdateConflictError,
+        match="board changed",
+    ) as exc_info:
+        TaskService.move_task(
+            db,
+            actor=creator,
+            task=task,
+            destination_list=second_list,
+            move_request=TaskMoveRequest(
+                destination_list_id=second_list.id,
+                sort_position=2000,
+                known_revision=(
+                    stale_revision.revision
+                ),
+            ),
+            commit=False,
+        )
+
+    assert (
+        exc_info.value.current_revision
+        != stale_revision.revision
+    )
+
+    assert task.section_list_id == first_list.id
+    assert task.sort_position == 1000
+
+
+def test_reorder_tasks_rejects_stale_revision(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        section,
+        first_list,
+        second_list,
+    ) = _create_context(
+        db,
+    )
+
+    first_task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    second_task = create_task(
+        db,
+        section_list=second_list,
+        created_by=creator,
+        sort_position=1000,
+    )
+
+    stale_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=creator,
+            section_id=section.id,
+        )
+    )
+
+    second_task.title = "Concurrent update"
+    second_task.updated_at = (
+        utc_now()
+        + timedelta(
+            seconds=1,
+        )
+    )
+
+    db.flush()
+
+    with pytest.raises(
+        TaskLiveUpdateConflictError,
+        match="board changed",
+    ):
+        TaskService.reorder_tasks(
+            db,
+            actor=creator,
+            section=section,
+            reorder_request=TaskReorderRequest(
+                known_revision=(
+                    stale_revision.revision
+                ),
+                items=[
+                    TaskPositionUpdate(
+                        task_id=first_task.id,
+                        section_list_id=second_list.id,
+                        sort_position=2000,
+                    ),
+                    TaskPositionUpdate(
+                        task_id=second_task.id,
+                        section_list_id=first_list.id,
+                        sort_position=500,
+                    ),
+                ],
+            ),
+            commit=False,
+        )
+
+    assert first_task.section_list_id == first_list.id
+    assert first_task.sort_position == 1000
+
+    assert second_task.section_list_id == second_list.id
+    assert second_task.sort_position == 1000
+
+
+def test_task_state_mutations_touch_updated_at(
+    db: Session,
+) -> None:
+    (
+        _,
+        creator,
+        _,
+        first_list,
+        _,
+    ) = _create_context(
+        db,
+    )
+
+    task = create_task(
+        db,
+        section_list=first_list,
+        created_by=creator,
+    )
+
+    original_updated_at = task.updated_at
+
+    TaskService.complete_task(
+        db,
+        actor=creator,
+        task=task,
+        commit=False,
+    )
+
+    assert task.updated_at >= original_updated_at
+
+    completed_updated_at = task.updated_at
+
+    TaskService.reopen_task(
+        db,
+        actor=creator,
+        task=task,
+        commit=False,
+    )
+
+    assert task.updated_at >= completed_updated_at
+
+    reopened_updated_at = task.updated_at
+
+    TaskService.delete_task(
+        db,
+        actor=creator,
+        task=task,
+        commit=False,
+    )
+
+    assert task.updated_at >= reopened_updated_at

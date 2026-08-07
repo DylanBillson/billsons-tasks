@@ -1,6 +1,7 @@
 <section
     class="content-card task-assignees-card"
     aria-labelledby="task-assignees-heading"
+    data-task-live-region="assignees"
 >
 
     <div class="card-header">
@@ -36,7 +37,11 @@
 
         {% for assignment in assignments %}
 
-        <div class="task-assignee-row">
+        <div
+            class="task-assignee-row"
+            data-task-assignment
+            data-user-id="{{ assignment.user_id }}"
+        >
 
             <div class="task-assignee-user">
 
@@ -102,7 +107,10 @@
 
     <form
         method="post"
-        action="{{ url_for('task_assignee_add', task_id=task.id) }}"
+        action="{{ url_for(
+            'task_assignee_add',
+            task_id=task.id
+        ) }}"
         class="task-assignee-form"
     >
 

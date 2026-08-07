@@ -1,7 +1,12 @@
 from fastapi.testclient import TestClient
 from sqlalchemy import select
 from sqlalchemy.orm import Session
+from datetime import timedelta
 
+from app.core.timezone import utc_now
+from app.services.live_update_service import (
+    LiveUpdateService,
+)
 from app.core.config import settings
 from app.core.constants import CompanyRole
 from app.models.section_list import SectionList
@@ -612,3 +617,96 @@ def test_list_reorder_rejects_malformed_json(
             "was not valid JSON."
         ),
     }
+
+def test_list_reorder_returns_conflict_for_stale_revision(
+    client: TestClient,
+    db: Session,
+) -> None:
+    _, creator, section = _create_context(
+        db,
+    )
+
+    first = create_section_list(
+        db,
+        section=section,
+        name="First",
+        sort_position=1000,
+    )
+
+    second = create_section_list(
+        db,
+        section=section,
+        name="Second",
+        sort_position=2000,
+    )
+
+    db.commit()
+
+    stale_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=creator,
+            section_id=section.id,
+        )
+    )
+
+    first.name = "Changed elsewhere"
+    first.updated_at = (
+        utc_now()
+        + timedelta(
+            seconds=1,
+        )
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/lists/reorder",
+        json={
+            "known_revision": (
+                stale_revision.revision
+            ),
+            "items": [
+                {
+                    "list_id": second.id,
+                    "sort_position": 1000,
+                },
+                {
+                    "list_id": first.id,
+                    "sort_position": 2000,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 409
+
+    payload = response.json()
+
+    assert payload["code"] == "live_update_conflict"
+
+    assert (
+        payload["current_revision"]
+        != stale_revision.revision
+    )
+
+    assert "board changed" in payload["detail"]
+
+    db.refresh(
+        first,
+    )
+    db.refresh(
+        second,
+    )
+
+    assert first.sort_position == 1000
+    assert second.sort_position == 2000

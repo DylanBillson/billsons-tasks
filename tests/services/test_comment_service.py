@@ -218,8 +218,8 @@ def test_section_creator_lists_comments(
     )
 
     assert result == [
-        first,
         second,
+        first,
     ]
 
 
@@ -362,8 +362,8 @@ def test_section_creator_can_include_deleted_comments(
     )
 
     assert result == [
-        active,
         deleted,
+        active,
     ]
 
 

@@ -2,10 +2,10 @@
     class="task-card{% if task.is_completed %} is-completed{% endif %}{% if task.is_overdue %} is-overdue{% endif %}{% if task.is_deleted %} is-deleted{% endif %}"
     data-task-card
     data-task-id="{{ task.id }}"
+    data-task-revision="{{ task.live_revision.revision if task.live_revision else '' }}"
+    data-live-update-url="{{ url_for('task_live_update_revision', task_id=task.id) }}"
     data-list-id="{{ task.section_list_id }}"
     data-sort-position="{{ task.sort_position }}"
-    {% if task_board_drag_enabled and not task.is_deleted %}
-    {% endif %}
 >
 
     <div class="task-card-header">

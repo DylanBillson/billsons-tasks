@@ -34,6 +34,9 @@ from app.web.routes.feedback import (
 from app.web.routes.home import (
     router as home_router,
 )
+from app.web.routes.live_updates import (
+    router as live_updates_router,
+)
 from app.web.routes.my_tasks import (
     router as my_tasks_router,
 )
@@ -61,6 +64,7 @@ __all__ = [
     "companies_router",
     "feedback_router",
     "home_router",
+    "live_updates_router",
     "my_tasks_router",
     "section_lists_router",
     "sections_router",

@@ -169,6 +169,22 @@ class Settings(BaseSettings):
     )
 
     #
+    # Live Updates
+    #
+
+    live_updates_enabled: bool = Field(
+        default=True,
+        alias="LIVE_UPDATES_ENABLED",
+    )
+
+    live_updates_poll_interval_seconds: int = Field(
+        default=5,
+        alias="LIVE_UPDATES_POLL_INTERVAL_SECONDS",
+        ge=2,
+        le=60,
+    )
+
+    #
     # Notifications
     #
 

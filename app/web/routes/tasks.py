@@ -1,5 +1,7 @@
 from urllib.parse import urlencode
-
+from app.services.live_update_service import (
+    LiveUpdateService,
+)
 from fastapi import APIRouter, Request, status
 from fastapi.responses import (
     HTMLResponse,
@@ -40,6 +42,7 @@ from app.services.task_history_service import TaskHistoryService
 from app.services.task_service import (
     TaskAlreadyCompletedError,
     TaskDestinationListNotFoundError,
+    TaskLiveUpdateConflictError,
     TaskNotCompletedError,
     TaskNotFoundError,
     TaskReorderError,
@@ -323,13 +326,29 @@ def task_detail(
             task=task,
         )
     )
+    task_revision = (
+        LiveUpdateService.get_task_revision(
+            db,
+            actor=current_user,
+            task_id=task.id,
+        )
+    )
 
+    section_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=current_user,
+            section_id=task.section_id,
+        )
+    )
     return templates.TemplateResponse(
         request=request,
         name="tasks/detail.html",
         context={
             "current_user": current_user,
             "task": task,
+            "task_revision": task_revision,
+            "section_revision": section_revision,
             "section": task.section_list.section,
             "section_list": task.section_list,
             "section_lists": section_lists,
@@ -834,10 +853,27 @@ async def move_task(
             status_code=status.HTTP_422_UNPROCESSABLE_CONTENT,
         )
 
-    except (
-        TaskDestinationListNotFoundError,
-        TaskServiceError,
-    ) as exc:
+    except TaskLiveUpdateConflictError as exc:
+        return JSONResponse(
+            {
+                "detail": str(
+                    exc,
+                ),
+                "code": "live_update_conflict",
+                "current_revision": (
+                    exc.current_revision
+                ),
+            },
+            status_code=status.HTTP_409_CONFLICT,
+        )
+
+    except TaskDestinationListNotFoundError as exc:
+        return _json_error(
+            str(exc),
+            status.HTTP_422_UNPROCESSABLE_CONTENT,
+        )
+
+    except TaskServiceError as exc:
         return _json_error(
             str(exc),
             status.HTTP_422_UNPROCESSABLE_CONTENT,
@@ -924,6 +960,20 @@ async def reorder_tasks(
             status_code=(
                 status.HTTP_422_UNPROCESSABLE_CONTENT
             ),
+        )
+
+    except TaskLiveUpdateConflictError as exc:
+        return JSONResponse(
+            {
+                "detail": str(
+                    exc,
+                ),
+                "code": "live_update_conflict",
+                "current_revision": (
+                    exc.current_revision
+                ),
+            },
+            status_code=status.HTTP_409_CONFLICT,
         )
 
     except (

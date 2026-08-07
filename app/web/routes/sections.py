@@ -2,7 +2,9 @@ from urllib.parse import urlencode
 
 from fastapi import APIRouter, Request, status
 from fastapi.responses import HTMLResponse, RedirectResponse
-
+from app.services.live_update_service import (
+    LiveUpdateService,
+)
 from app.auth.permissions import (
     PermissionDeniedError,
     PermissionService,
@@ -419,12 +421,21 @@ def section_detail(
         section_memberships=memberships,
     )
 
+    section_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=current_user,
+            section_id=section.id,
+        )
+    )
+    
     return templates.TemplateResponse(
         request=request,
         name="sections/detail.html",
         context={
             "current_user": current_user,
             "section": section,
+            "section_revision": section_revision,
             "memberships": memberships,
             "company_memberships": company_memberships,
             "section_lists": section_lists,

@@ -1,0 +1,121 @@
+/*
+ * Live updates
+ *
+ * Covers:
+ * - Polling status banner
+ * - Offline state
+ * * Synchronisation state
+ * - Conflict warnings
+ */
+
+.live-update-status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-3);
+
+    margin-bottom: var(--space-5);
+    padding: var(--space-3) var(--space-4);
+
+    border: 1px solid var(--color-border);
+    border-radius: var(--radius-md);
+
+    background: var(--color-background-secondary);
+
+    font-size: var(--font-size-sm);
+}
+
+.live-update-status[hidden] {
+    display: none;
+}
+
+.live-update-status-indicator {
+    flex: 0 0 auto;
+
+    width: 0.7rem;
+    height: 0.7rem;
+
+    border-radius: 999px;
+
+    background: var(--color-success);
+}
+
+.live-update-status-message {
+    flex: 1 1 auto;
+}
+
+.live-update-status-action {
+    flex: 0 0 auto;
+}
+
+.live-update-status[data-state="checking"]
+.live-update-status-indicator {
+    background: var(--color-warning);
+
+    animation:
+        live-update-pulse
+        1.2s
+        infinite;
+}
+
+.live-update-status[data-state="updating"]
+.live-update-status-indicator {
+    background: var(--color-primary);
+
+    animation:
+        live-update-pulse
+        0.9s
+        infinite;
+}
+
+.live-update-status[data-state="offline"] {
+    border-color: var(--color-warning-border);
+
+    background: var(--color-warning-muted);
+}
+
+.live-update-status[data-state="offline"]
+.live-update-status-indicator {
+    background: var(--color-warning);
+}
+
+.live-update-status[data-state="error"] {
+    border-color: var(--color-danger-border);
+
+    background: var(--color-danger-muted);
+}
+
+.live-update-status[data-state="error"]
+.live-update-status-indicator {
+    background: var(--color-danger);
+}
+
+.live-update-status[data-state="conflict"] {
+    border-color: var(--color-primary-border);
+
+    background: var(--color-primary-muted);
+}
+
+.live-update-status[data-state="conflict"]
+.live-update-status-indicator {
+    background: var(--color-primary);
+}
+
+@keyframes live-update-pulse {
+
+    0% {
+        opacity: 0.35;
+        transform: scale(.85);
+    }
+
+    50% {
+        opacity: 1;
+        transform: scale(1);
+    }
+
+    100% {
+        opacity: 0.35;
+        transform: scale(.85);
+    }
+
+}

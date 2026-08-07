@@ -799,14 +799,26 @@ Permission failures never expose protected data.
 
 Typical behaviour includes:
 
-- redirecting to a safe page
+- redirecting browser requests to a safe page
 - displaying an appropriate error message
-- returning HTTP 403 where applicable
+- returning HTTP 403 where appropriate
+- returning HTTP 404 for protected asynchronous resources where revealing
+  existence would disclose information
 - recording administrative actions where necessary
 
-Permission failures never reveal whether inaccessible entities exist.
+Permission failures never reveal protected entity data.
 
-This helps prevent information disclosure through identifier enumeration.
+For live update endpoints, an inaccessible resource and a nonexistent resource
+produce the same HTTP 404 response.
+
+This prevents polling endpoints from being used to enumerate:
+
+- companies
+- sections
+- tasks
+
+The distinction between "not found" and "not permitted" therefore remains
+hidden from the client where necessary.
 
 ---
 
@@ -1015,6 +1027,14 @@ Cross-company movement is never permitted.
 
 Drag-and-drop operations remain subject to the same server-side validation as
 traditional forms.
+
+Where live updates are enabled, drag-and-drop operations also use optimistic
+concurrency protection.
+
+The client may submit:
+
+```text
+known_revision
 
 ---
 

@@ -406,3 +406,90 @@ def test_active_filter_disables_sortable_handles(
     assert "Filters are currently applied." in response.text
     assert "data-list-drag-handle" not in response.text
     assert "data-task-drag-handle" not in response.text
+
+def test_section_board_exposes_live_update_metadata(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        _,
+        _,
+        _,
+    ) = _create_board_context(
+        db,
+    )
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+
+    html = response.text
+
+    assert "data-section-revision" in html
+
+    assert (
+        f"/api/live-updates/sections/"
+        f"{section.id}/revision"
+        in html
+    )
+
+    assert "js/live-updates.js" in html
+
+    assert (
+        "LIVE_UPDATES_POLL_INTERVAL_SECONDS"
+        not in html
+    )
+
+
+def test_section_board_revision_is_non_empty(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        _,
+        _,
+        _,
+    ) = _create_board_context(
+        db,
+    )
+
+    _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.get(
+        f"/sections/{section.id}",
+    )
+
+    assert response.status_code == 200
+
+    marker = 'data-section-revision="'
+
+    start = response.text.index(
+        marker,
+    ) + len(marker)
+
+    end = response.text.index(
+        '"',
+        start,
+    )
+
+    revision = response.text[
+        start:end
+    ]
+
+    assert len(revision) == 24

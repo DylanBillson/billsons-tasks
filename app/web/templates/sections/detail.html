@@ -554,6 +554,13 @@
 
 {% block scripts %}
 
+<script>
+window.billsonsLiveUpdates = {
+    enabled: {{ "true" if settings.live_updates_enabled else "false" }},
+    pollIntervalSeconds: {{ settings.live_updates_poll_interval_seconds }},
+};
+</script>
+
 <script
     src="{{ url_for('static', path='vendor/sortablejs/Sortable.min.js') }}"
     defer

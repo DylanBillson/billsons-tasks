@@ -14,6 +14,7 @@
  * ------------------------------------------------------------------------- */
 
 .task-board {
+    position: relative;
     display: grid;
     grid-auto-columns: minmax(
         min(19rem, calc(100vw - (2 * var(--content-gutter)))),
@@ -321,4 +322,33 @@
     box-shadow:
         inset -4px 0 0
         var(--color-primary);
+}
+/*
+ * -------------------------------------------------------------------------
+ * Live updates
+ * -------------------------------------------------------------------------
+ */
+
+.task-board[aria-busy="true"] {
+    opacity: .82;
+
+    transition:
+        opacity var(--transition-fast);
+}
+
+.task-board[aria-busy="true"]::after {
+    content: "";
+
+    position: absolute;
+    inset: 0;
+
+    background:
+        rgba(
+            255,
+            255,
+            255,
+            .18
+        );
+
+    pointer-events: none;
 }

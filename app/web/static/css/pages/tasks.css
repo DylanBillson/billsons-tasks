@@ -308,3 +308,21 @@
         font-size: var(--font-size-base);
     }
 }
+/*
+ * -------------------------------------------------------------------------
+ * Live updates
+ * -------------------------------------------------------------------------
+ */
+
+.task-detail-live-content {
+    display: flex;
+    flex-direction: column;
+    gap: var(--space-6);
+}
+
+.task-detail-page[aria-busy="true"] {
+    opacity: .85;
+
+    transition:
+        opacity var(--transition-fast);
+}

@@ -1,6 +1,7 @@
 <section
     class="content-card task-history-card"
     aria-labelledby="task-history-heading"
+    data-task-live-region="history"
 >
 
     <div class="card-header">
@@ -32,11 +33,18 @@
 
     {% if history_events %}
 
-    <ol class="task-history">
+    <ol
+        class="task-history"
+        data-task-history
+    >
 
         {% for event in history_events %}
 
-        <li class="task-history-event">
+        <li
+            class="task-history-event"
+            data-task-history-event
+            data-history-event-id="{{ event.id }}"
+        >
 
             <div
                 class="task-history-marker"

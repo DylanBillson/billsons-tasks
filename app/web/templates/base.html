@@ -105,6 +105,26 @@
         defer
     ></script>
 
+    {% if (
+        current_user is defined
+        and current_user
+        and settings.live_updates_enabled
+    ) %}
+
+    <script>
+    window.billsonsLiveUpdates = {
+        enabled: true,
+        pollIntervalSeconds: {{ settings.live_updates_poll_interval_seconds }},
+    };
+    </script>
+
+    <script
+        src="{{ url_for('static', path='js/live-updates.js') }}"
+        defer
+    ></script>
+
+    {% endif %}
+
     <script
         src="{{ url_for('static', path='js/feedback.js') }}"
         defer

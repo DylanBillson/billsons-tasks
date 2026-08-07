@@ -1,217 +1,16 @@
-{% extends "base.html" %}
-
-{% block title %}
-{{ task.title }}
-{% endblock %}
-
-{% block content %}
-
 <div
-    class="app-page task-detail-page"
-    data-task-detail
+    class="task-detail-live-content"
+    data-task-detail-live-content
     data-task-id="{{ task.id }}"
     data-task-revision="{{ task_revision.revision }}"
-    data-section-revision="{{ section_revision.revision }}"
-    data-live-update-url="{{ url_for(
-        'task_live_update_revision',
-        task_id=task.id
-    ) }}"
 >
 
-    <div class="page-header">
-
-        <div>
-
-            <p class="page-eyebrow">
-                {{ section.company.name }}
-                &middot;
-                {{ section.name }}
-                &middot;
-                {{ section_list.name }}
-            </p>
-
-            <div class="task-title-row">
-
-                <h1>
-                    {{ task.title }}
-                </h1>
-
-                {% if task.is_deleted %}
-
-                <span class="status-badge status-badge-muted">
-                    Deleted
-                </span>
-
-                {% elif task.is_completed %}
-
-                <span class="status-badge status-badge-success">
-                    Completed
-                </span>
-
-                {% elif task.is_overdue %}
-
-                <span class="status-badge status-badge-danger">
-                    Overdue
-                </span>
-
-                {% else %}
-
-                <span class="status-badge status-badge-primary">
-                    Open
-                </span>
-
-                {% endif %}
-
-            </div>
-
-        </div>
-
-        <div class="page-actions">
-
-            {% if can_update %}
-
-            <a
-                href="{{ url_for('task_edit', task_id=task.id) }}"
-                class="btn btn-secondary"
-            >
-                Edit Task
-            </a>
-
-            {% endif %}
-
-            {% if can_complete and not task.is_deleted %}
-
-                {% if task.is_completed %}
-
-                <form
-                    method="post"
-                    action="{{ url_for('task_reopen', task_id=task.id) }}"
-                    class="inline-form"
-                >
-
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token }}"
-                    >
-
-                    <button
-                        type="submit"
-                        class="btn btn-secondary"
-                    >
-                        Reopen Task
-                    </button>
-
-                </form>
-
-                {% else %}
-
-                <form
-                    method="post"
-                    action="{{ url_for('task_complete', task_id=task.id) }}"
-                    class="inline-form"
-                >
-
-                    <input
-                        type="hidden"
-                        name="csrf_token"
-                        value="{{ csrf_token }}"
-                    >
-
-                    <button
-                        type="submit"
-                        class="btn btn-primary"
-                    >
-                        Mark Complete
-                    </button>
-
-                </form>
-
-                {% endif %}
-
-            {% endif %}
-
-            {% if can_delete and not task.is_deleted %}
-
-            <form
-                method="post"
-                action="{{ url_for('task_delete', task_id=task.id) }}"
-                class="inline-form"
-                data-confirm="Delete this task?"
-            >
-
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token }}"
-                >
-
-                <button
-                    type="submit"
-                    class="btn btn-danger"
-                >
-                    Delete Task
-                </button>
-
-            </form>
-
-            {% endif %}
-
-            {% if can_restore and task.is_deleted %}
-
-            <form
-                method="post"
-                action="{{ url_for('task_restore', task_id=task.id) }}"
-                class="inline-form"
-            >
-
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token }}"
-                >
-
-                <button
-                    type="submit"
-                    class="btn btn-primary"
-                >
-                    Restore Task
-                </button>
-
-            </form>
-
-            {% endif %}
-
-        </div>
-
-    </div>
-
-    {% if task.is_deleted %}
-
-    <div
-        class="flash-message flash-message-warning"
-        role="status"
-    >
-
-        <div class="flash-message-content">
-
-            <strong class="flash-message-title">
-                Deleted task
-            </strong>
-
-            <p class="flash-message-text">
-                This task is read-only until it is restored.
-            </p>
-
-        </div>
-
-    </div>
-
-    {% endif %}
+    {% include "partials/live_update_status.html" %}
 
     <section
         class="content-card task-description-card"
         aria-labelledby="task-description-heading"
+        data-task-live-region="description"
     >
 
         <div class="card-header">
@@ -249,6 +48,7 @@
         <section
             class="content-card task-information-card"
             aria-labelledby="task-details-heading"
+            data-task-live-region="details"
         >
 
             <div class="card-header">
@@ -274,7 +74,10 @@
                     <dd>
 
                         <a
-                            href="{{ url_for('company_detail', company_id=section.company_id) }}"
+                            href="{{ url_for(
+                                'company_detail',
+                                company_id=section.company_id
+                            ) }}"
                         >
                             {{ section.company.name }}
                         </a>
@@ -292,7 +95,10 @@
                     <dd>
 
                         <a
-                            href="{{ url_for('section_detail', section_id=section.id) }}"
+                            href="{{ url_for(
+                                'section_detail',
+                                section_id=section.id
+                            ) }}"
                         >
                             {{ section.name }}
                         </a>
@@ -379,7 +185,9 @@
 
                             at
 
-                            <time datetime="{{ task.completed_at.isoformat() }}">
+                            <time
+                                datetime="{{ task.completed_at.isoformat() }}"
+                            >
                                 {{ task.completed_at | format_compact_datetime }}
                             </time>
 
@@ -474,6 +282,7 @@
         <section
             class="content-card"
             aria-labelledby="move-task-heading"
+            data-task-live-region="move"
         >
 
             <div class="card-header">
@@ -507,8 +316,12 @@
 
                     <option
                         value="{{ list.id }}"
-                        {% if list.id == task.section_list_id %}selected{% endif %}
-                        {% if list.is_archived %}disabled{% endif %}
+                        {% if list.id == task.section_list_id %}
+                        selected
+                        {% endif %}
+                        {% if list.is_archived %}
+                        disabled
+                        {% endif %}
                     >
                         {{ list.name }}
                     </option>
@@ -524,7 +337,10 @@
                 class="btn btn-secondary"
                 data-task-move-button
                 data-task-id="{{ task.id }}"
-                data-move-url="{{ url_for('task_move', task_id=task.id) }}"
+                data-move-url="{{ url_for(
+                    'task_move',
+                    task_id=task.id
+                ) }}"
                 data-csrf-token="{{ csrf_token }}"
             >
                 Move Task
@@ -534,87 +350,6 @@
 
         {% endif %}
 
-        {% if can_permanently_delete and task.is_deleted %}
-
-        <section
-            class="content-card danger-zone"
-            aria-labelledby="permanent-delete-heading"
-        >
-
-            <div class="card-header">
-
-                <div>
-
-                    <h2 id="permanent-delete-heading">
-                        Permanent Deletion
-                    </h2>
-
-                </div>
-
-            </div>
-
-            <p>
-                Permanently deleting this task also removes its comments,
-                assignees and history. This cannot be undone.
-            </p>
-
-            <form
-                method="post"
-                action="{{ url_for(
-                    'admin_deleted_task_permanent_delete',
-                    task_id=task.id
-                ) }}"
-                data-confirm="Permanently delete this task? This cannot be undone."
-            >
-
-                <input
-                    type="hidden"
-                    name="csrf_token"
-                    value="{{ csrf_token }}"
-                >
-
-                <button
-                    type="submit"
-                    class="btn btn-danger"
-                >
-                    Delete Permanently
-                </button>
-
-            </form>
-
-        </section>
-
-        {% endif %}
-
-    </div>
-
-    <div class="page-footer-actions">
-
-        <a
-            href="{{ url_for('section_detail', section_id=section.id) }}"
-            class="btn btn-secondary"
-        >
-            Back to Section
-        </a>
-
     </div>
 
 </div>
-
-{% endblock %}
-
-{% block scripts %}
-
-<script>
-window.billsonsLiveUpdates = {
-    enabled: {{ "true" if settings.live_updates_enabled else "false" }},
-    pollIntervalSeconds: {{ settings.live_updates_poll_interval_seconds }},
-};
-</script>
-
-<script
-    src="{{ url_for('static', path='js/task-board.js') }}"
-    defer
-></script>
-
-{% endblock %}

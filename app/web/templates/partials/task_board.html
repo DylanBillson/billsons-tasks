@@ -7,6 +7,8 @@
     class="task-board"
     data-task-board
     data-section-id="{{ section.id }}"
+    data-section-revision="{{ section_revision.revision }}"
+    data-live-update-url="{{ url_for('section_live_update_revision', section_id=section.id) }}"
     data-reorder-url="{{ url_for('tasks_reorder', section_id=section.id) }}"
     data-list-reorder-url="{{ url_for('section_lists_reorder', section_id=section.id) }}"
     data-csrf-token="{{ csrf_token }}"

@@ -2,6 +2,7 @@ from sqlalchemy.orm import Session
 
 from app.auth.permissions import PermissionService
 from app.core.constants import AuditAction
+from app.core.timezone import utc_now
 from app.models.section import Section
 from app.models.section_list import SectionList
 from app.models.user import User
@@ -14,6 +15,7 @@ from app.schemas.section_list import (
     SectionListUpdateRequest,
 )
 from app.services.audit_service import AuditService
+from app.services.live_update_service import LiveUpdateService
 from app.services.section_service import SectionService
 
 
@@ -33,6 +35,23 @@ class SectionListNameAlreadyExistsError(
 
 class SectionListReorderError(SectionListServiceError):
     """Raised when a list reorder request is invalid."""
+
+
+class SectionListLiveUpdateConflictError(
+    SectionListReorderError,
+):
+    """Raised when a section changed before list reordering completed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        current_revision: str,
+    ) -> None:
+        super().__init__(
+            message,
+        )
+        self.current_revision = current_revision
 
 
 class SectionListNotEmptyError(SectionListServiceError):
@@ -263,6 +282,8 @@ class SectionListService:
         previous_name = section_list.name
         previous_description = section_list.description
 
+        section_list.updated_at = utc_now()
+
         SectionListRepository.update(
             db,
             section_list=section_list,
@@ -318,6 +339,8 @@ class SectionListService:
 
         if section_list.is_archived == is_archived:
             return section_list
+
+        section_list.updated_at = utc_now()
 
         SectionListRepository.set_archived(
             db,
@@ -379,6 +402,13 @@ class SectionListService:
             db,
             actor=actor,
             section=section,
+        )
+
+        SectionListService._require_current_section_revision(
+            db,
+            actor=actor,
+            section_id=section.id,
+            known_revision=reorder_request.known_revision,
         )
 
         active_lists = (
@@ -454,6 +484,13 @@ class SectionListService:
         if not changed_positions:
             return active_lists
 
+        changed_at = utc_now()
+
+        for list_id in changed_positions:
+            active_list_by_id[
+                list_id
+            ].updated_at = changed_at
+
         SectionListRepository.update_sort_positions(
             db,
             positions=requested_positions,
@@ -489,6 +526,34 @@ class SectionListService:
             db,
             section_id=section.id,
             include_archived=False,
+        )
+
+    @staticmethod
+    def _require_current_section_revision(
+        db: Session,
+        *,
+        actor: User,
+        section_id: int,
+        known_revision: str | None,
+    ) -> None:
+        if known_revision is None:
+            return
+
+        current = LiveUpdateService.get_section_revision(
+            db,
+            actor=actor,
+            section_id=section_id,
+        )
+
+        if current.revision == known_revision:
+            return
+
+        raise SectionListLiveUpdateConflictError(
+            (
+                "The section board changed while you were "
+                "working. Reload the latest board and try again."
+            ),
+            current_revision=current.revision,
         )
 
     @staticmethod

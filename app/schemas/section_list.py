@@ -5,6 +5,7 @@ from pydantic import (
     field_validator,
 )
 
+LiveUpdateRevisionToken = str
 
 class SectionListCreateRequest(BaseModel):
     name: str = Field(
@@ -100,6 +101,12 @@ class SectionListReorderRequest(BaseModel):
     items: list[SectionListPositionUpdate] = Field(
         min_length=1,
         max_length=500,
+    )
+
+    known_revision: LiveUpdateRevisionToken | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
     )
 
     @field_validator("items")

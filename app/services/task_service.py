@@ -1,28 +1,22 @@
-from typing import Any
 from datetime import (
     datetime,
     time,
     timedelta,
     timezone,
 )
+from typing import Any
 from zoneinfo import (
     ZoneInfo,
     ZoneInfoNotFoundError,
 )
-from app.schemas.my_tasks import (
-    MyTaskSummary,
-    MyTasksCompanyOption,
-    MyTasksData,
-    MyTasksFilterOptions,
-    MyTasksMetrics,
-    MyTasksSectionOption,
-)
 from sqlalchemy.orm import Session
 
+from app.auth.permissions import PermissionDeniedError
 from app.core.constants import (
     AuditAction,
     TaskHistoryEventType,
 )
+from app.core.timezone import utc_now
 from app.models.section import Section
 from app.models.section_list import SectionList
 from app.models.task import Task
@@ -31,6 +25,14 @@ from app.repositories.section_list_repository import (
     SectionListRepository,
 )
 from app.repositories.task_repository import TaskRepository
+from app.schemas.my_tasks import (
+    MyTaskSummary,
+    MyTasksCompanyOption,
+    MyTasksData,
+    MyTasksFilterOptions,
+    MyTasksMetrics,
+    MyTasksSectionOption,
+)
 from app.schemas.task import (
     TaskCreateRequest,
     TaskFilterOptions,
@@ -39,6 +41,7 @@ from app.schemas.task import (
     TaskUpdateRequest,
 )
 from app.services.audit_service import AuditService
+from app.services.live_update_service import LiveUpdateService
 from app.services.section_list_service import (
     SectionListNotFoundError,
     SectionListService,
@@ -50,8 +53,6 @@ from app.services.task_history_service import (
 from app.services.task_permission_service import (
     TaskPermissionService,
 )
-from app.core.timezone import utc_now
-from app.auth.permissions import PermissionDeniedError
 
 class TaskServiceError(ValueError):
     """Base exception for task-service failures."""
@@ -67,6 +68,21 @@ class TaskDestinationListNotFoundError(TaskServiceError):
 
 class TaskReorderError(TaskServiceError):
     """Raised when a task reorder request is invalid."""
+
+
+class TaskLiveUpdateConflictError(TaskReorderError):
+    """Raised when a board changed before a drag operation completed."""
+
+    def __init__(
+        self,
+        message: str,
+        *,
+        current_revision: str,
+    ) -> None:
+        super().__init__(
+            message,
+        )
+        self.current_revision = current_revision
 
 
 class TaskAlreadyCompletedError(TaskServiceError):
@@ -664,6 +680,8 @@ class TaskService:
         if not changes:
             return task
 
+        task.updated_at = utc_now()
+
         TaskRepository.update(
             db,
             task=task,
@@ -738,8 +756,17 @@ class TaskService:
             destination_list=destination_list,
         )
 
+        TaskService._require_current_section_revision(
+            db,
+            actor=actor,
+            section_id=task.section_id,
+            known_revision=move_request.known_revision,
+        )
+
         previous_list_id = task.section_list_id
         previous_position = task.sort_position
+
+        task.updated_at = utc_now()
 
         TaskRepository.move(
             db,
@@ -809,6 +836,13 @@ class TaskService:
             db,
             actor=actor,
             section=section,
+        )
+
+        TaskService._require_current_section_revision(
+            db,
+            actor=actor,
+            section_id=section.id,
+            known_revision=reorder_request.known_revision,
         )
 
         active_lists = (
@@ -957,6 +991,13 @@ class TaskService:
         if not changed_positions:
             return section_tasks
 
+        changed_at = utc_now()
+
+        for task_id in changed_positions:
+            task_by_id[
+                task_id
+            ].updated_at = changed_at
+
         TaskRepository.update_positions(
             db,
             positions=requested_positions,
@@ -1014,6 +1055,8 @@ class TaskService:
             raise TaskAlreadyCompletedError(
                 "Task is already completed.",
             )
+
+        task.updated_at = utc_now()
 
         TaskRepository.set_completed(
             db,
@@ -1085,6 +1128,8 @@ class TaskService:
         previous_completed_by_user_id = (
             task.completed_by_user_id
         )
+
+        task.updated_at = utc_now()
 
         TaskRepository.set_reopened(
             db,
@@ -1161,6 +1206,8 @@ class TaskService:
                 "Task is already deleted.",
             )
 
+        task.updated_at = utc_now()
+
         TaskRepository.soft_delete(
             db,
             task=task,
@@ -1234,6 +1281,8 @@ class TaskService:
             task.deleted_by_user_id
         )
 
+        task.updated_at = utc_now()
+
         TaskRepository.restore(
             db,
             task=task,
@@ -1283,6 +1332,34 @@ class TaskService:
             )
 
         return task
+
+    @staticmethod
+    def _require_current_section_revision(
+        db: Session,
+        *,
+        actor: User,
+        section_id: int,
+        known_revision: str | None,
+    ) -> None:
+        if known_revision is None:
+            return
+
+        current = LiveUpdateService.get_section_revision(
+            db,
+            actor=actor,
+            section_id=section_id,
+        )
+
+        if current.revision == known_revision:
+            return
+
+        raise TaskLiveUpdateConflictError(
+            (
+                "The section board changed while you were "
+                "working. Reload the latest board and try again."
+            ),
+            current_revision=current.revision,
+        )
 
     @staticmethod
     def permanently_delete_task(

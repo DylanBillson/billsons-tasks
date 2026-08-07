@@ -73,7 +73,7 @@ def test_get_by_id_returns_none(
     ) is None
 
 
-def test_list_for_task_orders_oldest_first(
+def test_list_for_task_orders_newest_first(
     db: Session,
 ) -> None:
     author, task = _create_task(
@@ -100,8 +100,8 @@ def test_list_for_task_orders_oldest_first(
     )
 
     assert result == [
-        first,
         second,
+        first,
     ]
 
 
@@ -162,8 +162,8 @@ def test_list_for_task_can_include_deleted(
     )
 
     assert result == [
-        active,
         deleted,
+        active,
     ]
 
 

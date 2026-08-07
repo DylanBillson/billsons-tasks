@@ -520,12 +520,40 @@ def test_filter_form_preserves_selected_values(
     )
 
     assert response.status_code == 200
-    assert (
-        f'value="{company.id}" selected'
-        in response.text
+    company_marker = (
+        f'value="{company.id}"'
     )
-    assert (
+
+    company_position = response.text.index(
+        company_marker,
+    )
+
+    company_option_end = response.text.index(
+        ">",
+        company_position,
+    )
+
+    company_option_html = response.text[
+        company_position:company_option_end
+    ]
+
+    assert "selected" in company_option_html
+    section_marker = (
         f'value="{section.id}"'
-        in response.text
     )
+
+    section_position = response.text.index(
+        section_marker,
+    )
+
+    section_option_end = response.text.index(
+        ">",
+        section_position,
+    )
+
+    section_option_html = response.text[
+        section_position:section_option_end
+    ]
+
+    assert "selected" in section_option_html
     assert 'value="Preserved"' in response.text

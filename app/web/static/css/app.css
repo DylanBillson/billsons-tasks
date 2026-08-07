@@ -19,6 +19,7 @@
 @import "components/task-cards.css";
 @import "components/comments.css";
 @import "components/history.css";
+@import "components/live-updates.css";
 
 @import "components/metrics.css";
 @import "components/activity-feed.css";

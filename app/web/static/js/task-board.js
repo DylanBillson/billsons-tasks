@@ -407,8 +407,14 @@ async function handleTaskDragEnd(
     );
 
     try {
-        await persistTaskOrder(
+        const responsePayload =
+            await persistTaskOrder(
+                board,
+            );
+
+        await refreshBoardRevision(
             board,
+            responsePayload,
         );
 
         board.dispatchEvent(
@@ -440,6 +446,19 @@ async function handleTaskDragEnd(
             "Unable to save task order.",
             error,
         );
+
+        if (
+            isLiveUpdateConflict(
+                error,
+            )
+        ) {
+            handleLiveUpdateConflict(
+                board,
+                error,
+            );
+
+            return;
+        }
 
         window.alert(
             getErrorMessage(
@@ -702,8 +721,14 @@ async function handleListDragEnd(
     );
 
     try {
-        await persistListOrder(
+        const responsePayload =
+            await persistListOrder(
+                board,
+            );
+
+        await refreshBoardRevision(
             board,
+            responsePayload,
         );
 
         board.dispatchEvent(
@@ -727,6 +752,19 @@ async function handleListDragEnd(
             "Unable to save list order.",
             error,
         );
+
+        if (
+            isLiveUpdateConflict(
+                error,
+            )
+        ) {
+            handleLiveUpdateConflict(
+                board,
+                error,
+            );
+
+            return;
+        }
 
         window.alert(
             getErrorMessage(
@@ -840,6 +878,11 @@ async function persistTaskOrder(
         },
     );
 
+    const knownRevision = (
+        board.dataset.sectionRevision
+        || null
+    );
+
     const response = await fetch(
         reorderUrl,
         {
@@ -856,12 +899,14 @@ async function persistTaskOrder(
             body: JSON.stringify(
                 {
                     items,
+                    known_revision:
+                        knownRevision,
                 },
             ),
         },
     );
 
-    await requireSuccessfulResponse(
+    return await requireSuccessfulResponse(
         response,
     );
 }
@@ -912,6 +957,11 @@ async function persistListOrder(
         },
     );
 
+    const knownRevision = (
+        board.dataset.sectionRevision
+        || null
+    );
+
     const response = await fetch(
         reorderUrl,
         {
@@ -928,14 +978,62 @@ async function persistListOrder(
             body: JSON.stringify(
                 {
                     items,
+                    known_revision:
+                        knownRevision,
                 },
             ),
         },
     );
 
-    await requireSuccessfulResponse(
+    return await requireSuccessfulResponse(
         response,
     );
+}
+
+
+async function refreshBoardRevision(
+    board,
+    responsePayload = null,
+) {
+    if (
+        responsePayload
+        && typeof responsePayload.revision
+        === "string"
+        && responsePayload.revision
+    ) {
+        board.dataset.sectionRevision =
+            responsePayload.revision;
+
+        return;
+    }
+
+    if (
+        !window.BillsonsLiveUpdates
+        || typeof (
+            window.BillsonsLiveUpdates
+                .refreshRevision
+        ) !== "function"
+    ) {
+        return;
+    }
+
+    try {
+        await (
+            window.BillsonsLiveUpdates
+                .refreshRevision(
+                    board,
+                )
+        );
+
+    } catch (error) {
+        console.warn(
+            (
+                "The task-board revision "
+                + "could not be refreshed."
+            ),
+            error,
+        );
+    }
 }
 
 
@@ -1420,8 +1518,18 @@ function getNumericDataValue(
 async function requireSuccessfulResponse(
     response,
 ) {
+    let payload = null;
+
+    try {
+        payload =
+            await response.json();
+
+    } catch {
+        payload = null;
+    }
+
     if (response.ok) {
-        return;
+        return payload;
     }
 
     let detail = (
@@ -1429,28 +1537,90 @@ async function requireSuccessfulResponse(
         + `${response.status}.`
     );
 
-    try {
-        const payload =
-            await response.json();
-
-        if (
-            payload
-            && typeof payload.detail
-            === "string"
-        ) {
-            detail =
-                payload.detail;
-        }
-
-    } catch {
-        /*
-         * Preserve the generic HTTP error when the response is not JSON.
-         */
+    if (
+        payload
+        && typeof payload.detail
+        === "string"
+    ) {
+        detail =
+            payload.detail;
     }
 
-    throw new Error(
+    const error = new Error(
         detail,
     );
+
+    error.status =
+        response.status;
+
+    if (
+        payload
+        && typeof payload.code
+        === "string"
+    ) {
+        error.code =
+            payload.code;
+    }
+
+    if (
+        payload
+        && typeof payload.current_revision
+        === "string"
+    ) {
+        error.currentRevision =
+            payload.current_revision;
+    }
+
+    throw error;
+}
+
+
+function isLiveUpdateConflict(
+    error,
+) {
+    return (
+        error instanceof Error
+        && (
+            error.status === 409
+            || error.code
+                === "live_update_conflict"
+        )
+    );
+}
+
+
+function handleLiveUpdateConflict(
+    root,
+    error,
+) {
+    if (
+        window.BillsonsLiveUpdates
+        && typeof (
+            window.BillsonsLiveUpdates
+                .markConflict
+        ) === "function"
+    ) {
+        window.BillsonsLiveUpdates
+            .markConflict(
+                root,
+                error.message,
+                error.currentRevision,
+            );
+
+        return;
+    }
+
+    window.alert(
+        getErrorMessage(
+            error,
+            (
+                "The page changed in another "
+                + "browser and must be reloaded."
+            ),
+        ),
+    );
+
+    window.location.reload();
 }
 
 
@@ -1527,6 +1697,11 @@ async function moveTaskFromDetailPage(
         return;
     }
 
+    const taskDetailRoot =
+        button.closest(
+            "[data-task-detail]",
+        );
+
     button.disabled = true;
 
     button.setAttribute(
@@ -1535,6 +1710,27 @@ async function moveTaskFromDetailPage(
     );
 
     try {
+        const requestPayload = {
+            destination_list_id:
+                Number(
+                    select.value,
+                ),
+
+            sort_position:
+                1000,
+        };
+
+        if (
+            taskDetailRoot
+            && taskDetailRoot.dataset
+                .sectionRevision
+        ) {
+            requestPayload.known_revision = (
+                taskDetailRoot.dataset
+                    .sectionRevision
+            );
+        }
+
         const response = await fetch(
             moveUrl,
             {
@@ -1549,15 +1745,7 @@ async function moveTaskFromDetailPage(
                 },
 
                 body: JSON.stringify(
-                    {
-                        destination_list_id:
-                            Number(
-                                select.value,
-                            ),
-
-                        sort_position:
-                            1000,
-                    },
+                    requestPayload,
                 ),
             },
         );
@@ -1573,6 +1761,22 @@ async function moveTaskFromDetailPage(
             "Unable to move task.",
             error,
         );
+
+        if (
+            isLiveUpdateConflict(
+                error,
+            )
+        ) {
+            handleLiveUpdateConflict(
+                (
+                    taskDetailRoot
+                    || document.body
+                ),
+                error,
+            );
+
+            return;
+        }
 
         window.alert(
             getErrorMessage(

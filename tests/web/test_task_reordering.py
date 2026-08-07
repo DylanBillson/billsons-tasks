@@ -1,6 +1,11 @@
 from fastapi.testclient import TestClient
 from sqlalchemy.orm import Session
+from datetime import timedelta
 
+from app.core.timezone import utc_now
+from app.services.live_update_service import (
+    LiveUpdateService,
+)
 from app.core.config import settings
 from app.core.constants import CompanyRole
 from tests.factories import (
@@ -528,3 +533,159 @@ def test_task_reorder_response_excludes_deleted_tasks(
     assert first_task.id in returned_ids
     assert second_task.id in returned_ids
     assert deleted_task.id not in returned_ids
+
+def test_task_move_returns_conflict_for_stale_revision(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        first_list,
+        second_list,
+        first_task,
+        _,
+    ) = _create_context(
+        db,
+    )
+
+    stale_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=creator,
+            section_id=section.id,
+        )
+    )
+
+    first_task.title = "Changed in another browser"
+    first_task.updated_at = (
+        utc_now()
+        + timedelta(
+            seconds=1,
+        )
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/tasks/{first_task.id}/move",
+        json={
+            "destination_list_id": second_list.id,
+            "sort_position": 2000,
+            "known_revision": (
+                stale_revision.revision
+            ),
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 409
+
+    payload = response.json()
+
+    assert payload["code"] == "live_update_conflict"
+
+    assert (
+        payload["current_revision"]
+        != stale_revision.revision
+    )
+
+    assert "board changed" in payload["detail"]
+
+    db.refresh(
+        first_task,
+    )
+
+    assert first_task.section_list_id == first_list.id
+    assert first_task.sort_position == 1000
+
+
+def test_task_reorder_returns_conflict_for_stale_revision(
+    client: TestClient,
+    db: Session,
+) -> None:
+    (
+        creator,
+        section,
+        first_list,
+        second_list,
+        first_task,
+        second_task,
+    ) = _create_context(
+        db,
+    )
+
+    stale_revision = (
+        LiveUpdateService.get_section_revision(
+            db,
+            actor=creator,
+            section_id=section.id,
+        )
+    )
+
+    second_task.title = "Concurrent change"
+    second_task.updated_at = (
+        utc_now()
+        + timedelta(
+            seconds=1,
+        )
+    )
+
+    db.commit()
+
+    csrf_token = _authenticate(
+        client,
+        db,
+        user=creator,
+    )
+
+    response = client.post(
+        f"/sections/{section.id}/tasks/reorder",
+        json={
+            "known_revision": (
+                stale_revision.revision
+            ),
+            "items": [
+                {
+                    "task_id": first_task.id,
+                    "section_list_id": second_list.id,
+                    "sort_position": 2000,
+                },
+                {
+                    "task_id": second_task.id,
+                    "section_list_id": first_list.id,
+                    "sort_position": 500,
+                },
+            ],
+        },
+        headers={
+            "x-csrf-token": csrf_token,
+        },
+    )
+
+    assert response.status_code == 409
+
+    assert response.json()["code"] == (
+        "live_update_conflict"
+    )
+
+    db.refresh(
+        first_task,
+    )
+    db.refresh(
+        second_task,
+    )
+
+    assert first_task.section_list_id == first_list.id
+    assert first_task.sort_position == 1000
+
+    assert second_task.section_list_id == second_list.id
+    assert second_task.sort_position == 1000

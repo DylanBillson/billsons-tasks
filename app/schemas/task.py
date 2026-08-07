@@ -18,6 +18,7 @@ TaskStateFilter = Literal[
     "deleted",
 ]
 
+LiveUpdateRevisionToken = str
 
 class TaskCreateRequest(BaseModel):
     section_list_id: int = Field(
@@ -177,6 +178,12 @@ class TaskMoveRequest(BaseModel):
         ge=0,
     )
 
+    known_revision: LiveUpdateRevisionToken | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
+    )
+
 
 class TaskPositionUpdate(BaseModel):
     task_id: int = Field(
@@ -196,6 +203,12 @@ class TaskReorderRequest(BaseModel):
     items: list[TaskPositionUpdate] = Field(
         min_length=1,
         max_length=2000,
+    )
+
+    known_revision: LiveUpdateRevisionToken | None = Field(
+        default=None,
+        min_length=1,
+        max_length=64,
     )
 
     @field_validator("items")

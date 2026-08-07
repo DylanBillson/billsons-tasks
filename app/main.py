@@ -32,6 +32,7 @@ from app.web.routes import (
     companies_router,
     feedback_router,
     home_router,
+    live_updates_router,
     my_tasks_router,
     section_lists_router,
     sections_router,
@@ -202,6 +203,10 @@ app.include_router(
 
 app.include_router(
     feedback_router,
+)
+
+app.include_router(
+    live_updates_router,
 )
 
 app.include_router(
